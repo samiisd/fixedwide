@@ -102,7 +102,8 @@ inline wide::int128 divide_native_general(wide::int128 numerator, wide::int128 d
         } else if (rounding == Rounding::nearest_away) {
             inc = (rem * 2 >= ud);
         }
-        if (inc) q += 1;
+        // Branchless: see round_magnitude. `inc` is a coin flip on real data.
+        q += static_cast<unsigned __int128>(inc);
     }
     if (neg) {
         unsigned __int128 neg_q = static_cast<unsigned __int128>(0) - q;
@@ -336,6 +337,134 @@ finish_wide(nat::u256 numerator, u128 divisor, bool negative, Rounding rounding)
 // Duplicating them here paid twice: an extra call level per operation, each one
 // returning a 24-byte std::expected through memory, and the fast path's register
 // pressure spread across operands that never take it.
+// ---------------------------------------------------------------------------
+// Scale-specialised kernels.
+//
+// D is a compile-time constant at every call site: it is a template parameter of
+// basic_fixed. Passing it on as a runtime `unsigned decimals` threw that away,
+// and with it every fold 0.4 got for free -- the range bound, the branch on
+// whether the scale fits 64 bits, and the reciprocal multiply for the 64-bit
+// divisions.
+//
+// These templates are declared in arithmetic.hpp and explicitly instantiated
+// here, so a consumer emits ONE ordinary call to a symbol that already knows the
+// scale. No dispatch switch, no extra call level, and no implementation in the
+// consumer's translation unit. Scales past max_scaled_decimals keep the runtime
+// entry points below: correct, just not folded.
+// ---------------------------------------------------------------------------
+namespace {
+
+// The general path stays out of line, as 0.4 kept mul_general and div_general
+// out of line: the fast path's register pressure must not follow wide operands
+// through a function that never takes it.
+template<unsigned D>
+[[nodiscard, gnu::noinline]] std::expected<wide::int128, ArithmeticError>
+mul128_scaled_general(i128 ra, i128 rb, Rounding rounding) noexcept {
+    return finish_wide(nat::multiply128(nat::magnitude(ra), nat::magnitude(rb)),
+                       scale_v<D, u128>, (ra < 0) != (rb < 0), rounding);
+}
+
+template<unsigned D>
+[[nodiscard, gnu::noinline]] std::expected<wide::int128, ArithmeticError>
+div128_scaled_general(i128 ra, i128 rb, Rounding rounding) noexcept {
+    return finish_wide(nat::multiply128(nat::magnitude(ra), scale_v<D, u128>),
+                       nat::magnitude(rb), (ra < 0) != (rb < 0), rounding);
+}
+
+} // namespace
+
+template<unsigned D>
+std::expected<wide::int128, ArithmeticError>
+mul128_scaled(wide::int128 a, wide::int128 b, Rounding rounding) noexcept {
+    static_assert(D <= max_decimals_for_bits<128>(), "10^D does not fit the 128-bit storage");
+    constexpr u128 scale = scale_v<D, u128>;
+    const i128 ra = nat::load(a);
+    const i128 rb = nat::load(b);
+    if (common_rounding(rounding) && fits64_n(ra) && fits64_n(rb)) {
+        // A signed 64x64 product always fits signed 128 bits, and dividing it by
+        // the positive scale can never overflow the result. With the scale
+        // constant, the whole bound test folds away.
+        const i128 product = static_cast<i128>(static_cast<std::int64_t>(ra))
+                           * static_cast<std::int64_t>(rb);
+        return nat::store(divide_product_by_scale_n(product, scale, rounding));
+    }
+    return mul128_scaled_general<D>(ra, rb, rounding);
+}
+
+template<unsigned D>
+std::expected<wide::int128, ArithmeticError>
+div128_scaled(wide::int128 a, wide::int128 b, Rounding rounding) noexcept {
+    static_assert(D <= max_decimals_for_bits<128>(), "10^D does not fit the 128-bit storage");
+    constexpr u128 scale = scale_v<D, u128>;
+    // i128_max / scale is a compile-time constant here. As a runtime value it
+    // was a __udivti3 call on every division.
+    constexpr u128 bound = static_cast<u128>(nat::i128_max) / scale;
+    const i128 ra = nat::load(a);
+    const i128 rb = nat::load(b);
+    if (rb == 0) return std::unexpected(ArithmeticError::division_by_zero);
+    // The bound also proves |ra * scale| <= i128_max, so the scaled numerator is
+    // never signed_min and signed_min / -1 cannot arise below.
+    if (common_rounding(rounding) && static_cast<u128>(ra) + bound <= 2 * bound) {
+        return nat::store(divide_native_n(ra * static_cast<i128>(scale), rb, rounding));
+    }
+    return div128_scaled_general<D>(ra, rb, rounding);
+}
+
+template<unsigned D>
+std::expected<std::int64_t, ArithmeticError>
+mul64_scaled(std::int64_t a, std::int64_t b, Rounding rounding) noexcept {
+    static_assert(D <= max_decimals_for_bits<64>(), "10^D does not fit the 64-bit storage");
+    std::int64_t hi;
+    std::uint64_t lo;
+    imul64x64(a, b, hi, lo);
+    return quotient64_signed(hi, lo, scale_v<D, std::int64_t>, rounding);
+}
+
+template<unsigned D>
+std::expected<std::int64_t, ArithmeticError>
+div64_scaled(std::int64_t a, std::int64_t b, Rounding rounding) noexcept {
+    static_assert(D <= max_decimals_for_bits<64>(), "10^D does not fit the 64-bit storage");
+    if (b == 0) return std::unexpected(ArithmeticError::division_by_zero);
+    std::int64_t hi;
+    std::uint64_t lo;
+    imul64x64(a, scale_v<D, std::int64_t>, hi, lo);
+    return quotient64_signed(hi, lo, b, rounding);
+}
+
+// One explicit instantiation per decimal count. This is the whole mechanism:
+// the definitions stay in this translation unit, and consumers link to a symbol
+// that already knows its scale.
+#define FIXEDWIDE_INSTANTIATE_128(D)                                                             \
+    template std::expected<wide::int128, ArithmeticError>                                        \
+        mul128_scaled<D>(wide::int128, wide::int128, Rounding) noexcept;                         \
+    template std::expected<wide::int128, ArithmeticError>                                        \
+        div128_scaled<D>(wide::int128, wide::int128, Rounding) noexcept;
+
+#define FIXEDWIDE_INSTANTIATE_64(D)                                                              \
+    template std::expected<std::int64_t, ArithmeticError>                                        \
+        mul64_scaled<D>(std::int64_t, std::int64_t, Rounding) noexcept;                          \
+    template std::expected<std::int64_t, ArithmeticError>                                        \
+        div64_scaled<D>(std::int64_t, std::int64_t, Rounding) noexcept;
+
+#define FIXEDWIDE_INSTANTIATE_BOTH(D) FIXEDWIDE_INSTANTIATE_128(D) FIXEDWIDE_INSTANTIATE_64(D)
+
+FIXEDWIDE_INSTANTIATE_BOTH(0)  FIXEDWIDE_INSTANTIATE_BOTH(1)
+FIXEDWIDE_INSTANTIATE_BOTH(2)  FIXEDWIDE_INSTANTIATE_BOTH(3)
+FIXEDWIDE_INSTANTIATE_BOTH(4)  FIXEDWIDE_INSTANTIATE_BOTH(5)
+FIXEDWIDE_INSTANTIATE_BOTH(6)  FIXEDWIDE_INSTANTIATE_BOTH(7)
+FIXEDWIDE_INSTANTIATE_BOTH(8)  FIXEDWIDE_INSTANTIATE_BOTH(9)
+FIXEDWIDE_INSTANTIATE_BOTH(10) FIXEDWIDE_INSTANTIATE_BOTH(11)
+FIXEDWIDE_INSTANTIATE_BOTH(12) FIXEDWIDE_INSTANTIATE_BOTH(13)
+FIXEDWIDE_INSTANTIATE_BOTH(14) FIXEDWIDE_INSTANTIATE_BOTH(15)
+FIXEDWIDE_INSTANTIATE_BOTH(16) FIXEDWIDE_INSTANTIATE_BOTH(17)
+FIXEDWIDE_INSTANTIATE_BOTH(18)
+// 10^19 does not fit int64_t, and basic_fixed<64, 19> is already rejected, so
+// only the 128-bit pair continues past 18.
+FIXEDWIDE_INSTANTIATE_128(19)
+#undef FIXEDWIDE_INSTANTIATE_BOTH
+#undef FIXEDWIDE_INSTANTIATE_64
+#undef FIXEDWIDE_INSTANTIATE_128
+
 std::expected<wide::int128, ArithmeticError>
 mul128_impl(wide::int128 a, wide::int128 b, unsigned decimals, Rounding rounding) noexcept {
     const i128 ra = nat::load(a);
@@ -353,14 +482,28 @@ div128_impl(wide::int128 a, wide::int128 b, unsigned decimals, Rounding rounding
                        nat::magnitude(rb), (ra < 0) != (rb < 0), rounding);
 }
 
+namespace {
+[[nodiscard, gnu::noinline]] std::expected<wide::int128, ArithmeticError>
+mul_div128_general(i128 ra, i128 rb, i128 rc, Rounding rounding) noexcept {
+    return finish_wide(nat::multiply128(nat::magnitude(ra), nat::magnitude(rb)), nat::magnitude(rc),
+                       (ra < 0) != ((rb < 0) != (rc < 0)), rounding);
+}
+} // namespace
+
 std::expected<wide::int128, ArithmeticError>
 mul_div128_impl(wide::int128 a, wide::int128 b, wide::int128 c, Rounding rounding) noexcept {
     const i128 ra = nat::load(a);
     const i128 rb = nat::load(b);
     const i128 rc = nat::load(c);
     if (rc == 0) return std::unexpected(ArithmeticError::division_by_zero);
-    return finish_wide(nat::multiply128(nat::magnitude(ra), nat::magnitude(rb)), nat::magnitude(rc),
-                       (ra < 0) != ((rb < 0) != (rc < 0)), rounding);
+    if (common_rounding(rounding) && fits64_n(ra) && fits64_n(rb)) {
+        // |a*b| <= 2^63 * (2^63-1) < 2^126, so the product is never signed_min
+        // and signed_min / -1 cannot arise.
+        const i128 product = static_cast<i128>(static_cast<std::int64_t>(ra))
+                           * static_cast<std::int64_t>(rb);
+        return nat::store(divide_native_n(product, rc, rounding));
+    }
+    return mul_div128_general(ra, rb, rc, rounding);
 }
 
 #else // portable limb backend
@@ -564,10 +707,9 @@ quantize128_impl(wide::int128 a, unsigned current_dec, unsigned target_dec, Roun
             } else if (rounding == Rounding::nearest_away) {
                 inc = (r * 2 >= udiv);
             }
-            if (inc) {
-                if (q == lim) return std::unexpected(ArithmeticError::overflow);
-                q += 1;
-            }
+            // Branchless, with the overflow test folded into the rare branch.
+            if (inc && q == lim) return std::unexpected(ArithmeticError::overflow);
+            q += static_cast<unsigned __int128>(inc);
         }
         unsigned __int128 res_u;
         if (__builtin_mul_overflow(q, static_cast<unsigned __int128>(udiv), &res_u) || res_u > lim) {

@@ -12,6 +12,34 @@ namespace fixedwide {
 namespace detail {
 
 // Forward declarations of wide compiled kernels
+// Scale-specialised kernels. D is a compile-time constant at every call site,
+// so these are declared here and explicitly instantiated in arithmetic.cpp: a
+// consumer emits one ordinary call to a symbol whose body already knows its
+// scale -- no dispatch switch, no extra call level, and no implementation in the
+// consumer's translation unit.
+//
+// The cap is per width because 10^D must fit the storage. basic_fixed already
+// refuses to exceed it and the kernels static_assert it, so a scale that would
+// wrap is a compile error rather than a wrong constant.
+inline constexpr unsigned max_scaled_decimals_64 = 18;
+inline constexpr unsigned max_scaled_decimals_128 = 19;
+
+template<unsigned D>
+std::expected<wide::int128, ArithmeticError>
+mul128_scaled(wide::int128 a, wide::int128 b, Rounding rounding) noexcept;
+
+template<unsigned D>
+std::expected<wide::int128, ArithmeticError>
+div128_scaled(wide::int128 a, wide::int128 b, Rounding rounding) noexcept;
+
+template<unsigned D>
+std::expected<std::int64_t, ArithmeticError>
+mul64_scaled(std::int64_t a, std::int64_t b, Rounding rounding) noexcept;
+
+template<unsigned D>
+std::expected<std::int64_t, ArithmeticError>
+div64_scaled(std::int64_t a, std::int64_t b, Rounding rounding) noexcept;
+
 std::expected<wide::int128, ArithmeticError>
 mul128_impl(wide::int128 a, wide::int128 b, unsigned decimals, Rounding rounding) noexcept;
 
@@ -366,7 +394,7 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
             }
         }
 #endif
-        auto res = detail::mul64_impl(a.raw(), b.raw(), Fixed::scale(), rounding);
+        auto res = detail::mul64_scaled<D>(a.raw(), b.raw(), rounding);
         if (!res) return std::unexpected(res.error());
         return Fixed::from_raw(*res);
     } else if constexpr (Bits == 128) {
@@ -420,37 +448,14 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
                     return Fixed::from_raw(wide::int128(quotient.low, quotient.high));
                 }
             }
-#if defined(__SIZEOF_INT128__) && defined(__clang__)
-            if constexpr (Fixed::scale().high == 0) {
-                constexpr std::uint64_t scale_val = Fixed::scale().low;
-                using u256_internal = unsigned _BitInt(256);
-                bool negative = a.raw().is_negative() != b.raw().is_negative();
-                unsigned __int128 ma = (static_cast<unsigned __int128>(magnitude(a.raw()).high) << 64) | magnitude(a.raw()).low;
-                unsigned __int128 mb = (static_cast<unsigned __int128>(magnitude(b.raw()).high) << 64) | magnitude(b.raw()).low;
-                u256_internal prod = static_cast<u256_internal>(ma) * static_cast<u256_internal>(mb);
-                unsigned __int128 prod_hi = static_cast<unsigned __int128>(prod >> 128);
-                if (prod_hi < scale_val) {
-                    std::uint64_t rem = static_cast<std::uint64_t>(prod_hi);
-                    std::uint64_t qhi = detail_arith::div128by64_asm(rem, static_cast<std::uint64_t>(prod >> 64), scale_val, rem);
-                    std::uint64_t qlo = detail_arith::div128by64_asm(rem, static_cast<std::uint64_t>(prod), scale_val, rem);
-                    wide::uint128 quotient(qlo, qhi);
-                    if (detail_arith::round_inc_u64(qlo, rem, scale_val, rounding)) {
-                        quotient = quotient + wide::uint128(1ULL);
-                    }
-                    wide::uint128 limit = wide::uint128::max() >> 1;
-                    if (negative) limit = limit + wide::uint128(1ULL);
-                    if (quotient > limit) return std::unexpected(ArithmeticError::overflow);
-                    if (negative) {
-                        wide::int128 s(quotient.low, quotient.high);
-                        return Fixed::from_raw(-s);
-                    }
-                    return Fixed::from_raw(wide::int128(quotient.low, quotient.high));
-                }
-            }
-#endif
         }
 #endif
-        auto res = detail::mul128_impl(a.raw(), b.raw(), D, rounding);
+        auto res = [&] {
+            if constexpr (D <= detail::max_scaled_decimals_128)
+                return detail::mul128_scaled<D>(a.raw(), b.raw(), rounding);
+            else
+                return detail::mul128_impl(a.raw(), b.raw(), D, rounding);
+        }();
         if (!res) return std::unexpected(res.error());
         return Fixed::from_raw(*res);
     } else if constexpr (Bits == 256) {
@@ -480,7 +485,7 @@ div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
             if (*res < INT16_MIN || *res > INT16_MAX) return std::unexpected(ArithmeticError::overflow);
             return Fixed::from_raw(static_cast<std::int16_t>(*res));
         } else if constexpr (Bits == 32) {
-            auto res = detail::div64_impl(a.raw(), b.raw(), Fixed::scale(), rounding);
+            auto res = detail::div64_scaled<D>(a.raw(), b.raw(), rounding);
             if (!res) return std::unexpected(res.error());
             if (*res < INT32_MIN || *res > INT32_MAX) return std::unexpected(ArithmeticError::overflow);
             return Fixed::from_raw(static_cast<std::int32_t>(*res));
@@ -504,128 +509,23 @@ div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
                 }
             }
 #endif
-            auto res = detail::div64_impl(a.raw(), b.raw(), Fixed::scale(), rounding);
+            auto res = detail::div64_scaled<D>(a.raw(), b.raw(), rounding);
             if (!res) return std::unexpected(res.error());
             return Fixed::from_raw(*res);
         }
     } else if constexpr (Bits == 128) {
         if (b.raw().is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
-#if defined(FIXEDWIDE_HAS_X86_64_ASM)
-        if (rounding == Rounding::toward_zero || rounding == Rounding::nearest_even) {
-            auto alow = static_cast<std::int64_t>(a.raw().low);
-            auto blow = static_cast<std::int64_t>(b.raw().low);
-            bool a_fits = (a.raw().high == 0 && (a.raw().low >> 63) == 0) ||
-                          (a.raw().high == ~0ULL && (a.raw().low >> 63) == 1);
-            bool b_fits = (b.raw().high == 0 && (b.raw().low >> 63) == 0) ||
-                          (b.raw().high == ~0ULL && (b.raw().low >> 63) == 1);
-            if (a_fits && b_fits && Fixed::scale().high == 0) {
-                std::int64_t scale_val = static_cast<std::int64_t>(Fixed::scale().low);
-                std::uint64_t lo;
-                std::int64_t hi;
-                __asm__("imulq %[rhs]" : "=a"(lo), "=d"(hi) : "a"(alow), [rhs] "r"(scale_val) : "cc");
-                std::uint64_t mag = blow < 0 ? 0ULL - static_cast<std::uint64_t>(blow) : static_cast<std::uint64_t>(blow);
-                std::uint64_t half = mag / 2;
-                std::uint64_t uhi = static_cast<std::uint64_t>(hi);
-                if (uhi + half < 2 * half && !(blow < 0 && uhi + half == 0)) {
-                    std::int64_t q, r;
-                    __asm__("idivq %[div]" : "=a"(q), "=d"(r) : "a"(lo), "d"(hi), [div] "r"(blow) : "cc");
-                    if (rounding == Rounding::nearest_even && r != 0) {
-                        q += detail_arith::nearest_adj(q, r, blow, (hi < 0) != (blow < 0));
-                    }
-                    return Fixed::from_raw(wide::int128(q));
-                }
-            }
-#if defined(__SIZEOF_INT128__) && defined(__clang__)
-            if constexpr (Fixed::scale().high == 0) {
-                constexpr std::uint64_t scale_val = Fixed::scale().low;
-                constexpr unsigned __int128 bound128 = (static_cast<unsigned __int128>(~0ULL) << 64 | ~0ULL) / (2 * scale_val);
-                unsigned __int128 ma = (static_cast<unsigned __int128>(magnitude(a.raw()).high) << 64) | magnitude(a.raw()).low;
-                bool negative = a.raw().is_negative() != b.raw().is_negative();
-                if (b_fits && b.raw().low != 0) {
-                    std::uint64_t d = b.raw().is_negative() ? (0ULL - b.raw().low) : b.raw().low;
-                    if (ma <= bound128) {
-                        unsigned __int128 scaled_a = ma * scale_val;
-                        std::uint64_t hi_part = static_cast<std::uint64_t>(scaled_a >> 64);
-                        std::uint64_t lo_part = static_cast<std::uint64_t>(scaled_a);
-                        std::uint64_t qhi = 0, qlo = 0, rem = 0;
-                        if (hi_part < d) {
-                            rem = hi_part;
-                            qlo = detail_arith::div128by64_asm(rem, lo_part, d, rem);
-                        } else {
-                            qhi = hi_part / d;
-                            rem = hi_part % d;
-                            qlo = detail_arith::div128by64_asm(rem, lo_part, d, rem);
-                        }
-                        wide::uint128 quotient(qlo, qhi);
-                        if (detail_arith::round_inc_u64(qlo, rem, d, rounding)) {
-                            quotient = quotient + wide::uint128(1ULL);
-                        }
-                        wide::uint128 limit = wide::uint128::max() >> 1;
-                        if (negative) limit = limit + wide::uint128(1ULL);
-                        if (quotient > limit) return std::unexpected(ArithmeticError::overflow);
-                        if (negative) {
-                            wide::int128 s(quotient.low, quotient.high);
-                            return Fixed::from_raw(-s);
-                        }
-                        return Fixed::from_raw(wide::int128(quotient.low, quotient.high));
-                    } else {
-                        using u256_internal = unsigned _BitInt(256);
-                        u256_internal num = static_cast<u256_internal>(ma) * scale_val;
-                        unsigned __int128 hi_num = static_cast<unsigned __int128>(num >> 128);
-                        if (hi_num < d) {
-                            std::uint64_t rem = static_cast<std::uint64_t>(hi_num);
-                            std::uint64_t qhi = detail_arith::div128by64_asm(rem, static_cast<std::uint64_t>(num >> 64), d, rem);
-                            std::uint64_t qlo = detail_arith::div128by64_asm(rem, static_cast<std::uint64_t>(num), d, rem);
-                            wide::uint128 quotient(qlo, qhi);
-                            if (detail_arith::round_inc_u64(qlo, rem, d, rounding)) {
-                                quotient = quotient + wide::uint128(1ULL);
-                            }
-                            wide::uint128 limit = wide::uint128::max() >> 1;
-                            if (negative) limit = limit + wide::uint128(1ULL);
-                            if (quotient > limit) return std::unexpected(ArithmeticError::overflow);
-                            if (negative) {
-                                wide::int128 s(quotient.low, quotient.high);
-                                return Fixed::from_raw(-s);
-                            }
-                            return Fixed::from_raw(wide::int128(quotient.low, quotient.high));
-                        }
-                    }
-                } else if (!b.raw().is_zero()) {
-                    if (ma <= bound128) {
-                        unsigned __int128 scaled_a = ma * scale_val;
-                        unsigned __int128 mb = (static_cast<unsigned __int128>(magnitude(b.raw()).high) << 64) | magnitude(b.raw()).low;
-                        unsigned __int128 q = scaled_a / mb;
-                        unsigned __int128 rem = scaled_a % mb;
-                        if (rem != 0) {
-                            if (rounding == Rounding::exact) return std::unexpected(ArithmeticError::inexact);
-                            bool inc = false;
-                            if (rounding == Rounding::nearest_even) {
-                                inc = detail_arith::nearest_even_inc(q, rem, mb);
-                            } else if (rounding == Rounding::floor) {
-                                inc = negative;
-                            } else if (rounding == Rounding::ceil) {
-                                inc = !negative;
-                            } else if (rounding == Rounding::nearest_away) {
-                                inc = (rem * 2 >= mb);
-                            }
-                            if (inc) q += 1;
-                        }
-                        wide::uint128 quotient(static_cast<std::uint64_t>(q), static_cast<std::uint64_t>(q >> 64));
-                        wide::uint128 limit = wide::uint128::max() >> 1;
-                        if (negative) limit = limit + wide::uint128(1ULL);
-                        if (quotient > limit) return std::unexpected(ArithmeticError::overflow);
-                        if (negative) {
-                            wide::uint128 neg_q = ~quotient + wide::uint128(1ULL);
-                            return Fixed::from_raw(wide::int128(neg_q.low, neg_q.high));
-                        }
-                        return Fixed::from_raw(wide::int128(quotient.low, quotient.high));
-                    }
-                }
-            }
-#endif
-        }
-#endif
-        auto res = detail::div128_impl(a.raw(), b.raw(), D, rounding);
+        // No inline narrow path here, unlike mul and mul_div. Measured: keeping
+        // one cost native_by128.FP128.div 85% against 0.4 versus 37% without it,
+        // because div's inline test rejects most operands and its code sits on
+        // the path of the ones it rejects. Which operations earn an inline copy
+        // is decided per operation by measurement, not by symmetry.
+        auto res = [&] {
+            if constexpr (D <= detail::max_scaled_decimals_128)
+                return detail::div128_scaled<D>(a.raw(), b.raw(), rounding);
+            else
+                return detail::div128_impl(a.raw(), b.raw(), D, rounding);
+        }();
         if (!res) return std::unexpected(res.error());
         return Fixed::from_raw(*res);
     } else if constexpr (Bits == 256) {

@@ -36,11 +36,13 @@ template<class UInt>
     case Rounding::exact:
         return std::unexpected(ArithmeticError::inexact);
     }
-    if (increment) {
-        if (quotient == limit) return std::unexpected(ArithmeticError::overflow);
-        quotient += UInt(1);
-    }
-    return quotient;
+    // Add branchlessly. Whether a rounding mode increments is a coin flip on
+    // real data, so branching on it costs a mispredict on roughly every
+    // operation; the overflow test below is almost never true and predicts
+    // perfectly. Branching on `increment` here was worth 1.4 mispredicts per
+    // operation and 78% of the wide nearest-even multiply.
+    if (increment && quotient == limit) return std::unexpected(ArithmeticError::overflow);
+    return quotient + static_cast<UInt>(increment);
 }
 
 inline constexpr std::uint64_t pow10_u64[19] = {
@@ -77,12 +79,24 @@ template<typename T, unsigned N>
 inline constexpr std::array<T, N> pow10_table = [] {
     std::array<T, N> table{};
     for (unsigned i = 0; i < N; ++i) table[i] = compute_pow10<T>(i);
+    // Every entry must exceed its predecessor. A power of ten that wrapped its
+    // storage type is then a compile error rather than a silently wrong
+    // constant, which is the failure mode this table is easiest to get wrong in.
+    for (unsigned i = 1; i < N; ++i) {
+        if (!(table[i] > table[i - 1])) throw "pow10 table entry overflowed its type";
+    }
     return table;
 }();
 
-// Largest exponent representable in each width: 10^38 < 2^128, 10^77 < 2^256.
+// How many powers of ten the table holds.
+//
+// sizeof(T) is the wrong question. 10^38 fits an unsigned 128-bit integer, but
+// 10^77 does NOT fit a SIGNED 256-bit one: a table sized from sizeof held a
+// wrapped value in its last slot. Size it instead from the same per-width cap
+// that basic_fixed enforces, which is by construction the largest exponent any
+// caller can legitimately ask for.
 template<typename T>
-inline constexpr unsigned pow10_limit = sizeof(T) >= 32 ? 78u : (sizeof(T) >= 16 ? 39u : 19u);
+inline constexpr unsigned pow10_limit = max_decimals_for_bits<sizeof(T) * 8>() + 1;
 
 // Table lookup for any width, falling back to the loop only for exponents that
 // cannot be represented anyway (where the caller already reports overflow).
@@ -110,12 +124,16 @@ template<typename T>
 // i128_max / 10^k, so the division fast path can range-check without issuing a
 // runtime 128-bit divide (which is a __udivti3 call) on every operation.
 template<typename T>
-inline constexpr std::array<T, 39> pow10_bound = [] {
-    std::array<T, 39> table{};
+inline constexpr std::array<T, pow10_limit<T>> pow10_bound = [] {
+    std::array<T, pow10_limit<T>> table{};
     const T limit = static_cast<T>((~static_cast<T>(0)) >> 1);
-    for (unsigned i = 0; i < 39; ++i) table[i] = limit / compute_pow10<T>(i);
+    for (unsigned i = 0; i < pow10_limit<T>; ++i) table[i] = limit / compute_pow10<T>(i);
     return table;
 }();
+// The scale as a compile-time constant, for the scale-specialised kernels.
+template<unsigned D, typename T>
+inline constexpr T scale_v = compute_pow10<T>(D);
+
 inline constexpr unsigned dynamic_decimals = ~0u;
 
 template<unsigned D, typename T>
