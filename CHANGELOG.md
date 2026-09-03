@@ -82,6 +82,33 @@ predecessor. The type system and public API are unchanged.
   `sizeof(T)`, which had left a silently wrapped `10^77` in the last slot of the
   signed 256-bit table. The table builder now rejects any entry that failed to
   exceed its predecessor, so a scale that wraps is a compile error.
+- Mixed-width, mixed-scale arithmetic ran every operation through 1024-bit
+  Knuth division, including comparison, which needs no division at all:
+  `add_to` cost 418 ns against 0.54 ns for the same-type add. Narrow paths
+  guarded by compile-time bounds make it 70x to 760x faster, with `add_to`,
+  `fixed_cast` and comparison now at the same-type floor.
+- `divmod64` ran one hardware division per limb unconditionally, so a `Fixed256`
+  product occupying three of eight limbs paid for five divisions it did not
+  need -- serially dependent ones. Together with bypassing the general Knuth
+  divider for single-limb scales, `Fixed256` multiply, divide and `mul_div` are
+  1.3x faster.
+- Overflow now outranks inexact at every width. `mul(INT32_MAX, INT32_MAX)` on
+  `Fixed32<4>` with `Rounding::exact` reported `inexact` where `Fixed64<12>`
+  reported `overflow`, because the narrow widths range-check after the kernel
+  rounds.
+
+### Added
+- `mul`, `div`, `mul_div`, `quantize` and `remainder` are `constexpr`. `add` and
+  `sub` already were, so a caller building a table of constants hit the
+  inconsistency immediately. `detail/constexpr_arith.hpp` is a second, simple
+  implementation of the same contract selected by `if consteval`; the runtime
+  paths are untouched.
+- `tests/test_constexpr.cpp` (470,556 comparisons) and
+  `tests/test_mixed_native.cpp` (157,250) hold the new implementations against
+  the existing ones: same value, same error, every rounding mode. Both found
+  real bugs on their first run.
+- `benchmarks/mixed_bench.cpp` covers what the paired 0.4 comparison cannot:
+  mixed-scale operations and `Fixed256`.
 
 ### Known limitations
 - The performance gate against 0.4 does not pass. Wide `Fixed128` `mul_div` and

@@ -22,6 +22,9 @@ alpha.3. The type system is unchanged.
 | AArch64 claim unsupported | Executed on real hardware: 17/17 on a Pixel 6. |
 | `_BitInt` in public headers | The conversion overloads are gone from `wide.hpp`. Two Clang-only inline fast paths still use `_BitInt(256)` as a local computation type; that is stated rather than denied. |
 | Stale release metadata | Version, status, changelog and evidence regenerated from this commit. |
+| (not in the audit) Mixed-scale had no performance evidence | Benchmarked, then made 70x-760x faster. |
+| (not in the audit) `Fixed256` had no performance evidence | Benchmarked, then made 1.3x faster on multiply, divide and `mul_div`. |
+| (not in the audit) arithmetic was not `constexpr` | `mul`, `div`, `mul_div`, `quantize` and `remainder` now are. |
 
 ## Executed configurations
 
@@ -40,7 +43,7 @@ Executed and passing on this host:
 * Shared library — 23/23
 * No-exceptions / no-RTTI library build
 * Install plus an external `find_package` consumer
-* **Linux AArch64 on real hardware** (Pixel 6, static cross build) — 17/17
+* **Linux AArch64 on real hardware** (Pixel 6, static cross build) — 19/19
 
 Configured but not executed here: Windows MSVC, Windows clang-cl, macOS arm64,
 macOS x86-64, Linux AArch64 CI. Not configured: Windows ARM64, big-endian.
@@ -54,11 +57,11 @@ core-pinned and interleaved, medians of 27 samples. Full per-row output in
 | Clang 17, versus 0.4 | alpha.3 | alpha.4 |
 |---|---:|---:|
 | rows faster than 0.4 | 42 | 48 |
-| rows >5% slower | 32 | 20 |
-| rows >10% slower | 22 | 11 |
-| rows >25% slower | 15 | 7 |
-| worst row | +161.0% | +63.0% |
-| median row | +0.9% | +0.5% |
+| rows >5% slower | 32 | 21 |
+| rows >10% slower | 22 | 12 |
+| rows >25% slower | 15 | 9 |
+| worst row | +161.0% | +63.8% |
+| median row | +0.9% | +0.4% |
 
 **This does not meet the release gate.** What remains is the wide `Fixed128`
 paths, chiefly `mul_div`, whose divisor is a runtime value and so offers the
@@ -67,18 +70,26 @@ kernel no constant to fold.
 An earlier draft of this file called the gap *structural*, on the grounds that a
 generalized `basic_fixed<Bits, D>` cannot hand a compiled kernel a constant
 scale. That was wrong: `D` is a compile-time constant at every call site. The
-kernels are templated on it and explicitly instantiated per decimal count, and
-they now see the scale exactly as 0.4's did.
+kernels are templated on it and explicitly instantiated per decimal count.
+
+What remains has been investigated until this host ran out of measurable
+mechanisms. On the worst row, against 0.4: the same divider occupancy, no extra
+branch misses, fewer frontend stalls, 8% more instructions -- and 44% more
+cycles. That is scheduling, not work. The full counter comparison is in
+`reports/BENCHMARK_VS_0_4.md`.
 
 ## Known open items
 
-1. Wide `Fixed128` `mul_div` and some `div` rows remain up to +63% on Clang 17.
+1. Wide `Fixed128` `mul_div` and some `div` rows remain up to +64% on Clang 17.
 2. Decimal parsing is about 2x slower than `std::from_chars` on a `double`. It is
    now 17-19% faster than 0.4 and faster than Boost.Decimal, which does the
    comparable job; `std::from_chars` produces a binary float and rejects nothing
    on a decimal grid.
 3. Formatting is faster than 0.4 and than `std::to_chars` on a `double`, but
    slower than Boost.Decimal (14.9 ns against 12.4 ns).
-4. `arithmetic.hpp` costs about 38% more to include than 0.4's.
-5. Windows and macOS are configured in CI but have never been executed.
-6. Big-endian byte order is implemented in `binary.hpp` but never executed.
+4. `arithmetic.hpp` costs about 56% more to include than 0.4's, of which roughly
+   20 points is the compile-time evaluation path added in alpha.4.
+5. `Fixed256::quantize` is unchanged at about 27 ns and is the slowest
+   `Fixed256` operation.
+6. Windows and macOS are configured in CI but have never been executed.
+7. Big-endian byte order is implemented in `binary.hpp` but never executed.

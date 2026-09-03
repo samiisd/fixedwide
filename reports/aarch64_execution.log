@@ -1,5 +1,5 @@
 # fixedwide AArch64 execution on real hardware
-date: 2026-09-03T22:00:01+00:00
+date: 2026-09-03T23:02:18+00:00
 compiler: aarch64-linux-gnu-g++ (GCC) 16.1.0
 device: Pixel 6 / aarch64
 kernel: Linux 6.1.145-android14-11-gfa1d6308d1fe-ab14691759
@@ -8,12 +8,16 @@ test_binary passed (10 checks)
 PASS test_binary
 test_chars passed (24 checks)
 PASS test_chars
+test_constexpr passed (470556 checks)
+PASS test_constexpr
 test_core passed (26 checks)
 PASS test_core
 test_floating passed (9 checks)
 PASS test_floating
 test_mixed passed (21 checks)
 PASS test_mixed
+test_mixed_native passed (157250 checks)
+PASS test_mixed_native
 Total heap allocations during fixedwide operations: 0
 ZERO HEAP ALLOCATION VERIFIED!
 PASS test_no_alloc
@@ -81,4 +85,4 @@ Fixed256 raw=1e18 formatted=1.000000000000000000
 PASS format Fixed256<18> one
 failures=0
 PASS audit_text_targeted
-aarch64: 17 passed, 0 failed
+aarch64: 19 passed, 0 failed

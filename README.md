@@ -128,13 +128,18 @@ benchmark source with the same compiler and flags, core-pinned and interleaved,
 medians of 27 samples per row.
 
 **The generalized version is not yet at parity with 0.4, and this README will
-say so until it is.** On Clang 17, 20 of 100 rows are more than 5% slower and the
-worst is +63%; the previous release's figures were 32 rows and +161%. What
-remains is concentrated in wide `Fixed128` `mul_div`, whose divisor is a runtime
-value with nothing for the compiler to fold.
+say so until it is.** On Clang 17, 21 of 100 rows are more than 5% slower and the
+worst is +64%; the previous release's figures were 32 rows and +161%. What
+remains is concentrated in wide `Fixed128` `mul_div`, and it is a scheduling
+difference rather than extra work: same divider occupancy, same branch misses,
+fewer frontend stalls, 44% more cycles.
 
 Where this version is ahead of 0.4:
 
+- mixed-width, mixed-scale arithmetic: **70x to 760x faster** than alpha.3
+  (`add_to`, `fixed_cast` and cross-scale comparison now cost the same as the
+  same-type operation in the destination domain)
+- `mul`, `div`, `mul_div`, `quantize` and `remainder` are now **`constexpr`**
 - decimal parsing: **17-19% faster**
 - reduced-digit formatting: **12-32% faster**
 - toward-zero `quantize`: **36% faster**
