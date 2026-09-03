@@ -1,0 +1,11 @@
+build*/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+crash-*
+leak-*
+timeout-*
+competitors/

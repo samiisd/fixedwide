@@ -1,0 +1,14 @@
+#pragma once
+#include <fixedwide/fixed.hpp>
+#include <fixedwide/rounding.hpp>
+#include <fixedwide/error.hpp>
+#include <fixedwide/wide.hpp>
+#include <fixedwide/arithmetic.hpp>
+#include <fixedwide/mixed.hpp>
+#include <fixedwide/chars.hpp>
+#include <fixedwide/binary.hpp>
+#include <fixedwide/floating.hpp>
+#include <fixedwide/hash.hpp>
+#include <fixedwide/string.hpp>
+#include <fixedwide/format.hpp>
+#include <fixedwide/iostream.hpp>

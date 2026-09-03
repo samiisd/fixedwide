@@ -1,0 +1,26 @@
+library,type,representation,operation,rounding,checked,ns_per_op
+fixedwide,Fixed64<12>,64-bit decimal,mul,nearest_even,yes,4.93388
+fixedwide,Fixed64<12>,64-bit decimal,mul,toward_zero,yes,1.27329
+fixedwide,Fixed64<12>,64-bit decimal,div,nearest_even,yes,5.84629
+fixedwide,Fixed64<12>,64-bit decimal,div,toward_zero,yes,1.86571
+fixedwide,Fixed64<12>,64-bit decimal,add,none,yes,0.20008
+fixedwide,Fixed128<12>,128-bit decimal,mul,nearest_even,yes,5.60584
+fixedwide,Fixed128<12>,128-bit decimal,mul,toward_zero,yes,1.33762
+fixedwide,Fixed128<12>,128-bit decimal,div,nearest_even,yes,5.98165
+fixedwide,Fixed128<12>,128-bit decimal,div,toward_zero,yes,1.86971
+fixedwide,Fixed128<12>,128-bit decimal,add,none,yes,0.72426
+fpm,fixed<i64;32>,64-bit binary,mul,trunc,no,1.24504
+fpm,fixed<i64;32>,64-bit binary,div,trunc,no,1.7041
+fpm,fixed<i64;32>,64-bit binary,add,none,no,0.18895
+cnl,scaled_integer<-32>,64-bit binary,mul,trunc,no,0.37119
+cnl,scaled_integer<-32>,64-bit binary,div,trunc,no,1.11831
+cnl,scaled_integer<-32>,64-bit binary,add,none,no,0.19126
+boost.decimal,decimal64_t,IEEE-754 decimal float,mul,nearest_even,no,3.32104
+boost.decimal,decimal64_t,IEEE-754 decimal float,div,nearest_even,no,18.6569
+boost.decimal,decimal64_t,IEEE-754 decimal float,add,nearest_even,no,3.43897
+native,double,IEEE-754 binary float,mul,nearest_even,no,0.21751
+native,double,IEEE-754 binary float,div,nearest_even,no,0.75692
+native,double,IEEE-754 binary float,add,nearest_even,no,0.2156
+boost.multiprecision,int128_t,128-bit integer,mul,none,no,0.86803
+boost.multiprecision,int128_t,128-bit integer,div,trunc,no,4.50257
+boost.multiprecision,int128_t,128-bit integer,add,none,no,0.75823

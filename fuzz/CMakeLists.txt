@@ -1,0 +1,5 @@
+add_executable(fixedwide_fuzz fuzz.cpp)
+target_compile_options(fixedwide PRIVATE -fsanitize=fuzzer-no-link)
+target_compile_options(fixedwide_fuzz PRIVATE -fsanitize=fuzzer,address,undefined)
+target_link_options(fixedwide_fuzz PRIVATE -fsanitize=fuzzer,address,undefined)
+target_link_libraries(fixedwide_fuzz PRIVATE fixedwide::fixedwide)

@@ -1,0 +1,4 @@
+@PACKAGE_INIT@
+include("${CMAKE_CURRENT_LIST_DIR}/fixedwideTargets.cmake")
+set(fixedwide_DECIMALS @FIXEDWIDE_DECIMALS@)
+check_required_components(fixedwide)
