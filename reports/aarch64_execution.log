@@ -1,0 +1,84 @@
+# fixedwide AArch64 execution on real hardware
+date: 2026-09-03T16:52:19+00:00
+compiler: aarch64-linux-gnu-g++ (GCC) 16.1.0
+device: Pixel 6 / aarch64
+kernel: Linux 6.1.145-android14-11-gfa1d6308d1fe-ab14691759
+
+test_binary passed (10 checks)
+PASS test_binary
+test_chars passed (24 checks)
+PASS test_chars
+test_core passed (26 checks)
+PASS test_core
+test_floating passed (9 checks)
+PASS test_floating
+test_mixed passed (21 checks)
+PASS test_mixed
+Total heap allocations during fixedwide operations: 0
+ZERO HEAP ALLOCATION VERIFIED!
+PASS test_no_alloc
+test_overflow passed (195474279 checks)
+PASS test_overflow
+test_rounding passed (19 checks)
+PASS test_rounding
+All signed minimum tests passed! Total checks: 193
+PASS test_signed_min
+test_storage passed (1 checks)
+PASS test_storage
+test_wide passed (50016 checks)
+PASS test_wide
+2^63 error=0
+PASS Fixed64 rejects 2^63
+near int128 max result=value0
+PASS Fixed128 accepts largest double below 2^127
+1.1e76 result=value0
+PASS Fixed256 accepts representable 1.1e76
+long double raw low=1000000000000000001 high=0
+PASS long double conversion keeps precision advertised by template
+failures=0
+PASS audit_floating
+Fixed8<2> cases=10003
+Fixed16<4> cases=10003
+Fixed32<9> cases=15003
+Fixed64<12> cases=15003
+Fixed128<12> cases=10003
+Fixed128<38> cases=5003
+Fixed256<18> cases=3003
+Fixed256<76> cases=1503
+checks=347620 failures=0
+PASS audit_io
+PASS from_integer Fixed64<0> uint64 1
+PASS from_integer Fixed8<2> 65536 rejects overflow
+PASS from_integer Fixed128<0> UINT64_MAX
+PASS fixed_cast preserves Fixed128 minimum
+PASS fixed_cast preserves Fixed256 minimum
+PASS mul_wide ceil positive
+PASS mul_wide exact rejects inexact
+PASS mul_wide floor negative
+PASS mul_wide ceil negative
+failures=0
+PASS audit_known
+0:1 0:18446744073709551615
+0:1 0:18446744073709551615
+0:1 0:18446744073709551615
+0:1 0:18446744073709551615
+0:1 0:18446744073709551615
+0:1 0:18446744073709551615
+0:1 0:18446744073709551615
+0:1 0:18446744073709551615
+0:1 0:18446744073709551615
+0:1 0:18446744073709551615
+PASS audit_portable_div128
+imul hi=-1 lo=9223372036854775808
+div q=2 r=0
+divide128 q=1:0 r=18446744073709551615:0
+PASS audit_portable_edges
+PASS parse Fixed256 max
+PASS parse Fixed256 min
+wide 1e18 formatted=1000000000000000000
+PASS format u256 1e18
+Fixed256 raw=1e18 formatted=1.000000000000000000
+PASS format Fixed256<18> one
+failures=0
+PASS audit_text_targeted
+aarch64: 17 passed, 0 failed

@@ -2,6 +2,7 @@
 #include <fixedwide/fixed.hpp>
 #include <fixedwide/error.hpp>
 #include <fixedwide/rounding.hpp>
+#include <fixedwide/detail/overflow.hpp>
 #include <expected>
 #include <concepts>
 #include <type_traits>
@@ -223,16 +224,16 @@ add(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
         return Fixed::from_raw(static_cast<std::int16_t>(res));
     } else if constexpr (Bits == 32) {
         std::int32_t res;
-        if (__builtin_add_overflow(a.raw(), b.raw(), &res)) return std::unexpected(ArithmeticError::overflow);
+        if (detail::add_overflow(a.raw(), b.raw(), &res)) return std::unexpected(ArithmeticError::overflow);
         return Fixed::from_raw(res);
     } else if constexpr (Bits == 64) {
         std::int64_t res;
-        if (__builtin_add_overflow(a.raw(), b.raw(), &res)) return std::unexpected(ArithmeticError::overflow);
+        if (detail::add_overflow(a.raw(), b.raw(), &res)) return std::unexpected(ArithmeticError::overflow);
         return Fixed::from_raw(res);
     } else if constexpr (Bits == 128) {
 #if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
         __int128 res;
-        if (__builtin_add_overflow(static_cast<__int128>(a.raw()), static_cast<__int128>(b.raw()), &res)) {
+        if (detail::add_overflow(static_cast<__int128>(a.raw()), static_cast<__int128>(b.raw()), &res)) {
             return std::unexpected(ArithmeticError::overflow);
         }
         return Fixed::from_raw(wide::int128(res));
@@ -269,16 +270,16 @@ sub(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
         return Fixed::from_raw(static_cast<std::int16_t>(res));
     } else if constexpr (Bits == 32) {
         std::int32_t res;
-        if (__builtin_sub_overflow(a.raw(), b.raw(), &res)) return std::unexpected(ArithmeticError::overflow);
+        if (detail::sub_overflow(a.raw(), b.raw(), &res)) return std::unexpected(ArithmeticError::overflow);
         return Fixed::from_raw(res);
     } else if constexpr (Bits == 64) {
         std::int64_t res;
-        if (__builtin_sub_overflow(a.raw(), b.raw(), &res)) return std::unexpected(ArithmeticError::overflow);
+        if (detail::sub_overflow(a.raw(), b.raw(), &res)) return std::unexpected(ArithmeticError::overflow);
         return Fixed::from_raw(res);
     } else if constexpr (Bits == 128) {
 #if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
         __int128 res;
-        if (__builtin_sub_overflow(static_cast<__int128>(a.raw()), static_cast<__int128>(b.raw()), &res)) {
+        if (detail::sub_overflow(static_cast<__int128>(a.raw()), static_cast<__int128>(b.raw()), &res)) {
             return std::unexpected(ArithmeticError::overflow);
         }
         return Fixed::from_raw(wide::int128(res));

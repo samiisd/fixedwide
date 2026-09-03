@@ -7,6 +7,14 @@
 
 namespace fixedwide::wide {
 
+// std::int64_t is `long` on some targets and `long long` on others (LP64 Linux
+// versus AArch64 here), so spelling out both overloads is a redefinition on one
+// and a missing conversion on the other. This constraint covers every 64-bit
+// integer spelling exactly once.
+template<typename T>
+concept narrow_int64 = std::integral<T> && sizeof(T) <= 8 && !std::is_same_v<T, bool>;
+
+
 struct alignas(8) uint128;
 struct alignas(8) int128;
 struct alignas(8) uint256;
@@ -33,16 +41,6 @@ struct alignas(8) uint128 {
     }
 #endif
 #if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 128
-    constexpr uint128(unsigned _BitInt(128) v) noexcept
-        : low(static_cast<std::uint64_t>(v)), high(static_cast<std::uint64_t>(v >> 64)) {}
-    constexpr uint128(_BitInt(128) v) noexcept
-        : low(static_cast<std::uint64_t>(v)), high(static_cast<std::uint64_t>(static_cast<unsigned _BitInt(128)>(v) >> 64)) {}
-    constexpr explicit operator unsigned _BitInt(128)() const noexcept {
-        return (static_cast<unsigned _BitInt(128)>(high) << 64) | low;
-    }
-    constexpr explicit operator _BitInt(128)() const noexcept {
-        return static_cast<_BitInt(128)>((static_cast<unsigned _BitInt(128)>(high) << 64) | low);
-    }
 #endif
     template<std::integral T>
     constexpr uint128(T val) noexcept {
@@ -58,10 +56,8 @@ struct alignas(8) uint128 {
     [[nodiscard]] static constexpr uint128 min() noexcept { return {0ULL, 0ULL}; }
     [[nodiscard]] static constexpr uint128 max() noexcept { return {~0ULL, ~0ULL}; }
 
-    constexpr explicit operator std::uint64_t() const noexcept { return low; }
-    constexpr explicit operator std::int64_t() const noexcept { return static_cast<std::int64_t>(low); }
-    constexpr explicit operator unsigned long long() const noexcept { return static_cast<unsigned long long>(low); }
-    constexpr explicit operator long long() const noexcept { return static_cast<long long>(low); }
+    template<narrow_int64 T>
+    constexpr explicit operator T() const noexcept { return static_cast<T>(low); }
     constexpr explicit operator int128() const noexcept;
     [[nodiscard]] constexpr bool is_zero() const noexcept { return low == 0 && high == 0; }
 
@@ -166,16 +162,6 @@ struct alignas(8) int128 {
     }
 #endif
 #if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 128
-    constexpr int128(_BitInt(128) v) noexcept
-        : low(static_cast<std::uint64_t>(v)), high(static_cast<std::uint64_t>(static_cast<unsigned _BitInt(128)>(v) >> 64)) {}
-    constexpr int128(unsigned _BitInt(128) v) noexcept
-        : low(static_cast<std::uint64_t>(v)), high(static_cast<std::uint64_t>(v >> 64)) {}
-    constexpr explicit operator _BitInt(128)() const noexcept {
-        return static_cast<_BitInt(128)>((static_cast<unsigned _BitInt(128)>(high) << 64) | low);
-    }
-    constexpr explicit operator unsigned _BitInt(128)() const noexcept {
-        return (static_cast<unsigned _BitInt(128)>(high) << 64) | low;
-    }
 #endif
     template<std::integral T>
     constexpr int128(T val) noexcept {
@@ -194,10 +180,8 @@ struct alignas(8) int128 {
     [[nodiscard]] constexpr bool is_negative() const noexcept {
         return static_cast<std::int64_t>(high) < 0;
     }
-    constexpr explicit operator std::uint64_t() const noexcept { return low; }
-    constexpr explicit operator std::int64_t() const noexcept { return static_cast<std::int64_t>(low); }
-    constexpr explicit operator long long() const noexcept { return static_cast<long long>(low); }
-    constexpr explicit operator unsigned long long() const noexcept { return static_cast<unsigned long long>(low); }
+    template<narrow_int64 T>
+    constexpr explicit operator T() const noexcept { return static_cast<T>(low); }
     constexpr explicit operator uint128() const noexcept { return uint128(low, high); }
     [[nodiscard]] constexpr bool is_zero() const noexcept { return low == 0 && high == 0; }
 
@@ -272,25 +256,6 @@ struct alignas(8) uint256 {
     }
 #endif
 #if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 256
-    constexpr uint256(unsigned _BitInt(256) v) noexcept
-        : limbs{static_cast<std::uint64_t>(v),
-                static_cast<std::uint64_t>(v >> 64),
-                static_cast<std::uint64_t>(v >> 128),
-                static_cast<std::uint64_t>(v >> 192)} {}
-    constexpr uint256(_BitInt(256) v) noexcept
-        : uint256(static_cast<unsigned _BitInt(256)>(v)) {}
-    constexpr explicit operator unsigned _BitInt(256)() const noexcept {
-        return (static_cast<unsigned _BitInt(256)>(limbs[3]) << 192) |
-               (static_cast<unsigned _BitInt(256)>(limbs[2]) << 128) |
-               (static_cast<unsigned _BitInt(256)>(limbs[1]) << 64) |
-               static_cast<unsigned _BitInt(256)>(limbs[0]);
-    }
-    constexpr explicit operator _BitInt(256)() const noexcept {
-        return static_cast<_BitInt(256)>((static_cast<unsigned _BitInt(256)>(limbs[3]) << 192) |
-               (static_cast<unsigned _BitInt(256)>(limbs[2]) << 128) |
-               (static_cast<unsigned _BitInt(256)>(limbs[1]) << 64) |
-               static_cast<unsigned _BitInt(256)>(limbs[0]));
-    }
 #endif
     template<std::integral T>
     constexpr uint256(T val) noexcept {
@@ -453,28 +418,6 @@ struct alignas(8) int256 {
     }
 #endif
 #if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 256
-    constexpr int256(_BitInt(256) v) noexcept
-        : limbs{static_cast<std::uint64_t>(v),
-                static_cast<std::uint64_t>(static_cast<unsigned _BitInt(256)>(v) >> 64),
-                static_cast<std::uint64_t>(static_cast<unsigned _BitInt(256)>(v) >> 128),
-                static_cast<std::uint64_t>(static_cast<unsigned _BitInt(256)>(v) >> 192)} {}
-    constexpr int256(unsigned _BitInt(256) v) noexcept
-        : limbs{static_cast<std::uint64_t>(v),
-                static_cast<std::uint64_t>(v >> 64),
-                static_cast<std::uint64_t>(v >> 128),
-                static_cast<std::uint64_t>(v >> 192)} {}
-    constexpr explicit operator _BitInt(256)() const noexcept {
-        return static_cast<_BitInt(256)>((static_cast<unsigned _BitInt(256)>(limbs[3]) << 192) |
-               (static_cast<unsigned _BitInt(256)>(limbs[2]) << 128) |
-               (static_cast<unsigned _BitInt(256)>(limbs[1]) << 64) |
-               static_cast<unsigned _BitInt(256)>(limbs[0]));
-    }
-    constexpr explicit operator unsigned _BitInt(256)() const noexcept {
-        return (static_cast<unsigned _BitInt(256)>(limbs[3]) << 192) |
-               (static_cast<unsigned _BitInt(256)>(limbs[2]) << 128) |
-               (static_cast<unsigned _BitInt(256)>(limbs[1]) << 64) |
-               static_cast<unsigned _BitInt(256)>(limbs[0]);
-    }
 #endif
     template<std::integral T>
     constexpr int256(T val) noexcept {

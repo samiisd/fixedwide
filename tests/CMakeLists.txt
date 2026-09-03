@@ -10,6 +10,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         floating
         no_alloc
         signed_min
+        overflow
     )
 
     foreach(NAME ${TEST_NAMES})
@@ -31,12 +32,27 @@ if(FIXEDWIDE_BUILD_TESTS)
         audit_portable_div128
     )
 
+    # Two of the audit suites differential-test against Boost.Multiprecision.
+    # Boost is header-only here and never a runtime dependency; when it is
+    # absent (a cross build without a Boost sysroot, say) those two are skipped
+    # and the rest of the matrix still runs.
+    # Host Boost headers are not valid for a cross build, so do not reach for
+    # them there: the two Boost-backed suites are skipped and the remaining 21
+    # still run on the target.
+    if(NOT CMAKE_CROSSCOMPILING)
+        find_package(Boost QUIET)
+    endif()
     foreach(NAME ${AUDIT_TESTS})
+        if(NAME MATCHES "audit_(same_domain|mixed)" AND NOT Boost_FOUND)
+            message(STATUS "fixedwide: skipping ${NAME} (Boost headers not found)")
+            continue()
+        endif()
         add_executable(${NAME} ${NAME}.cpp)
         target_link_libraries(${NAME} PRIVATE fixedwide::fixedwide)
         target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
         target_include_directories(${NAME} PRIVATE ${CMAKE_SOURCE_DIR})
         target_include_directories(${NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
+        target_include_directories(${NAME} PRIVATE ${Boost_INCLUDE_DIRS})
         add_test(NAME fixedwide.audit.${NAME} COMMAND ${NAME})
     endforeach()
 
