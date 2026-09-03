@@ -12,6 +12,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         signed_min
         overflow
         constexpr
+        mixed_native
     )
 
     foreach(NAME ${TEST_NAMES})
