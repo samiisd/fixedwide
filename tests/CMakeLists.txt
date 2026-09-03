@@ -11,6 +11,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         no_alloc
         signed_min
         overflow
+        constexpr
     )
 
     foreach(NAME ${TEST_NAMES})

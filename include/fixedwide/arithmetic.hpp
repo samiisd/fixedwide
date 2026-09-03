@@ -3,8 +3,10 @@
 #include <fixedwide/error.hpp>
 #include <fixedwide/rounding.hpp>
 #include <fixedwide/detail/overflow.hpp>
+#include <fixedwide/detail/constexpr_arith.hpp>
 #include <expected>
 #include <concepts>
+#include <limits>
 #include <type_traits>
 
 namespace fixedwide {
@@ -81,6 +83,35 @@ mul_div64_impl(std::int64_t a, std::int64_t b, std::int64_t c, Rounding rounding
 
 std::expected<std::int64_t, ArithmeticError>
 quantize64_impl(std::int64_t a, unsigned cur_dec, unsigned target_dec, Rounding rounding) noexcept;
+
+
+// Overflow outranks inexact: a result that cannot be represented is an overflow
+// whichever rounding mode was requested. The 64- and 128-bit kernels range-check
+// before they round and report it directly, but the narrow widths range-check
+// after the kernel returns, so `Rounding::exact` would otherwise surface
+// `inexact` for a value that also overflows -- the same logical operation giving
+// a different error at Fixed32<4> than at Fixed64<12>.
+//
+// Re-running the truncating operation tells the two apart, and only ever on the
+// error path.
+template<typename Fixed, typename Truncating>
+[[nodiscard]] constexpr std::expected<Fixed, ArithmeticError>
+narrow_checked(std::expected<std::int64_t, ArithmeticError> result, Truncating truncating) noexcept {
+    using Raw = typename Fixed::raw_type;
+    constexpr auto low = static_cast<std::int64_t>(std::numeric_limits<Raw>::min());
+    constexpr auto high = static_cast<std::int64_t>(std::numeric_limits<Raw>::max());
+    if (!result) {
+        if (result.error() == ArithmeticError::inexact) {
+            const auto truncated = truncating();
+            if (truncated && (*truncated < low || *truncated > high)) {
+                return std::unexpected(ArithmeticError::overflow);
+            }
+        }
+        return std::unexpected(result.error());
+    }
+    if (*result < low || *result > high) return std::unexpected(ArithmeticError::overflow);
+    return Fixed::from_raw(static_cast<Raw>(*result));
+}
 
 } // namespace detail
 
@@ -354,27 +385,33 @@ abs(basic_fixed<Bits, D> a) noexcept {
 
 // 5. MUL
 template<std::size_t Bits, unsigned D>
-[[nodiscard]] inline std::expected<basic_fixed<Bits, D>, ArithmeticError>
+[[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding::nearest_even) noexcept {
     using Fixed = basic_fixed<Bits, D>;
+    // The runtime kernels are compiled out of line and use inline assembly, so
+    // they cannot run in a constant expression. detail::ce is a separate,
+    // deliberately simple implementation of the same contract that can, and the
+    // two are differential-tested against each other.
+    if consteval {
+        auto raw = detail::ce::mul<Bits, D>(a.raw(), b.raw(), rounding);
+        if (!raw) return std::unexpected(raw.error());
+        return Fixed::from_raw(*raw);
+    }
     if constexpr (Bits == 8) {
         std::int32_t prod = static_cast<std::int32_t>(a.raw()) * static_cast<std::int32_t>(b.raw());
-        auto res = detail::mul64_impl(prod, 1, Fixed::scale(), rounding);
-        if (!res) return std::unexpected(res.error());
-        if (*res < INT8_MIN || *res > INT8_MAX) return std::unexpected(ArithmeticError::overflow);
-        return Fixed::from_raw(static_cast<std::int8_t>(*res));
+        return detail::narrow_checked<Fixed>(
+            detail::mul64_impl(prod, 1, Fixed::scale(), rounding),
+            [&] { return detail::mul64_impl(prod, 1, Fixed::scale(), Rounding::toward_zero); });
     } else if constexpr (Bits == 16) {
         std::int64_t prod = static_cast<std::int64_t>(a.raw()) * static_cast<std::int64_t>(b.raw());
-        auto res = detail::mul64_impl(prod, 1, Fixed::scale(), rounding);
-        if (!res) return std::unexpected(res.error());
-        if (*res < INT16_MIN || *res > INT16_MAX) return std::unexpected(ArithmeticError::overflow);
-        return Fixed::from_raw(static_cast<std::int16_t>(*res));
+        return detail::narrow_checked<Fixed>(
+            detail::mul64_impl(prod, 1, Fixed::scale(), rounding),
+            [&] { return detail::mul64_impl(prod, 1, Fixed::scale(), Rounding::toward_zero); });
     } else if constexpr (Bits == 32) {
         std::int64_t prod = static_cast<std::int64_t>(a.raw()) * static_cast<std::int64_t>(b.raw());
-        auto res = detail::mul64_impl(prod, 1, Fixed::scale(), rounding);
-        if (!res) return std::unexpected(res.error());
-        if (*res < INT32_MIN || *res > INT32_MAX) return std::unexpected(ArithmeticError::overflow);
-        return Fixed::from_raw(static_cast<std::int32_t>(*res));
+        return detail::narrow_checked<Fixed>(
+            detail::mul64_impl(prod, 1, Fixed::scale(), rounding),
+            [&] { return detail::mul64_impl(prod, 1, Fixed::scale(), Rounding::toward_zero); });
     } else if constexpr (Bits == 64) {
 #if defined(FIXEDWIDE_HAS_X86_64_ASM)
         if (rounding == Rounding::toward_zero || rounding == Rounding::nearest_even) {
@@ -467,28 +504,30 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
 
 // 6. DIV
 template<std::size_t Bits, unsigned D>
-[[nodiscard]] inline std::expected<basic_fixed<Bits, D>, ArithmeticError>
+[[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding::nearest_even) noexcept {
     using Fixed = basic_fixed<Bits, D>;
+    if consteval {
+        auto raw = detail::ce::div<Bits, D>(a.raw(), b.raw(), rounding);
+        if (!raw) return std::unexpected(raw.error());
+        return Fixed::from_raw(*raw);
+    }
     if constexpr (Bits <= 64) {
         if (b.raw() == 0) return std::unexpected(ArithmeticError::division_by_zero);
         if constexpr (Bits == 8) {
             std::int32_t num = static_cast<std::int32_t>(a.raw()) * Fixed::scale();
-            auto res = detail::mul64_impl(num, 1, b.raw(), rounding);
-            if (!res) return std::unexpected(res.error());
-            if (*res < INT8_MIN || *res > INT8_MAX) return std::unexpected(ArithmeticError::overflow);
-            return Fixed::from_raw(static_cast<std::int8_t>(*res));
+            return detail::narrow_checked<Fixed>(
+                detail::mul64_impl(num, 1, b.raw(), rounding),
+                [&] { return detail::mul64_impl(num, 1, b.raw(), Rounding::toward_zero); });
         } else if constexpr (Bits == 16) {
             std::int64_t num = static_cast<std::int64_t>(a.raw()) * Fixed::scale();
-            auto res = detail::mul64_impl(num, 1, b.raw(), rounding);
-            if (!res) return std::unexpected(res.error());
-            if (*res < INT16_MIN || *res > INT16_MAX) return std::unexpected(ArithmeticError::overflow);
-            return Fixed::from_raw(static_cast<std::int16_t>(*res));
+            return detail::narrow_checked<Fixed>(
+                detail::mul64_impl(num, 1, b.raw(), rounding),
+                [&] { return detail::mul64_impl(num, 1, b.raw(), Rounding::toward_zero); });
         } else if constexpr (Bits == 32) {
-            auto res = detail::div64_scaled<D>(a.raw(), b.raw(), rounding);
-            if (!res) return std::unexpected(res.error());
-            if (*res < INT32_MIN || *res > INT32_MAX) return std::unexpected(ArithmeticError::overflow);
-            return Fixed::from_raw(static_cast<std::int32_t>(*res));
+            return detail::narrow_checked<Fixed>(
+                detail::div64_scaled<D>(a.raw(), b.raw(), rounding),
+                [&] { return detail::div64_scaled<D>(a.raw(), b.raw(), Rounding::toward_zero); });
         } else { // Bits == 64
 #if defined(FIXEDWIDE_HAS_X86_64_ASM)
             if (rounding == Rounding::toward_zero || rounding == Rounding::nearest_even) {
@@ -538,28 +577,30 @@ div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
 
 // 7. MUL_DIV
 template<std::size_t Bits, unsigned D>
-[[nodiscard]] inline std::expected<basic_fixed<Bits, D>, ArithmeticError>
+[[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 mul_div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, basic_fixed<Bits, D> c, Rounding rounding = Rounding::nearest_even) noexcept {
     using Fixed = basic_fixed<Bits, D>;
+    if consteval {
+        auto raw = detail::ce::mul_div<Bits, D>(a.raw(), b.raw(), c.raw(), rounding);
+        if (!raw) return std::unexpected(raw.error());
+        return Fixed::from_raw(*raw);
+    }
     if constexpr (Bits <= 64) {
         if (c.raw() == 0) return std::unexpected(ArithmeticError::division_by_zero);
         if constexpr (Bits == 8) {
             std::int32_t num = static_cast<std::int32_t>(a.raw()) * static_cast<std::int32_t>(b.raw());
-            auto res = detail::mul64_impl(num, 1, c.raw(), rounding);
-            if (!res) return std::unexpected(res.error());
-            if (*res < INT8_MIN || *res > INT8_MAX) return std::unexpected(ArithmeticError::overflow);
-            return Fixed::from_raw(static_cast<std::int8_t>(*res));
+            return detail::narrow_checked<Fixed>(
+                detail::mul64_impl(num, 1, c.raw(), rounding),
+                [&] { return detail::mul64_impl(num, 1, c.raw(), Rounding::toward_zero); });
         } else if constexpr (Bits == 16) {
             std::int64_t num = static_cast<std::int64_t>(a.raw()) * static_cast<std::int64_t>(b.raw());
-            auto res = detail::mul64_impl(num, 1, c.raw(), rounding);
-            if (!res) return std::unexpected(res.error());
-            if (*res < INT16_MIN || *res > INT16_MAX) return std::unexpected(ArithmeticError::overflow);
-            return Fixed::from_raw(static_cast<std::int16_t>(*res));
+            return detail::narrow_checked<Fixed>(
+                detail::mul64_impl(num, 1, c.raw(), rounding),
+                [&] { return detail::mul64_impl(num, 1, c.raw(), Rounding::toward_zero); });
         } else if constexpr (Bits == 32) {
-            auto res = detail::mul_div64_impl(a.raw(), b.raw(), c.raw(), rounding);
-            if (!res) return std::unexpected(res.error());
-            if (*res < INT32_MIN || *res > INT32_MAX) return std::unexpected(ArithmeticError::overflow);
-            return Fixed::from_raw(static_cast<std::int32_t>(*res));
+            return detail::narrow_checked<Fixed>(
+                detail::mul_div64_impl(a.raw(), b.raw(), c.raw(), rounding),
+                [&] { return detail::mul_div64_impl(a.raw(), b.raw(), c.raw(), Rounding::toward_zero); });
         } else { // Bits == 64
 #if defined(FIXEDWIDE_HAS_X86_64_ASM)
             if (rounding == Rounding::toward_zero || rounding == Rounding::nearest_even) {
@@ -627,9 +668,14 @@ mul_div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, basic_fixed<Bits, D> c, 
 
 // 8. REMAINDER
 template<std::size_t Bits, unsigned D>
-[[nodiscard]] inline std::expected<basic_fixed<Bits, D>, ArithmeticError>
+[[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 remainder(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
     using Fixed = basic_fixed<Bits, D>;
+    if consteval {
+        auto raw = detail::ce::remainder<Bits>(a.raw(), b.raw());
+        if (!raw) return std::unexpected(raw.error());
+        return Fixed::from_raw(*raw);
+    }
     if constexpr (Bits <= 64) {
         if (b.raw() == 0) return std::unexpected(ArithmeticError::division_by_zero);
         if (b.raw() == -1) return Fixed{}; // mathematical remainder is 0, avoid UB
@@ -649,25 +695,25 @@ remainder(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
 
 // 9. QUANTIZE
 template<std::size_t Bits, unsigned D>
-[[nodiscard]] inline std::expected<basic_fixed<Bits, D>, ArithmeticError>
+[[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 quantize(basic_fixed<Bits, D> a, unsigned digits, Rounding rounding = Rounding::nearest_even) noexcept {
     using Fixed = basic_fixed<Bits, D>;
+    if consteval {
+        auto raw = detail::ce::quantize<Bits, D>(a.raw(), digits, rounding);
+        if (!raw) return std::unexpected(raw.error());
+        return Fixed::from_raw(*raw);
+    }
     if (digits > D) return std::unexpected(ArithmeticError::invalid_precision);
     if (digits == D) return a;
     if constexpr (Bits <= 64) {
         auto res = detail::quantize64_impl(a.raw(), D, digits, rounding);
-        if (!res) return std::unexpected(res.error());
-        if constexpr (Bits == 8) {
-            if (*res < INT8_MIN || *res > INT8_MAX) return std::unexpected(ArithmeticError::overflow);
-            return Fixed::from_raw(static_cast<std::int8_t>(*res));
-        } else if constexpr (Bits == 16) {
-            if (*res < INT16_MIN || *res > INT16_MAX) return std::unexpected(ArithmeticError::overflow);
-            return Fixed::from_raw(static_cast<std::int16_t>(*res));
-        } else if constexpr (Bits == 32) {
-            if (*res < INT32_MIN || *res > INT32_MAX) return std::unexpected(ArithmeticError::overflow);
-            return Fixed::from_raw(static_cast<std::int32_t>(*res));
-        } else {
+        if constexpr (Bits == 64) {
+            if (!res) return std::unexpected(res.error());
             return Fixed::from_raw(*res);
+        } else {
+            return detail::narrow_checked<Fixed>(
+                std::move(res),
+                [&] { return detail::quantize64_impl(a.raw(), D, digits, Rounding::toward_zero); });
         }
     } else if constexpr (Bits == 128) {
         auto res = detail::quantize128_impl(a.raw(), D, digits, rounding);
