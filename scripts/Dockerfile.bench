@@ -1,0 +1,8 @@
+# The audit measured on Clang 17 and GCC 14.2. Neither ships on the development
+# host, and "it is fast on my compiler" is exactly the claim the audit rejected,
+# so the gate runs on the audit's own toolchains inside a pinned image.
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        clang-17 clang-18 g++-14 cmake ninja-build libboost-dev python3 ca-certificates \
+    && rm -rf /var/lib/apt/lists/*

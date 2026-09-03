@@ -1,0 +1,9 @@
+label=g-14
+compiler=g++-14 (Ubuntu 14.2.0-4ubuntu2~24.04.1) 14.2.0
+baseline_src=/baseline
+bench_source_sha256=3afa755e84ef51879f75faf029c7e035cbd55b2ae86b6745cb44598ad42fabdc
+baseline_bin_sha256=
+current_bin_sha256=1e196f40229b41515e0b0ae27ccdc7dd18c84fc8a8515d4a00a603fcc056f285
+iterations=1048576 repetitions=9 seeds=1
+host=Linux 7.2.0-1-cachyos x86_64 cpu=AMD Ryzen 9 9950X3D 16-Core Processor
+date=2026-09-03T16:58:20+00:00

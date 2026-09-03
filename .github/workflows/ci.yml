@@ -6,61 +6,122 @@ on:
   pull_request:
     branches: [ main, master ]
 
+# Every platform the README claims is built and run here. A job that does not
+# appear in this file must be reported as not-configured in the execution
+# matrix, never as supported.
 jobs:
-  build_and_test:
+  linux:
+    name: ${{ matrix.compiler.cxx }} ${{ matrix.build_type }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        compiler: [ { cc: clang-18, cxx: clang++-18 }, { cc: gcc-14, cxx: g++-14 } ]
+        compiler:
+          - { cc: clang-17, cxx: clang++-17, pkg: clang-17 }
+          - { cc: clang-18, cxx: clang++-18, pkg: clang-18 }
+          - { cc: gcc-14,   cxx: g++-14,     pkg: g++-14 }
         build_type: [ Debug, Release ]
-
     steps:
       - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ${{ matrix.compiler.pkg }} libboost-dev cmake ninja-build
+      - name: Configure
+        env: { CC: "${{ matrix.compiler.cc }}", CXX: "${{ matrix.compiler.cxx }}" }
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+             -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libboost-dev cmake ninja-build
+  linux-arm64:
+    name: Linux AArch64 (${{ matrix.cxx }})
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: [ g++-14, clang++-18 ]
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y g++-14 clang-18 libboost-dev cmake ninja-build
+      - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+             -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure
 
-      - name: Configure CMake
-        env:
-          CC: ${{ matrix.compiler.cc }}
-          CXX: ${{ matrix.compiler.cxx }}
-        run: |
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            -DFIXEDWIDE_BUILD_TESTS=ON \
-            -DFIXEDWIDE_BUILD_EXAMPLES=ON \
-            -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
+  macos:
+    name: macOS ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ macos-14, macos-13 ]   # arm64 and x86-64
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install ninja boost
+      - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+             -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure
 
-      - name: Build
-        run: cmake --build build
+  windows:
+    name: Windows ${{ matrix.toolset }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        toolset: [ msvc, clang-cl ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Configure (MSVC)
+        if: matrix.toolset == 'msvc'
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFIXEDWIDE_BUILD_TESTS=ON
+      - name: Configure (clang-cl)
+        if: matrix.toolset == 'clang-cl'
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang-cl -DFIXEDWIDE_BUILD_TESTS=ON
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure
 
-      - name: Run Tests
-        run: ctest --test-dir build --output-on-failure
+  portable-backend:
+    name: Portable backend and no-int128 simulation
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { name: forced-portable, flags: "-DFIXEDWIDE_FORCE_PORTABLE=ON" }
+          - { name: no-int128,       flags: "-DCMAKE_CXX_FLAGS=-U__SIZEOF_INT128__ -DFIXEDWIDE_FORCE_PORTABLE=ON" }
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y clang-18 libboost-dev cmake ninja-build
+      - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-18
+             -DFIXEDWIDE_BUILD_TESTS=ON ${{ matrix.config.flags }}
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure
 
   sanitizers:
+    name: ASan + UBSan (${{ matrix.backend }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [ native, portable ]
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y clang-18 libboost-dev cmake ninja-build
+      - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-18
+             -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_TESTS=ON
+             ${{ matrix.backend == 'portable' && '-DFIXEDWIDE_FORCE_PORTABLE=ON' || '' }}
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure
+
+  packaging:
+    name: Install and consume via find_package
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-18 libboost-dev cmake ninja-build
-
-      - name: Configure with ASan & UBSan
-        env:
-          CC: clang-18
-          CXX: clang++-18
-        run: |
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DFIXEDWIDE_SANITIZE=ON \
-            -DFIXEDWIDE_BUILD_TESTS=ON
-
-      - name: Build and Test
-        run: |
-          cmake --build build
-          ctest --test-dir build --output-on-failure
+      - run: sudo apt-get update && sudo apt-get install -y clang-18 libboost-dev cmake ninja-build
+      - run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-18 \
+                -DCMAKE_INSTALL_PREFIX="$PWD/stage" -DFIXEDWIDE_BUILD_TESTS=OFF
+          cmake --build build --target install
+      - run: cmake -S examples/consumer -B build-consumer -DCMAKE_PREFIX_PATH="$PWD/stage" &&
+             cmake --build build-consumer && ./build-consumer/consumer
