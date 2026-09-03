@@ -75,10 +75,13 @@ inline constexpr std::uint64_t pow10_u64[19] = {
 // is what generalising the scale into a function argument caused — runs that
 // loop on every arithmetic operation. These tables are built once at compile
 // time so a runtime exponent costs one indexed load instead.
-// Declared and never defined on purpose: calling it in a constant expression is
-// a compile error. `throw` would do the same but is unavailable under
+// Calling this in a constant expression is a compile error, because its body is
+// deliberately not one. `throw` would do the same but is unavailable under
 // -fno-exceptions, which is a supported build.
-consteval void pow10_table_entry_overflowed_its_type();
+consteval void pow10_table_entry_overflowed_its_type() {
+    const int* not_a_constant_expression = nullptr;
+    (void)*not_a_constant_expression;
+}
 
 template<typename T, unsigned N>
 inline constexpr std::array<T, N> pow10_table = [] {
