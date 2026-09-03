@@ -132,7 +132,8 @@ In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 16 warnings generated.
-[5/47] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
+[5/47] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
+[6/47] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
 In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -146,7 +147,7 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 3 warnings generated.
-[6/47] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
+[7/47] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
 In file included from /home/shared/ws/fixedwide/src/floating.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/floating.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -207,7 +208,7 @@ In file included from /home/shared/ws/fixedwide/src/floating.cpp:3:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 16 warnings generated.
-[7/47] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
+[8/47] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
 In file included from /home/shared/ws/fixedwide/src/chars.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -264,23 +265,29 @@ In file included from /home/shared/ws/fixedwide/src/chars.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
-16 warnings generated.
-[8/47] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
+17 warnings generated.
 [9/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
-[10/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
-[11/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
-[12/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
-[13/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
-[14/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
+[10/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
+[11/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
+[12/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
+[13/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
+[14/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
 [15/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
-[16/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
-[17/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
+[16/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
+[17/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
 [18/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
-[19/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
-[20/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
-[21/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
-[22/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
-[23/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
+[19/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
+[20/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
+[21/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
+[22/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
+[23/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
 [24/47] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:2:
@@ -312,8 +319,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:769:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
-  769 |     auto divres = divmod_knuth(prod, s);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:831:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
+  831 |     auto divres = divmod_knuth(prod, s);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -355,8 +362,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:860:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
-  860 |     auto divres = divmod_knuth(mag, udiv);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:922:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
+  922 |     auto divres = divmod_knuth(mag, udiv);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -395,6 +402,13 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
+In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
 /home/shared/ws/fixedwide/src/arithmetic.cpp:12:30: warning: unused function 'fits64' [-Wunused-function]
    12 | [[nodiscard]] constexpr bool fits64(std::int64_t) noexcept { return true; }
       |                              ^~~~~~
@@ -408,26 +422,26 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:345:11: warning: unused type alias 'Fixed' [-Wunused-local-typedef]
   345 |     using Fixed = basic_fixed<Bits, D>;
       |           ^
-36 warnings generated.
+37 warnings generated.
 [25/47] Linking CXX static library libfixedwide.a
-[26/47] Linking CXX executable examples/fixedwide_example
-[27/47] Linking CXX executable tests/audit_portable_edges
-[28/47] Linking CXX executable tests/test_floating
-[29/47] Linking CXX executable tests/audit_known
-[30/47] Linking CXX executable tests/test_storage
-[31/47] Linking CXX executable tests/test_overflow
-[32/47] Linking CXX executable tests/test_no_alloc
-[33/47] Linking CXX executable tests/test_chars
-[34/47] Linking CXX executable tests/test_wide
-[35/47] Linking CXX executable tests/test_rounding
-[36/47] Linking CXX executable tests/test_signed_min
-[37/47] Linking CXX executable tests/test_core
-[38/47] Linking CXX executable tests/test_mixed
-[39/47] Linking CXX executable tests/audit_io
-[40/47] Linking CXX executable tests/audit_text_targeted
-[41/47] Linking CXX executable tests/audit_floating
-[42/47] Linking CXX executable tests/test_binary
-[43/47] Linking CXX executable tests/audit_portable_div128
+[26/47] Linking CXX executable tests/audit_text_targeted
+[27/47] Linking CXX executable tests/audit_known
+[28/47] Linking CXX executable examples/fixedwide_example
+[29/47] Linking CXX executable tests/audit_portable_div128
+[30/47] Linking CXX executable tests/test_binary
+[31/47] Linking CXX executable tests/test_wide
+[32/47] Linking CXX executable tests/test_overflow
+[33/47] Linking CXX executable tests/test_mixed
+[34/47] Linking CXX executable tests/test_core
+[35/47] Linking CXX executable tests/test_storage
+[36/47] Linking CXX executable tests/audit_floating
+[37/47] Linking CXX executable tests/test_rounding
+[38/47] Linking CXX executable tests/audit_io
+[39/47] Linking CXX executable tests/audit_portable_edges
+[40/47] Linking CXX executable tests/test_chars
+[41/47] Linking CXX executable tests/test_floating
+[42/47] Linking CXX executable tests/test_no_alloc
+[43/47] Linking CXX executable tests/test_signed_min
 [44/47] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
 [45/47] Linking CXX executable tests/audit_mixed
 [46/47] Building CXX object tests/CMakeFiles/audit_same_domain.dir/audit_same_domain.cpp.o
@@ -456,9 +470,9 @@ Test project /home/shared/ws/fixedwide/build_verify/Linux_x86-64_22.1.8_Release
       Start 11: fixedwide.overflow
 11/23 Test #11: fixedwide.overflow .......................   Passed    0.05 sec
       Start 12: fixedwide.audit.audit_same_domain
-12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed    0.46 sec
+12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed    0.43 sec
       Start 13: fixedwide.audit.audit_mixed
-13/23 Test #13: fixedwide.audit.audit_mixed ..............   Passed    0.86 sec
+13/23 Test #13: fixedwide.audit.audit_mixed ..............   Passed    0.87 sec
       Start 14: fixedwide.audit.audit_known
 14/23 Test #14: fixedwide.audit.audit_known ..............   Passed    0.00 sec
       Start 15: fixedwide.audit.audit_floating
@@ -482,7 +496,7 @@ Test project /home/shared/ws/fixedwide/build_verify/Linux_x86-64_22.1.8_Release
 
 100% tests passed out of 23
 
-Total Test time (real) =   1.53 sec
+Total Test time (real) =   1.52 sec
 === Linux x86-64 GCC 16 Release ===
 -- The CXX compiler identification is GNU 16.2.1
 -- Detecting CXX compiler ABI info
@@ -503,24 +517,28 @@ suppress it.
 [1/47] Building CXX object tests/CMakeFiles/test_overflow.dir/test_overflow.cpp.o
 [2/47] Building CXX object tests/CMakeFiles/test_rounding.dir/test_rounding.cpp.o
 [3/47] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
-[4/47] Building CXX object CMakeFiles/fixedwide.dir/src/bigint.cpp.o
-[5/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
-[6/47] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
-[7/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
-[8/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
-[9/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
-[10/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
-[11/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
-[12/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
-[13/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
-[14/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
-[15/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
-[16/47] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
-[17/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
-[18/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
-[19/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
-[20/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
+[4/47] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
+[5/47] Building CXX object CMakeFiles/fixedwide.dir/src/bigint.cpp.o
+[6/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
+[7/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
+[8/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
+[9/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
+[10/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
+[11/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
+[12/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
+[13/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
+[14/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
+[15/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
+[16/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
+[17/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
+[18/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
+[19/47] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
+[20/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
 [21/47] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function ‘consteval void fixedwide::detail::pow10_table_entry_overflowed_its_type()’ used but never defined
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [22/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
 [23/47] Building CXX object CMakeFiles/fixedwide.dir/src/mixed.cpp.o
 [24/47] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
@@ -537,29 +555,33 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp
 /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:345:11: warning: typedef ‘using Fixed = struct fixedwide::basic_fixed<Bits, Decimals>’ locally defined but not used [-Wunused-local-typedefs]
   345 |     using Fixed = basic_fixed<Bits, D>;
       |           ^~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp: At global scope:
+In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp: At global scope:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function ‘consteval void fixedwide::detail::pow10_table_entry_overflowed_its_type()’ used but never defined
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 /home/shared/ws/fixedwide/src/arithmetic.cpp:245:1: warning: ‘std::expected<__int128, fixedwide::ArithmeticError> fixedwide::detail::{anonymous}::divide_signed_general_n(fixedwide::detail::nat::i128, fixedwide::detail::nat::i128, fixedwide::Rounding)’ defined but not used [-Wunused-function]
   245 | divide_signed_general_n(i128 numerator, i128 divisor, Rounding rounding) noexcept {
       | ^~~~~~~~~~~~~~~~~~~~~~~
 [25/47] Linking CXX static library libfixedwide.a
-[26/47] Linking CXX executable tests/test_wide
-[27/47] Linking CXX executable tests/test_chars
-[28/47] Linking CXX executable tests/test_floating
-[29/47] Linking CXX executable tests/audit_io
-[30/47] Linking CXX executable tests/test_binary
-[31/47] Linking CXX executable tests/test_core
+[26/47] Linking CXX executable tests/test_chars
+[27/47] Linking CXX executable tests/audit_text_targeted
+[28/47] Linking CXX executable tests/test_binary
+[29/47] Linking CXX executable tests/test_rounding
+[30/47] Linking CXX executable tests/test_storage
+[31/47] Linking CXX executable tests/audit_portable_div128
 [32/47] Linking CXX executable examples/fixedwide_example
-[33/47] Linking CXX executable tests/test_mixed
-[34/47] Linking CXX executable tests/audit_portable_div128
-[35/47] Linking CXX executable tests/audit_floating
-[36/47] Linking CXX executable tests/audit_portable_edges
-[37/47] Linking CXX executable tests/test_no_alloc
-[38/47] Linking CXX executable tests/test_overflow
-[39/47] Linking CXX executable tests/audit_text_targeted
-[40/47] Linking CXX executable tests/test_rounding
+[33/47] Linking CXX executable tests/test_wide
+[34/47] Linking CXX executable tests/test_overflow
+[35/47] Linking CXX executable tests/audit_portable_edges
+[36/47] Linking CXX executable tests/audit_floating
+[37/47] Linking CXX executable tests/test_signed_min
+[38/47] Linking CXX executable tests/test_no_alloc
+[39/47] Linking CXX executable tests/test_core
+[40/47] Linking CXX executable tests/audit_io
 [41/47] Linking CXX executable tests/audit_known
-[42/47] Linking CXX executable tests/test_storage
-[43/47] Linking CXX executable tests/test_signed_min
+[42/47] Linking CXX executable tests/test_mixed
+[43/47] Linking CXX executable tests/test_floating
 [44/47] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
 [45/47] Linking CXX executable tests/audit_mixed
 [46/47] Building CXX object tests/CMakeFiles/audit_same_domain.dir/audit_same_domain.cpp.o
@@ -588,7 +610,7 @@ Test project /home/shared/ws/fixedwide/build_verify/Linux_x86-64_GCC_16_Release
       Start 11: fixedwide.overflow
 11/23 Test #11: fixedwide.overflow .......................   Passed    0.06 sec
       Start 12: fixedwide.audit.audit_same_domain
-12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed    0.45 sec
+12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed    0.46 sec
       Start 13: fixedwide.audit.audit_mixed
 13/23 Test #13: fixedwide.audit.audit_mixed ..............   Passed    0.78 sec
       Start 14: fixedwide.audit.audit_known
@@ -614,7 +636,7 @@ Test project /home/shared/ws/fixedwide/build_verify/Linux_x86-64_GCC_16_Release
 
 100% tests passed out of 23
 
-Total Test time (real) =   1.43 sec
+Total Test time (real) =   1.44 sec
 === Linux x86-64 Clang forced portable ===
 -- The CXX compiler identification is Clang 22.1.8
 -- Detecting CXX compiler ABI info
@@ -634,75 +656,7 @@ suppress it.
 -- Build files have been written to: /home/shared/ws/fixedwide/build_verify/Linux_x86-64_Clang_forced_portable
 [1/47] Building CXX object tests/CMakeFiles/test_overflow.dir/test_overflow.cpp.o
 [2/47] Building CXX object tests/CMakeFiles/test_rounding.dir/test_rounding.cpp.o
-[3/47] Building CXX object CMakeFiles/fixedwide.dir/src/mixed.cpp.o
-In file included from /home/shared/ws/fixedwide/src/mixed.cpp:1:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/mixed.hpp:2:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
-      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
-      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
-      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In file included from /home/shared/ws/fixedwide/src/mixed.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
-      |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
-      |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
-      |                                                                                                 ^
-In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
-/home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
-      |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/mixed.cpp:27:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<16UL, 16UL>' requested here
-   27 |     auto divres = divmod_knuth(num, den);
-      |                   ^
-In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
-/home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  320 |         std::uint64_t u_top = u[j + n];
-      |                                 ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:321:34: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  321 |         std::uint64_t u_next = u[j + n - 1];
-      |                                  ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:322:35: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  322 |         std::uint64_t u_next2 = u[j + n - 2];
-      |                                   ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:351:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  351 |             if (u[j + i] < sub) ++borrow;
-      |                   ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:352:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  352 |             u[j + i] -= sub;
-      |               ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:354:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  354 |         if (u[j + n] < borrow) {
-      |               ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:359:39: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  359 |                 std::uint64_t sum = u[j + i] + v[i] + add_carry;
-      |                                       ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:360:72: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
-      |                                                                        ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:360:38: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
-      |                                      ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:361:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  361 |                 u[j + i] = sum;
-      |                   ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:363:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  363 |             u[j + n] = 0;
-      |               ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  365 |             u[j + n] -= borrow;
-      |               ^ ~
-19 warnings generated.
-[4/47] Building CXX object CMakeFiles/fixedwide.dir/src/bigint.cpp.o
+[3/47] Building CXX object CMakeFiles/fixedwide.dir/src/bigint.cpp.o
 In file included from /home/shared/ws/fixedwide/src/bigint.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/bigint.hpp:2:
 /home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
@@ -715,14 +669,14 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/bigint.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In file included from /home/shared/ws/fixedwide/src/bigint.cpp:3:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 In file included from /home/shared/ws/fixedwide/src/bigint.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
@@ -769,7 +723,99 @@ In file included from /home/shared/ws/fixedwide/src/bigint.cpp:4:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 19 warnings generated.
-[5/47] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
+[4/47] Building CXX object CMakeFiles/fixedwide.dir/src/mixed.cpp.o
+In file included from /home/shared/ws/fixedwide/src/mixed.cpp:1:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/mixed.hpp:2:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
+      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
+      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
+      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/shared/ws/fixedwide/src/mixed.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
+      |                                    ~~ ^~~~~
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
+      |                                      ~~ ^~~~~
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+      |                                                                                                 ^
+In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
+/home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
+      |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/src/mixed.cpp:27:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<16UL, 16UL>' requested here
+   27 |     auto divres = divmod_knuth(num, den);
+      |                   ^
+In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
+/home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  320 |         std::uint64_t u_top = u[j + n];
+      |                                 ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:321:34: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  321 |         std::uint64_t u_next = u[j + n - 1];
+      |                                  ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:322:35: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  322 |         std::uint64_t u_next2 = u[j + n - 2];
+      |                                   ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:351:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  351 |             if (u[j + i] < sub) ++borrow;
+      |                   ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:352:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  352 |             u[j + i] -= sub;
+      |               ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:354:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  354 |         if (u[j + n] < borrow) {
+      |               ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:359:39: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  359 |                 std::uint64_t sum = u[j + i] + v[i] + add_carry;
+      |                                       ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:360:72: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
+      |                                                                        ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:360:38: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
+      |                                      ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:361:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  361 |                 u[j + i] = sum;
+      |                   ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:363:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  363 |             u[j + n] = 0;
+      |               ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  365 |             u[j + n] -= borrow;
+      |               ^ ~
+19 warnings generated.
+[5/47] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
+In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:1:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
+      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
+      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
+      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
+      |                                    ~~ ^~~~~
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
+      |                                      ~~ ^~~~~
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+      |                                                                                                 ^
+6 warnings generated.
+[6/47] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
 In file included from /home/shared/ws/fixedwide/src/floating.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/floating.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -783,14 +829,14 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In file included from /home/shared/ws/fixedwide/src/floating.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 In file included from /home/shared/ws/fixedwide/src/floating.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
@@ -840,30 +886,6 @@ In file included from /home/shared/ws/fixedwide/src/floating.cpp:3:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 19 warnings generated.
-[6/47] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
-In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:1:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
-      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
-      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
-      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
-      |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
-      |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
-      |                                                                                                 ^
-6 warnings generated.
 [7/47] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
 [8/47] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
 In file included from /home/shared/ws/fixedwide/src/chars.cpp:1:
@@ -879,14 +901,14 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 /home/shared/ws/fixedwide/src/chars.cpp:174:23: warning: unused variable 'lim_lo' [-Wunused-variable]
   174 |         std::uint64_t lim_lo = lim256.limbs[0];
@@ -938,8 +960,20 @@ In file included from /home/shared/ws/fixedwide/src/chars.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
-21 warnings generated.
-[9/47] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
+22 warnings generated.
+[9/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
+[10/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
+[11/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
+[12/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
+[13/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
+[14/47] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -967,21 +1001,21 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
   177 |                 std::int64_t s = 0ULL - u;
       |                              ~   ~~~~~^~~
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:769:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
-  769 |     auto divres = divmod_knuth(prod, s);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:831:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
+  831 |     auto divres = divmod_knuth(prod, s);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -1023,8 +1057,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:860:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
-  860 |     auto divres = divmod_knuth(mag, udiv);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:922:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
+  922 |     auto divres = divmod_knuth(mag, udiv);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -1063,6 +1097,13 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
+In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
 /home/shared/ws/fixedwide/src/arithmetic.cpp:12:30: warning: unused function 'fits64' [-Wunused-function]
    12 | [[nodiscard]] constexpr bool fits64(std::int64_t) noexcept { return true; }
       |                              ^~~~~~
@@ -1073,39 +1114,91 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:345:11: warning: unused type alias 'Fixed' [-Wunused-local-typedef]
   345 |     using Fixed = basic_fixed<Bits, D>;
       |           ^
-38 warnings generated.
-[10/47] Linking CXX static library libfixedwide.a
-[11/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
-[12/47] Linking CXX executable tests/test_rounding
-FAILED: [code=1] tests/test_rounding 
-: && /usr/bin/clang++ -O3 -DNDEBUG -Xlinker --dependency-file=tests/CMakeFiles/test_rounding.dir/link.d tests/CMakeFiles/test_rounding.dir/test_rounding.cpp.o -o tests/test_rounding  libfixedwide.a && :
-/usr/bin/ld: tests/CMakeFiles/test_rounding.dir/test_rounding.cpp.o: in function `test_fixed64_rounding()':
-test_rounding.cpp:(.text+0x21): undefined reference to `std::expected<long, fixedwide::ArithmeticError> fixedwide::detail::div64_scaled<1u>(long, long, fixedwide::Rounding)'
-/usr/bin/ld: test_rounding.cpp:(.text+0x4f): undefined reference to `std::expected<long, fixedwide::ArithmeticError> fixedwide::detail::div64_scaled<1u>(long, long, fixedwide::Rounding)'
-/usr/bin/ld: test_rounding.cpp:(.text+0x7d): undefined reference to `std::expected<long, fixedwide::ArithmeticError> fixedwide::detail::div64_scaled<1u>(long, long, fixedwide::Rounding)'
-/usr/bin/ld: test_rounding.cpp:(.text+0xad): undefined reference to `std::expected<long, fixedwide::ArithmeticError> fixedwide::detail::div64_scaled<1u>(long, long, fixedwide::Rounding)'
-/usr/bin/ld: test_rounding.cpp:(.text+0xdd): undefined reference to `std::expected<long, fixedwide::ArithmeticError> fixedwide::detail::div64_scaled<1u>(long, long, fixedwide::Rounding)'
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-[13/47] Linking CXX executable tests/test_overflow
-[14/47] Linking CXX executable tests/test_wide
-[15/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
-[16/47] Linking CXX executable tests/audit_portable_edges
-[17/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
-[18/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
-[19/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
-[20/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
-[21/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
-[22/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
-[23/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
-[24/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
-[25/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
-[26/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
-[27/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
-[28/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
-[29/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
-[30/47] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
-[31/47] Building CXX object tests/CMakeFiles/audit_same_domain.dir/audit_same_domain.cpp.o
-ninja: build stopped: subcommand failed.
+39 warnings generated.
+[15/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
+[16/47] Linking CXX static library libfixedwide.a
+[17/47] Linking CXX executable tests/test_mixed
+[18/47] Linking CXX executable tests/test_signed_min
+[19/47] Linking CXX executable tests/audit_text_targeted
+[20/47] Linking CXX executable tests/test_binary
+[21/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
+[22/47] Linking CXX executable tests/audit_portable_edges
+[23/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
+[24/47] Linking CXX executable tests/test_wide
+[25/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
+[26/47] Linking CXX executable tests/test_overflow
+[27/47] Linking CXX executable tests/audit_portable_div128
+[28/47] Linking CXX executable tests/test_rounding
+[29/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
+[30/47] Linking CXX executable tests/test_floating
+[31/47] Linking CXX executable examples/fixedwide_example
+[32/47] Linking CXX executable tests/audit_floating
+[33/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
+[34/47] Linking CXX executable tests/test_no_alloc
+[35/47] Linking CXX executable tests/test_storage
+[36/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
+[37/47] Linking CXX executable tests/audit_io
+[38/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
+[39/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
+[40/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
+[41/47] Linking CXX executable tests/audit_known
+[42/47] Linking CXX executable tests/test_chars
+[43/47] Linking CXX executable tests/test_core
+[44/47] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
+[45/47] Linking CXX executable tests/audit_mixed
+[46/47] Building CXX object tests/CMakeFiles/audit_same_domain.dir/audit_same_domain.cpp.o
+[47/47] Linking CXX executable tests/audit_same_domain
+Test project /home/shared/ws/fixedwide/build_verify/Linux_x86-64_Clang_forced_portable
+      Start  1: fixedwide.storage
+ 1/23 Test  #1: fixedwide.storage ........................   Passed    0.00 sec
+      Start  2: fixedwide.wide
+ 2/23 Test  #2: fixedwide.wide ...........................   Passed    0.00 sec
+      Start  3: fixedwide.rounding
+ 3/23 Test  #3: fixedwide.rounding .......................   Passed    0.00 sec
+      Start  4: fixedwide.core
+ 4/23 Test  #4: fixedwide.core ...........................   Passed    0.00 sec
+      Start  5: fixedwide.mixed
+ 5/23 Test  #5: fixedwide.mixed ..........................   Passed    0.00 sec
+      Start  6: fixedwide.chars
+ 6/23 Test  #6: fixedwide.chars ..........................   Passed    0.00 sec
+      Start  7: fixedwide.binary
+ 7/23 Test  #7: fixedwide.binary .........................   Passed    0.00 sec
+      Start  8: fixedwide.floating
+ 8/23 Test  #8: fixedwide.floating .......................   Passed    0.00 sec
+      Start  9: fixedwide.no_alloc
+ 9/23 Test  #9: fixedwide.no_alloc .......................   Passed    0.00 sec
+      Start 10: fixedwide.signed_min
+10/23 Test #10: fixedwide.signed_min .....................   Passed    0.00 sec
+      Start 11: fixedwide.overflow
+11/23 Test #11: fixedwide.overflow .......................   Passed    0.03 sec
+      Start 12: fixedwide.audit.audit_same_domain
+12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed    0.67 sec
+      Start 13: fixedwide.audit.audit_mixed
+13/23 Test #13: fixedwide.audit.audit_mixed ..............   Passed    1.67 sec
+      Start 14: fixedwide.audit.audit_known
+14/23 Test #14: fixedwide.audit.audit_known ..............   Passed    0.00 sec
+      Start 15: fixedwide.audit.audit_floating
+15/23 Test #15: fixedwide.audit.audit_floating ...........   Passed    0.00 sec
+      Start 16: fixedwide.audit.audit_io
+16/23 Test #16: fixedwide.audit.audit_io .................   Passed    0.03 sec
+      Start 17: fixedwide.audit.audit_text_targeted
+17/23 Test #17: fixedwide.audit.audit_text_targeted ......   Passed    0.00 sec
+      Start 18: fixedwide.audit.audit_portable_edges
+18/23 Test #18: fixedwide.audit.audit_portable_edges .....   Passed    0.00 sec
+      Start 19: fixedwide.audit.audit_portable_div128
+19/23 Test #19: fixedwide.audit.audit_portable_div128 ....   Passed    0.00 sec
+      Start 20: fixedwide.negative.ambiguous_mixed_mul
+20/23 Test #20: fixedwide.negative.ambiguous_mixed_mul ...   Passed    0.05 sec
+      Start 21: fixedwide.negative.invalid_bits
+21/23 Test #21: fixedwide.negative.invalid_bits ..........   Passed    0.03 sec
+      Start 22: fixedwide.negative.invalid_scale
+22/23 Test #22: fixedwide.negative.invalid_scale .........   Passed    0.03 sec
+      Start 23: fixedwide.negative.runtime_scale
+23/23 Test #23: fixedwide.negative.runtime_scale .........   Passed    0.03 sec
+
+100% tests passed out of 23
+
+Total Test time (real) =   2.56 sec
 === Linux x86-64 Clang portable, __SIZEOF_INT128__ undefined ===
 -- The CXX compiler identification is Clang 22.1.8
 -- Detecting CXX compiler ABI info
@@ -1138,14 +1231,14 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/bigint.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In file included from /home/shared/ws/fixedwide/src/bigint.cpp:3:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 In file included from /home/shared/ws/fixedwide/src/bigint.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
@@ -1206,14 +1299,14 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 6 warnings generated.
 [5/47] Building CXX object CMakeFiles/fixedwide.dir/src/mixed.cpp.o
@@ -1230,14 +1323,14 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In file included from /home/shared/ws/fixedwide/src/mixed.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
@@ -1284,7 +1377,79 @@ In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 19 warnings generated.
-[6/47] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
+[6/47] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
+In file included from /home/shared/ws/fixedwide/src/floating.cpp:1:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/floating.hpp:2:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
+      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
+      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
+      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/shared/ws/fixedwide/src/floating.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
+      |                                    ~~ ^~~~~
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
+      |                                      ~~ ^~~~~
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+      |                                                                                                 ^
+In file included from /home/shared/ws/fixedwide/src/floating.cpp:3:
+/home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
+      |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/src/floating.cpp:58:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<16UL, 16UL>' requested here
+   58 |     auto divres = divmod_knuth(num, den);
+      |                   ^
+/home/shared/ws/fixedwide/src/floating.cpp:95:12: note: in instantiation of function template specialization 'fixedwide::detail::(anonymous namespace)::from_float_impl<float>' requested here
+   95 |     return from_float_impl(value, decimals, rounding, bits);
+      |            ^
+In file included from /home/shared/ws/fixedwide/src/floating.cpp:3:
+/home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  320 |         std::uint64_t u_top = u[j + n];
+      |                                 ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:321:34: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  321 |         std::uint64_t u_next = u[j + n - 1];
+      |                                  ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:322:35: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  322 |         std::uint64_t u_next2 = u[j + n - 2];
+      |                                   ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:351:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  351 |             if (u[j + i] < sub) ++borrow;
+      |                   ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:352:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  352 |             u[j + i] -= sub;
+      |               ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:354:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  354 |         if (u[j + n] < borrow) {
+      |               ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:359:39: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  359 |                 std::uint64_t sum = u[j + i] + v[i] + add_carry;
+      |                                       ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:360:72: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
+      |                                                                        ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:360:38: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
+      |                                      ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:361:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  361 |                 u[j + i] = sum;
+      |                   ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:363:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  363 |             u[j + n] = 0;
+      |               ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  365 |             u[j + n] -= borrow;
+      |               ^ ~
+19 warnings generated.
+[7/47] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
+[8/47] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
 In file included from /home/shared/ws/fixedwide/src/chars.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -1298,14 +1463,14 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 /home/shared/ws/fixedwide/src/chars.cpp:174:23: warning: unused variable 'lim_lo' [-Wunused-variable]
   174 |         std::uint64_t lim_lo = lim256.limbs[0];
@@ -1357,80 +1522,16 @@ In file included from /home/shared/ws/fixedwide/src/chars.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
-21 warnings generated.
-[7/47] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
-[8/47] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
-In file included from /home/shared/ws/fixedwide/src/floating.cpp:1:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/floating.hpp:2:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
-      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
-      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
-      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In file included from /home/shared/ws/fixedwide/src/floating.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
-      |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
-      |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
-      |                                                                                                 ^
-In file included from /home/shared/ws/fixedwide/src/floating.cpp:3:
-/home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
-      |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/floating.cpp:58:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<16UL, 16UL>' requested here
-   58 |     auto divres = divmod_knuth(num, den);
-      |                   ^
-/home/shared/ws/fixedwide/src/floating.cpp:95:12: note: in instantiation of function template specialization 'fixedwide::detail::(anonymous namespace)::from_float_impl<float>' requested here
-   95 |     return from_float_impl(value, decimals, rounding, bits);
-      |            ^
-In file included from /home/shared/ws/fixedwide/src/floating.cpp:3:
-/home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  320 |         std::uint64_t u_top = u[j + n];
-      |                                 ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:321:34: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  321 |         std::uint64_t u_next = u[j + n - 1];
-      |                                  ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:322:35: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  322 |         std::uint64_t u_next2 = u[j + n - 2];
-      |                                   ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:351:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  351 |             if (u[j + i] < sub) ++borrow;
-      |                   ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:352:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  352 |             u[j + i] -= sub;
-      |               ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:354:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  354 |         if (u[j + n] < borrow) {
-      |               ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:359:39: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  359 |                 std::uint64_t sum = u[j + i] + v[i] + add_carry;
-      |                                       ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:360:72: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
-      |                                                                        ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:360:38: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
-      |                                      ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:361:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  361 |                 u[j + i] = sum;
-      |                   ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:363:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  363 |             u[j + n] = 0;
-      |               ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  365 |             u[j + n] -= borrow;
-      |               ^ ~
-19 warnings generated.
-[9/47] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
+22 warnings generated.
+[9/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
+[10/47] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -1458,21 +1559,21 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
   177 |                 std::int64_t s = 0ULL - u;
       |                              ~   ~~~~~^~~
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:769:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
-  769 |     auto divres = divmod_knuth(prod, s);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:831:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
+  831 |     auto divres = divmod_knuth(prod, s);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -1514,8 +1615,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:860:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
-  860 |     auto divres = divmod_knuth(mag, udiv);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:922:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
+  922 |     auto divres = divmod_knuth(mag, udiv);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -1554,6 +1655,13 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
+In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
 /home/shared/ws/fixedwide/src/arithmetic.cpp:12:30: warning: unused function 'fits64' [-Wunused-function]
    12 | [[nodiscard]] constexpr bool fits64(std::int64_t) noexcept { return true; }
       |                              ^~~~~~
@@ -1564,39 +1672,95 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:345:11: warning: unused type alias 'Fixed' [-Wunused-local-typedef]
   345 |     using Fixed = basic_fixed<Bits, D>;
       |           ^
-38 warnings generated.
-[10/47] Linking CXX static library libfixedwide.a
-[11/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
-[12/47] Linking CXX executable tests/test_wide
-[13/47] Linking CXX executable tests/test_rounding
-FAILED: [code=1] tests/test_rounding 
-: && /usr/bin/clang++ -U__SIZEOF_INT128__ -O3 -DNDEBUG -Xlinker --dependency-file=tests/CMakeFiles/test_rounding.dir/link.d tests/CMakeFiles/test_rounding.dir/test_rounding.cpp.o -o tests/test_rounding  libfixedwide.a && :
-/usr/bin/ld: tests/CMakeFiles/test_rounding.dir/test_rounding.cpp.o: in function `test_fixed64_rounding()':
-test_rounding.cpp:(.text+0x21): undefined reference to `std::expected<long, fixedwide::ArithmeticError> fixedwide::detail::div64_scaled<1u>(long, long, fixedwide::Rounding)'
-/usr/bin/ld: test_rounding.cpp:(.text+0x4f): undefined reference to `std::expected<long, fixedwide::ArithmeticError> fixedwide::detail::div64_scaled<1u>(long, long, fixedwide::Rounding)'
-/usr/bin/ld: test_rounding.cpp:(.text+0x7d): undefined reference to `std::expected<long, fixedwide::ArithmeticError> fixedwide::detail::div64_scaled<1u>(long, long, fixedwide::Rounding)'
-/usr/bin/ld: test_rounding.cpp:(.text+0xad): undefined reference to `std::expected<long, fixedwide::ArithmeticError> fixedwide::detail::div64_scaled<1u>(long, long, fixedwide::Rounding)'
-/usr/bin/ld: test_rounding.cpp:(.text+0xdd): undefined reference to `std::expected<long, fixedwide::ArithmeticError> fixedwide::detail::div64_scaled<1u>(long, long, fixedwide::Rounding)'
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-[14/47] Linking CXX executable tests/test_overflow
-[15/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
-[16/47] Linking CXX executable tests/test_mixed
-[17/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
-[18/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
-[19/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
-[20/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
-[21/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
-[22/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
-[23/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
-[24/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
-[25/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
-[26/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
-[27/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
-[28/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
-[29/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
-[30/47] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
-[31/47] Building CXX object tests/CMakeFiles/audit_same_domain.dir/audit_same_domain.cpp.o
-ninja: build stopped: subcommand failed.
+39 warnings generated.
+[11/47] Linking CXX static library libfixedwide.a
+[12/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
+[13/47] Linking CXX executable tests/test_wide
+[14/47] Linking CXX executable tests/audit_portable_div128
+[15/47] Linking CXX executable tests/test_rounding
+[16/47] Linking CXX executable tests/test_overflow
+[17/47] Linking CXX executable tests/audit_portable_edges
+[18/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
+[19/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
+[20/47] Linking CXX executable tests/test_mixed
+[21/47] Linking CXX executable tests/audit_floating
+[22/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
+[23/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
+[24/47] Linking CXX executable tests/test_storage
+[25/47] Linking CXX executable tests/test_binary
+[26/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
+[27/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
+[28/47] Linking CXX executable examples/fixedwide_example
+[29/47] Linking CXX executable tests/audit_known
+[30/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
+[31/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
+[32/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
+[33/47] Linking CXX executable tests/test_floating
+[34/47] Linking CXX executable tests/audit_text_targeted
+[35/47] Linking CXX executable tests/test_chars
+[36/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
+[37/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
+[38/47] Linking CXX executable tests/test_signed_min
+[39/47] Linking CXX executable tests/test_no_alloc
+[40/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
+[41/47] Linking CXX executable tests/test_core
+[42/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
+[43/47] Linking CXX executable tests/audit_io
+[44/47] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
+[45/47] Linking CXX executable tests/audit_mixed
+[46/47] Building CXX object tests/CMakeFiles/audit_same_domain.dir/audit_same_domain.cpp.o
+[47/47] Linking CXX executable tests/audit_same_domain
+Test project /home/shared/ws/fixedwide/build_verify/Linux_x86-64_Clang_portable,___SIZEOF_INT128___undefined
+      Start  1: fixedwide.storage
+ 1/23 Test  #1: fixedwide.storage ........................   Passed    0.00 sec
+      Start  2: fixedwide.wide
+ 2/23 Test  #2: fixedwide.wide ...........................   Passed    0.00 sec
+      Start  3: fixedwide.rounding
+ 3/23 Test  #3: fixedwide.rounding .......................   Passed    0.00 sec
+      Start  4: fixedwide.core
+ 4/23 Test  #4: fixedwide.core ...........................   Passed    0.00 sec
+      Start  5: fixedwide.mixed
+ 5/23 Test  #5: fixedwide.mixed ..........................   Passed    0.00 sec
+      Start  6: fixedwide.chars
+ 6/23 Test  #6: fixedwide.chars ..........................   Passed    0.00 sec
+      Start  7: fixedwide.binary
+ 7/23 Test  #7: fixedwide.binary .........................   Passed    0.00 sec
+      Start  8: fixedwide.floating
+ 8/23 Test  #8: fixedwide.floating .......................   Passed    0.00 sec
+      Start  9: fixedwide.no_alloc
+ 9/23 Test  #9: fixedwide.no_alloc .......................   Passed    0.00 sec
+      Start 10: fixedwide.signed_min
+10/23 Test #10: fixedwide.signed_min .....................   Passed    0.00 sec
+      Start 11: fixedwide.overflow
+11/23 Test #11: fixedwide.overflow .......................   Passed    0.03 sec
+      Start 12: fixedwide.audit.audit_same_domain
+12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed    0.89 sec
+      Start 13: fixedwide.audit.audit_mixed
+13/23 Test #13: fixedwide.audit.audit_mixed ..............   Passed    1.84 sec
+      Start 14: fixedwide.audit.audit_known
+14/23 Test #14: fixedwide.audit.audit_known ..............   Passed    0.00 sec
+      Start 15: fixedwide.audit.audit_floating
+15/23 Test #15: fixedwide.audit.audit_floating ...........   Passed    0.00 sec
+      Start 16: fixedwide.audit.audit_io
+16/23 Test #16: fixedwide.audit.audit_io .................   Passed    0.03 sec
+      Start 17: fixedwide.audit.audit_text_targeted
+17/23 Test #17: fixedwide.audit.audit_text_targeted ......   Passed    0.00 sec
+      Start 18: fixedwide.audit.audit_portable_edges
+18/23 Test #18: fixedwide.audit.audit_portable_edges .....   Passed    0.00 sec
+      Start 19: fixedwide.audit.audit_portable_div128
+19/23 Test #19: fixedwide.audit.audit_portable_div128 ....   Passed    0.00 sec
+      Start 20: fixedwide.negative.ambiguous_mixed_mul
+20/23 Test #20: fixedwide.negative.ambiguous_mixed_mul ...   Passed    0.05 sec
+      Start 21: fixedwide.negative.invalid_bits
+21/23 Test #21: fixedwide.negative.invalid_bits ..........   Passed    0.03 sec
+      Start 22: fixedwide.negative.invalid_scale
+22/23 Test #22: fixedwide.negative.invalid_scale .........   Passed    0.03 sec
+      Start 23: fixedwide.negative.runtime_scale
+23/23 Test #23: fixedwide.negative.runtime_scale .........   Passed    0.03 sec
+
+100% tests passed out of 23
+
+Total Test time (real) =   2.94 sec
 === Linux x86-64 Clang ASan+UBSan native ===
 -- The CXX compiler identification is Clang 22.1.8
 -- Detecting CXX compiler ABI info
@@ -1792,7 +1956,21 @@ In file included from /home/shared/ws/fixedwide/src/floating.cpp:3:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 16 warnings generated.
-[6/47] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
+[6/47] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
+In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:1:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
+      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
+      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
+      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3 warnings generated.
+[7/47] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
 In file included from /home/shared/ws/fixedwide/src/chars.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -1849,25 +2027,16 @@ In file included from /home/shared/ws/fixedwide/src/chars.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
-16 warnings generated.
-[7/47] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
-In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:1:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
-      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
-      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
-      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-3 warnings generated.
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
+17 warnings generated.
 [8/47] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
-[9/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
-[10/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
-[11/47] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
+[9/47] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -1898,8 +2067,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:769:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
-  769 |     auto divres = divmod_knuth(prod, s);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:831:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
+  831 |     auto divres = divmod_knuth(prod, s);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -1941,8 +2110,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:860:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
-  860 |     auto divres = divmod_knuth(mag, udiv);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:922:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
+  922 |     auto divres = divmod_knuth(mag, udiv);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -1981,6 +2150,13 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
+In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
 /home/shared/ws/fixedwide/src/arithmetic.cpp:12:30: warning: unused function 'fits64' [-Wunused-function]
    12 | [[nodiscard]] constexpr bool fits64(std::int64_t) noexcept { return true; }
       |                              ^~~~~~
@@ -1994,42 +2170,44 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:345:11: warning: unused type alias 'Fixed' [-Wunused-local-typedef]
   345 |     using Fixed = basic_fixed<Bits, D>;
       |           ^
-36 warnings generated.
-[12/47] Linking CXX static library libfixedwide.a
-[13/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
+37 warnings generated.
+[10/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
+[11/47] Linking CXX static library libfixedwide.a
+[12/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
+[13/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
 [14/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
-[15/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
-[16/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
-[17/47] Linking CXX executable tests/audit_portable_edges
-[18/47] Linking CXX executable tests/test_rounding
-[19/47] Linking CXX executable examples/fixedwide_example
-[20/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
-[21/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
-[22/47] Linking CXX executable tests/test_overflow
-[23/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
-[24/47] Linking CXX executable tests/test_storage
-[25/47] Linking CXX executable tests/test_wide
-[26/47] Linking CXX executable tests/audit_portable_div128
-[27/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
-[28/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
+[15/47] Linking CXX executable tests/test_overflow
+[16/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
+[17/47] Linking CXX executable tests/audit_portable_div128
+[18/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
+[19/47] Linking CXX executable tests/test_floating
+[20/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
+[21/47] Linking CXX executable tests/test_rounding
+[22/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
+[23/47] Linking CXX executable tests/test_storage
+[24/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
+[25/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
+[26/47] Linking CXX executable tests/test_wide
+[27/47] Linking CXX executable tests/test_binary
+[28/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
 [29/47] Linking CXX executable tests/audit_text_targeted
-[30/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
-[31/47] Linking CXX executable tests/test_no_alloc
-[32/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
-[33/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
-[34/47] Linking CXX executable tests/test_floating
-[35/47] Linking CXX executable tests/audit_floating
-[36/47] Linking CXX executable tests/test_mixed
-[37/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
-[38/47] Linking CXX executable tests/test_binary
-[39/47] Linking CXX executable tests/test_core
-[40/47] Linking CXX executable tests/test_chars
-[41/47] Linking CXX executable tests/audit_known
-[42/47] Linking CXX executable tests/test_signed_min
-[43/47] Linking CXX executable tests/audit_io
+[30/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
+[31/47] Linking CXX executable tests/audit_known
+[32/47] Linking CXX executable tests/test_mixed
+[33/47] Linking CXX executable tests/test_core
+[34/47] Linking CXX executable tests/audit_portable_edges
+[35/47] Linking CXX executable examples/fixedwide_example
+[36/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
+[37/47] Linking CXX executable tests/test_chars
+[38/47] Linking CXX executable tests/audit_io
+[39/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
+[40/47] Linking CXX executable tests/audit_floating
+[41/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
+[42/47] Linking CXX executable tests/test_no_alloc
+[43/47] Linking CXX executable tests/test_signed_min
 [44/47] Building CXX object tests/CMakeFiles/audit_same_domain.dir/audit_same_domain.cpp.o
-[45/47] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
-[46/47] Linking CXX executable tests/audit_same_domain
+[45/47] Linking CXX executable tests/audit_same_domain
+[46/47] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
 [47/47] Linking CXX executable tests/audit_mixed
 Test project /home/shared/ws/fixedwide/build_verify/Linux_x86-64_Clang_ASan_UBSan_native
       Start  1: fixedwide.storage
@@ -2053,11 +2231,11 @@ Test project /home/shared/ws/fixedwide/build_verify/Linux_x86-64_Clang_ASan_UBSa
       Start 10: fixedwide.signed_min
 10/23 Test #10: fixedwide.signed_min .....................   Passed    0.00 sec
       Start 11: fixedwide.overflow
-11/23 Test #11: fixedwide.overflow .......................   Passed    1.40 sec
+11/23 Test #11: fixedwide.overflow .......................   Passed    1.38 sec
       Start 12: fixedwide.audit.audit_same_domain
-12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed   10.31 sec
+12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed   10.46 sec
       Start 13: fixedwide.audit.audit_mixed
-13/23 Test #13: fixedwide.audit.audit_mixed ..............   Passed   17.84 sec
+13/23 Test #13: fixedwide.audit.audit_mixed ..............   Passed   17.89 sec
       Start 14: fixedwide.audit.audit_known
 14/23 Test #14: fixedwide.audit.audit_known ..............   Passed    0.00 sec
       Start 15: fixedwide.audit.audit_floating
@@ -2081,7 +2259,7 @@ Test project /home/shared/ws/fixedwide/build_verify/Linux_x86-64_Clang_ASan_UBSa
 
 100% tests passed out of 23
 
-Total Test time (real) =  29.90 sec
+Total Test time (real) =  30.09 sec
 === Linux x86-64 Clang ASan+UBSan forced portable ===
 -- The CXX compiler identification is Clang 22.1.8
 -- Detecting CXX compiler ABI info
@@ -2101,10 +2279,9 @@ suppress it.
 -- Build files have been written to: /home/shared/ws/fixedwide/build_verify/Linux_x86-64_Clang_ASan_UBSan_forced_portable
 [1/47] Building CXX object tests/CMakeFiles/test_overflow.dir/test_overflow.cpp.o
 [2/47] Building CXX object tests/CMakeFiles/test_rounding.dir/test_rounding.cpp.o
-[3/47] Building CXX object CMakeFiles/fixedwide.dir/src/mixed.cpp.o
-In file included from /home/shared/ws/fixedwide/src/mixed.cpp:1:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/mixed.hpp:2:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
+[3/47] Building CXX object CMakeFiles/fixedwide.dir/src/bigint.cpp.o
+In file included from /home/shared/ws/fixedwide/src/bigint.cpp:1:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/bigint.hpp:2:
 /home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
       |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2114,24 +2291,24 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
 /home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In file included from /home/shared/ws/fixedwide/src/mixed.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+In file included from /home/shared/ws/fixedwide/src/bigint.cpp:3:
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
-In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
+In file included from /home/shared/ws/fixedwide/src/bigint.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/mixed.cpp:27:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<16UL, 16UL>' requested here
-   27 |     auto divres = divmod_knuth(num, den);
-      |                   ^
-In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
+/home/shared/ws/fixedwide/src/bigint.cpp:16:24: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 2UL>' requested here
+   16 |     auto res = detail::divmod_knuth(num, den);
+      |                        ^
+In file included from /home/shared/ws/fixedwide/src/bigint.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   320 |         std::uint64_t u_top = u[j + n];
       |                                 ^ ~
@@ -2169,9 +2346,10 @@ In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 19 warnings generated.
-[4/47] Building CXX object CMakeFiles/fixedwide.dir/src/bigint.cpp.o
-In file included from /home/shared/ws/fixedwide/src/bigint.cpp:1:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/bigint.hpp:2:
+[4/47] Building CXX object CMakeFiles/fixedwide.dir/src/mixed.cpp.o
+In file included from /home/shared/ws/fixedwide/src/mixed.cpp:1:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/mixed.hpp:2:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
 /home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
       |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2181,24 +2359,24 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/bigint.hpp:2:
 /home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In file included from /home/shared/ws/fixedwide/src/bigint.cpp:3:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+In file included from /home/shared/ws/fixedwide/src/mixed.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
-In file included from /home/shared/ws/fixedwide/src/bigint.cpp:4:
+In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/bigint.cpp:16:24: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 2UL>' requested here
-   16 |     auto res = detail::divmod_knuth(num, den);
-      |                        ^
-In file included from /home/shared/ws/fixedwide/src/bigint.cpp:4:
+/home/shared/ws/fixedwide/src/mixed.cpp:27:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<16UL, 16UL>' requested here
+   27 |     auto divres = divmod_knuth(num, den);
+      |                   ^
+In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   320 |         std::uint64_t u_top = u[j + n];
       |                                 ^ ~
@@ -2250,14 +2428,14 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In file included from /home/shared/ws/fixedwide/src/floating.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 In file included from /home/shared/ws/fixedwide/src/floating.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
@@ -2321,14 +2499,14 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 6 warnings generated.
 [7/47] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
@@ -2345,14 +2523,14 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 /home/shared/ws/fixedwide/src/chars.cpp:174:23: warning: unused variable 'lim_lo' [-Wunused-variable]
   174 |         std::uint64_t lim_lo = lim256.limbs[0];
@@ -2404,7 +2582,14 @@ In file included from /home/shared/ws/fixedwide/src/chars.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
-21 warnings generated.
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
+22 warnings generated.
 [8/47] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
 [9/47] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
@@ -2434,21 +2619,21 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
   177 |                 std::int64_t s = 0ULL - u;
       |                              ~   ~~~~~^~~
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:315:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  315 |     wide::uint128 norm_d = divisor << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:320:39: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  320 |     wide::uint128 norm_d = divisor << shift;
       |                                    ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:316:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  316 |     wide::uint128 norm_n = numerator << shift;
+/home/shared/ws/fixedwide/src/detail.hpp:321:41: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  321 |     wide::uint128 norm_n = numerator << shift;
       |                                      ~~ ^~~~~
-/home/shared/ws/fixedwide/src/detail.hpp:301:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
-  301 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+/home/shared/ws/fixedwide/src/detail.hpp:306:97: warning: unused parameter 'need_remainder' [-Wunused-parameter]
+  306 | [[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
       |                                                                                                 ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:769:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
-  769 |     auto divres = divmod_knuth(prod, s);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:831:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
+  831 |     auto divres = divmod_knuth(prod, s);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -2490,8 +2675,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:860:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
-  860 |     auto divres = divmod_knuth(mag, udiv);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:922:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
+  922 |     auto divres = divmod_knuth(mag, udiv);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -2530,6 +2715,13 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
+In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
 /home/shared/ws/fixedwide/src/arithmetic.cpp:12:30: warning: unused function 'fits64' [-Wunused-function]
    12 | [[nodiscard]] constexpr bool fits64(std::int64_t) noexcept { return true; }
       |                              ^~~~~~
@@ -2540,35 +2732,96 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:345:11: warning: unused type alias 'Fixed' [-Wunused-local-typedef]
   345 |     using Fixed = basic_fixed<Bits, D>;
       |           ^
-38 warnings generated.
+39 warnings generated.
 [10/47] Linking CXX static library libfixedwide.a
-[11/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
+[11/47] Linking CXX executable tests/test_wide
 [12/47] Linking CXX executable tests/test_overflow
-[13/47] Linking CXX executable tests/test_wide
-[14/47] Linking CXX executable tests/audit_portable_edges
-[15/47] Linking CXX executable tests/test_rounding
-FAILED: [code=1] tests/test_rounding 
-: && /usr/bin/clang++ -g -fsanitize=address,undefined -Xlinker --dependency-file=tests/CMakeFiles/test_rounding.dir/link.d tests/CMakeFiles/test_rounding.dir/test_rounding.cpp.o -o tests/test_rounding  libfixedwide.a && :
-/usr/bin/ld: tests/CMakeFiles/test_rounding.dir/test_rounding.cpp.o: in function `std::expected<fixedwide::basic_fixed<64ul, 1u>, fixedwide::ArithmeticError> fixedwide::div<64ul, 1u>(fixedwide::basic_fixed<64ul, 1u>, fixedwide::basic_fixed<64ul, 1u>, fixedwide::Rounding)':
-/home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:512:(.text._ZN9fixedwide3divILm64ELj1EEESt8expectedINS_11basic_fixedIXT_EXT0_EEENS_15ArithmeticErrorEES3_S3_NS_8RoundingE[_ZN9fixedwide3divILm64ELj1EEESt8expectedINS_11basic_fixedIXT_EXT0_EEENS_15ArithmeticErrorEES3_S3_NS_8RoundingE]+0x23d): undefined reference to `std::expected<long, fixedwide::ArithmeticError> fixedwide::detail::div64_scaled<1u>(long, long, fixedwide::Rounding)'
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-[16/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
-[17/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
-[18/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
-[19/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
-[20/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
-[21/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
+[13/47] Linking CXX executable tests/test_rounding
+[14/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
+[15/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
+[16/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
+[17/47] Linking CXX executable tests/audit_portable_edges
+[18/47] Linking CXX executable tests/audit_portable_div128
+[19/47] Linking CXX executable tests/audit_floating
+[20/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
+[21/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
 [22/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
-[23/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
-[24/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
-[25/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
-[26/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
-[27/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
-[28/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
-[29/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
-[30/47] Building CXX object tests/CMakeFiles/audit_same_domain.dir/audit_same_domain.cpp.o
-[31/47] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
-ninja: build stopped: subcommand failed.
+[23/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
+[24/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
+[25/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
+[26/47] Linking CXX executable tests/test_no_alloc
+[27/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
+[28/47] Linking CXX executable tests/test_mixed
+[29/47] Linking CXX executable tests/audit_known
+[30/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
+[31/47] Linking CXX executable tests/test_storage
+[32/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
+[33/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
+[34/47] Linking CXX executable examples/fixedwide_example
+[35/47] Linking CXX executable tests/test_chars
+[36/47] Linking CXX executable tests/test_binary
+[37/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
+[38/47] Linking CXX executable tests/audit_text_targeted
+[39/47] Linking CXX executable tests/audit_io
+[40/47] Linking CXX executable tests/test_signed_min
+[41/47] Linking CXX executable tests/test_floating
+[42/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
+[43/47] Linking CXX executable tests/test_core
+[44/47] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
+[45/47] Linking CXX executable tests/audit_mixed
+[46/47] Building CXX object tests/CMakeFiles/audit_same_domain.dir/audit_same_domain.cpp.o
+[47/47] Linking CXX executable tests/audit_same_domain
+Test project /home/shared/ws/fixedwide/build_verify/Linux_x86-64_Clang_ASan_UBSan_forced_portable
+      Start  1: fixedwide.storage
+ 1/23 Test  #1: fixedwide.storage ........................   Passed    0.00 sec
+      Start  2: fixedwide.wide
+ 2/23 Test  #2: fixedwide.wide ...........................   Passed    0.01 sec
+      Start  3: fixedwide.rounding
+ 3/23 Test  #3: fixedwide.rounding .......................   Passed    0.00 sec
+      Start  4: fixedwide.core
+ 4/23 Test  #4: fixedwide.core ...........................   Passed    0.00 sec
+      Start  5: fixedwide.mixed
+ 5/23 Test  #5: fixedwide.mixed ..........................   Passed    0.00 sec
+      Start  6: fixedwide.chars
+ 6/23 Test  #6: fixedwide.chars ..........................   Passed    0.00 sec
+      Start  7: fixedwide.binary
+ 7/23 Test  #7: fixedwide.binary .........................   Passed    0.00 sec
+      Start  8: fixedwide.floating
+ 8/23 Test  #8: fixedwide.floating .......................   Passed    0.00 sec
+      Start  9: fixedwide.no_alloc
+ 9/23 Test  #9: fixedwide.no_alloc .......................   Passed    0.00 sec
+      Start 10: fixedwide.signed_min
+10/23 Test #10: fixedwide.signed_min .....................   Passed    0.00 sec
+      Start 11: fixedwide.overflow
+11/23 Test #11: fixedwide.overflow .......................   Passed    1.62 sec
+      Start 12: fixedwide.audit.audit_same_domain
+12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed   11.06 sec
+      Start 13: fixedwide.audit.audit_mixed
+13/23 Test #13: fixedwide.audit.audit_mixed ..............   Passed   20.06 sec
+      Start 14: fixedwide.audit.audit_known
+14/23 Test #14: fixedwide.audit.audit_known ..............   Passed    0.00 sec
+      Start 15: fixedwide.audit.audit_floating
+15/23 Test #15: fixedwide.audit.audit_floating ...........   Passed    0.00 sec
+      Start 16: fixedwide.audit.audit_io
+16/23 Test #16: fixedwide.audit.audit_io .................   Passed    0.27 sec
+      Start 17: fixedwide.audit.audit_text_targeted
+17/23 Test #17: fixedwide.audit.audit_text_targeted ......   Passed    0.00 sec
+      Start 18: fixedwide.audit.audit_portable_edges
+18/23 Test #18: fixedwide.audit.audit_portable_edges .....   Passed    0.00 sec
+      Start 19: fixedwide.audit.audit_portable_div128
+19/23 Test #19: fixedwide.audit.audit_portable_div128 ....   Passed    0.00 sec
+      Start 20: fixedwide.negative.ambiguous_mixed_mul
+20/23 Test #20: fixedwide.negative.ambiguous_mixed_mul ...   Passed    0.05 sec
+      Start 21: fixedwide.negative.invalid_bits
+21/23 Test #21: fixedwide.negative.invalid_bits ..........   Passed    0.03 sec
+      Start 22: fixedwide.negative.invalid_scale
+22/23 Test #22: fixedwide.negative.invalid_scale .........   Passed    0.03 sec
+      Start 23: fixedwide.negative.runtime_scale
+23/23 Test #23: fixedwide.negative.runtime_scale .........   Passed    0.03 sec
+
+100% tests passed out of 23
+
+Total Test time (real) =  33.22 sec
 === Linux x86-64 Clang shared library ===
 -- The CXX compiler identification is Clang 22.1.8
 -- Detecting CXX compiler ABI info
@@ -2645,21 +2898,7 @@ In file included from /home/shared/ws/fixedwide/src/bigint.cpp:4:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 16 warnings generated.
-[4/48] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
-In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:1:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
-      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
-      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
-      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-3 warnings generated.
-[5/48] Building CXX object CMakeFiles/fixedwide.dir/src/mixed.cpp.o
+[4/48] Building CXX object CMakeFiles/fixedwide.dir/src/mixed.cpp.o
 In file included from /home/shared/ws/fixedwide/src/mixed.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/mixed.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -2717,6 +2956,20 @@ In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 16 warnings generated.
+[5/48] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
+In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:1:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
+      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
+      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
+      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3 warnings generated.
 [6/48] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
 In file included from /home/shared/ws/fixedwide/src/floating.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/floating.hpp:2:
@@ -2778,8 +3031,7 @@ In file included from /home/shared/ws/fixedwide/src/floating.cpp:3:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 16 warnings generated.
-[7/48] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
-[8/48] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
+[7/48] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
 In file included from /home/shared/ws/fixedwide/src/chars.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -2836,22 +3088,30 @@ In file included from /home/shared/ws/fixedwide/src/chars.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
-16 warnings generated.
-[9/48] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
-[10/48] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
-[11/48] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
-[12/48] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
-[13/48] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
-[14/48] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
-[15/48] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
-[16/48] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
+17 warnings generated.
+[8/48] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
+[9/48] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
+[10/48] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
+[11/48] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
+[12/48] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
+[13/48] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
+[14/48] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
+[15/48] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
+[16/48] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
 [17/48] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
-[18/48] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
-[19/48] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
-[20/48] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
-[21/48] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
-[22/48] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
-[23/48] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
+[18/48] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
+[19/48] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
+[20/48] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
+[21/48] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
+[22/48] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
+[23/48] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
 [24/48] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:2:
@@ -2883,8 +3143,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:769:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
-  769 |     auto divres = divmod_knuth(prod, s);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:831:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
+  831 |     auto divres = divmod_knuth(prod, s);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -2926,8 +3186,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:860:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
-  860 |     auto divres = divmod_knuth(mag, udiv);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:922:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
+  922 |     auto divres = divmod_knuth(mag, udiv);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -2966,6 +3226,13 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
+In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
 /home/shared/ws/fixedwide/src/arithmetic.cpp:12:30: warning: unused function 'fits64' [-Wunused-function]
    12 | [[nodiscard]] constexpr bool fits64(std::int64_t) noexcept { return true; }
       |                              ^~~~~~
@@ -2979,27 +3246,27 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:345:11: warning: unused type alias 'Fixed' [-Wunused-local-typedef]
   345 |     using Fixed = basic_fixed<Bits, D>;
       |           ^
-36 warnings generated.
+37 warnings generated.
 [25/48] Linking CXX shared library libfixedwide.so.0.5.0
 [26/48] Creating library symlink libfixedwide.so.1 libfixedwide.so
-[27/48] Linking CXX executable tests/audit_portable_edges
-[28/48] Linking CXX executable tests/test_signed_min
-[29/48] Linking CXX executable tests/test_storage
-[30/48] Linking CXX executable examples/fixedwide_example
-[31/48] Linking CXX executable tests/audit_floating
-[32/48] Linking CXX executable tests/test_no_alloc
-[33/48] Linking CXX executable tests/audit_io
-[34/48] Linking CXX executable tests/audit_known
-[35/48] Linking CXX executable tests/test_wide
-[36/48] Linking CXX executable tests/audit_portable_div128
-[37/48] Linking CXX executable tests/test_floating
-[38/48] Linking CXX executable tests/test_core
-[39/48] Linking CXX executable tests/audit_text_targeted
-[40/48] Linking CXX executable tests/test_mixed
-[41/48] Linking CXX executable tests/test_binary
-[42/48] Linking CXX executable tests/test_overflow
-[43/48] Linking CXX executable tests/test_rounding
-[44/48] Linking CXX executable tests/test_chars
+[27/48] Linking CXX executable tests/test_mixed
+[28/48] Linking CXX executable tests/audit_portable_div128
+[29/48] Linking CXX executable tests/test_wide
+[30/48] Linking CXX executable tests/test_no_alloc
+[31/48] Linking CXX executable tests/audit_io
+[32/48] Linking CXX executable examples/fixedwide_example
+[33/48] Linking CXX executable tests/audit_portable_edges
+[34/48] Linking CXX executable tests/test_core
+[35/48] Linking CXX executable tests/test_storage
+[36/48] Linking CXX executable tests/test_binary
+[37/48] Linking CXX executable tests/test_overflow
+[38/48] Linking CXX executable tests/test_chars
+[39/48] Linking CXX executable tests/test_rounding
+[40/48] Linking CXX executable tests/audit_known
+[41/48] Linking CXX executable tests/test_floating
+[42/48] Linking CXX executable tests/audit_floating
+[43/48] Linking CXX executable tests/test_signed_min
+[44/48] Linking CXX executable tests/audit_text_targeted
 [45/48] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
 [46/48] Linking CXX executable tests/audit_mixed
 [47/48] Building CXX object tests/CMakeFiles/audit_same_domain.dir/audit_same_domain.cpp.o
@@ -3028,7 +3295,7 @@ Test project /home/shared/ws/fixedwide/build_verify/Linux_x86-64_Clang_shared_li
       Start 11: fixedwide.overflow
 11/23 Test #11: fixedwide.overflow .......................   Passed    0.05 sec
       Start 12: fixedwide.audit.audit_same_domain
-12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed    0.40 sec
+12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed    0.39 sec
       Start 13: fixedwide.audit.audit_mixed
 13/23 Test #13: fixedwide.audit.audit_mixed ..............   Passed    0.88 sec
       Start 14: fixedwide.audit.audit_known
@@ -3064,98 +3331,7 @@ Total Test time (real) =   1.50 sec
 -- Configuring done (0.1s)
 -- Generating done (0.0s)
 -- Build files have been written to: /home/shared/ws/fixedwide/build_verify/no_eh
-[1/7] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
-FAILED: [code=1] CMakeFiles/fixedwide.dir/src/chars.cpp.o 
-/usr/bin/clang++  -I/home/shared/ws/fixedwide/include -I/home/shared/ws/fixedwide/src -fno-exceptions -fno-rtti -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wshadow -MD -MT CMakeFiles/fixedwide.dir/src/chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/chars.cpp.o -c /home/shared/ws/fixedwide/src/chars.cpp
-In file included from /home/shared/ws/fixedwide/src/chars.cpp:1:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
-In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
-      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
-      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
-      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-   86 |         if (!(table[i] > table[i - 1])) throw "pow10 table entry overflowed its type";
-      |                                         ^
-/home/shared/ws/fixedwide/src/detail.hpp:79:52: note: while substituting into a lambda expression here
-   79 | inline constexpr std::array<T, N> pow10_table = [] {
-      |                                                    ^
-/home/shared/ws/fixedwide/src/detail.hpp:105:38: note: in instantiation of variable template specialization 'fixedwide::detail::pow10_table<unsigned long, 19>' requested here
-  105 |     if (exp < pow10_limit<T>) return pow10_table<T, pow10_limit<T>>[exp];
-      |                                      ^
-/home/shared/ws/fixedwide/src/chars.cpp:135:22: note: in instantiation of function template specialization 'fixedwide::detail::pow10_wide<unsigned long>' requested here
-  135 |             value *= pow10_wide<std::uint64_t>(static_cast<unsigned>(keep - index));
-      |                      ^
-In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-   86 |         if (!(table[i] > table[i - 1])) throw "pow10 table entry overflowed its type";
-      |                                         ^
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-/home/shared/ws/fixedwide/src/detail.hpp:79:52: note: while substituting into a lambda expression here
-   79 | inline constexpr std::array<T, N> pow10_table = [] {
-      |                                                    ^
-/home/shared/ws/fixedwide/src/detail.hpp:105:38: note: in instantiation of variable template specialization 'fixedwide::detail::pow10_table<fixedwide::wide::uint128, 39>' requested here
-  105 |     if (exp < pow10_limit<T>) return pow10_table<T, pow10_limit<T>>[exp];
-      |                                      ^
-/home/shared/ws/fixedwide/src/chars.cpp:308:57: note: in instantiation of function template specialization 'fixedwide::detail::pow10_wide<fixedwide::wide::uint128>' requested here
-  308 |         auto divres = divide128(wide::uint128(m, 0ULL), pow10_wide<wide::uint128>(reduce), false);
-      |                                                         ^
-In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-   86 |         if (!(table[i] > table[i - 1])) throw "pow10 table entry overflowed its type";
-      |                                         ^
-In file included from /home/shared/ws/fixedwide/src/chars.cpp:3:
-/home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
-  292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
-      |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/chars.cpp:448:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
-  448 |     auto divres = divmod_knuth(vmag, divisor);
-      |                   ^
-In file included from /home/shared/ws/fixedwide/src/chars.cpp:3:
-/home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  320 |         std::uint64_t u_top = u[j + n];
-      |                                 ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:321:34: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  321 |         std::uint64_t u_next = u[j + n - 1];
-      |                                  ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:322:35: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  322 |         std::uint64_t u_next2 = u[j + n - 2];
-      |                                   ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:351:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  351 |             if (u[j + i] < sub) ++borrow;
-      |                   ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:352:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  352 |             u[j + i] -= sub;
-      |               ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:354:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  354 |         if (u[j + n] < borrow) {
-      |               ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:359:39: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  359 |                 std::uint64_t sum = u[j + i] + v[i] + add_carry;
-      |                                       ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:360:72: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
-      |                                                                        ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:360:38: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
-      |                                      ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:361:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  361 |                 u[j + i] = sum;
-      |                   ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:363:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  363 |             u[j + n] = 0;
-      |               ^ ~
-/home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
-  365 |             u[j + n] -= borrow;
-      |               ^ ~
-16 warnings and 4 errors generated.
-[2/7] Building CXX object CMakeFiles/fixedwide.dir/src/bigint.cpp.o
+[1/7] Building CXX object CMakeFiles/fixedwide.dir/src/bigint.cpp.o
 In file included from /home/shared/ws/fixedwide/src/bigint.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/bigint.hpp:2:
 /home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
@@ -3212,7 +3388,7 @@ In file included from /home/shared/ws/fixedwide/src/bigint.cpp:4:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 16 warnings generated.
-[3/7] Building CXX object CMakeFiles/fixedwide.dir/src/mixed.cpp.o
+[2/7] Building CXX object CMakeFiles/fixedwide.dir/src/mixed.cpp.o
 In file included from /home/shared/ws/fixedwide/src/mixed.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/mixed.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -3270,7 +3446,7 @@ In file included from /home/shared/ws/fixedwide/src/mixed.cpp:3:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 16 warnings generated.
-[4/7] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
+[3/7] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
 In file included from /home/shared/ws/fixedwide/src/integer_chars.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -3284,7 +3460,7 @@ In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
   709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
       |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 3 warnings generated.
-[5/7] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
+[4/7] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
 In file included from /home/shared/ws/fixedwide/src/floating.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/floating.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -3345,9 +3521,72 @@ In file included from /home/shared/ws/fixedwide/src/floating.cpp:3:
   365 |             u[j + n] -= borrow;
       |               ^ ~
 16 warnings generated.
+[5/7] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:1:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/chars.hpp:2:
+In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:703:33: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  703 |     if (v.high != 0) return 128 - wide::countl_zero64(v.high);
+      |                      ~~~~~~ ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:704:31: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  704 |     if (v.low != 0) return 64 - wide::countl_zero64(v.low);
+      |                     ~~~~~~ ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/include/fixedwide/wide.hpp:709:50: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  709 |         if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
+      |                              ~~~~~~ ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:3:
+/home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+  292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
+      |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/src/chars.cpp:448:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
+  448 |     auto divres = divmod_knuth(vmag, divisor);
+      |                   ^
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:3:
+/home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  320 |         std::uint64_t u_top = u[j + n];
+      |                                 ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:321:34: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  321 |         std::uint64_t u_next = u[j + n - 1];
+      |                                  ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:322:35: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  322 |         std::uint64_t u_next2 = u[j + n - 2];
+      |                                   ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:351:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  351 |             if (u[j + i] < sub) ++borrow;
+      |                   ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:352:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  352 |             u[j + i] -= sub;
+      |               ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:354:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  354 |         if (u[j + n] < borrow) {
+      |               ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:359:39: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  359 |                 std::uint64_t sum = u[j + i] + v[i] + add_carry;
+      |                                       ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:360:72: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
+      |                                                                        ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:360:38: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  360 |                 add_carry = (sum < u[j + i]) || (add_carry && sum == u[j + i]) ? 1 : 0;
+      |                                      ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:361:19: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  361 |                 u[j + i] = sum;
+      |                   ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:363:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  363 |             u[j + n] = 0;
+      |               ^ ~
+/home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
+  365 |             u[j + n] -= borrow;
+      |               ^ ~
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
+17 warnings generated.
 [6/7] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
-FAILED: [code=1] CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o 
-/usr/bin/clang++  -I/home/shared/ws/fixedwide/include -I/home/shared/ws/fixedwide/src -fno-exceptions -fno-rtti -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wshadow -MD -MT CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -MF CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o.d -o CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -c /home/shared/ws/fixedwide/src/arithmetic.cpp
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:2:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/fixed.hpp:2:
@@ -3374,71 +3613,12 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:177:39: warning: implicit conversion changes signedness: 'unsigned long long' to 'std::int64_t' (aka 'long') [-Wsign-conversion]
   177 |                 std::int64_t s = 0ULL - u;
       |                              ~   ~~~~~^~~
-In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-   86 |         if (!(table[i] > table[i - 1])) throw "pow10 table entry overflowed its type";
-      |                                         ^
-/home/shared/ws/fixedwide/src/detail.hpp:79:52: note: while substituting into a lambda expression here
-   79 | inline constexpr std::array<T, N> pow10_table = [] {
-      |                                                    ^
-/home/shared/ws/fixedwide/src/detail.hpp:105:38: note: in instantiation of variable template specialization 'fixedwide::detail::pow10_table<long, 19>' requested here
-  105 |     if (exp < pow10_limit<T>) return pow10_table<T, pow10_limit<T>>[exp];
-      |                                      ^
-/home/shared/ws/fixedwide/src/arithmetic.cpp:185:28: note: in instantiation of function template specialization 'fixedwide::detail::pow10_wide<long>' requested here
-  185 |     std::int64_t divisor = pow10_wide<std::int64_t>(cur_dec - target_dec);
-      |                            ^
-In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-   86 |         if (!(table[i] > table[i - 1])) throw "pow10 table entry overflowed its type";
-      |                                         ^
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-/home/shared/ws/fixedwide/src/detail.hpp:79:52: note: while substituting into a lambda expression here
-   79 | inline constexpr std::array<T, N> pow10_table = [] {
-      |                                                    ^
-/home/shared/ws/fixedwide/src/detail.hpp:105:38: note: in instantiation of variable template specialization 'fixedwide::detail::pow10_table<unsigned __int128, 39>' requested here
-  105 |     if (exp < pow10_limit<T>) return pow10_table<T, pow10_limit<T>>[exp];
-      |                                      ^
-/home/shared/ws/fixedwide/src/arithmetic.cpp:473:24: note: in instantiation of function template specialization 'fixedwide::detail::pow10_wide<unsigned __int128>' requested here
-  473 |                        pow10_wide<u128>(decimals), (ra < 0) != (rb < 0), rounding);
-      |                        ^
-In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-   86 |         if (!(table[i] > table[i - 1])) throw "pow10 table entry overflowed its type";
-      |                                         ^
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-/home/shared/ws/fixedwide/src/detail.hpp:79:52: note: while substituting into a lambda expression here
-   79 | inline constexpr std::array<T, N> pow10_table = [] {
-      |                                                    ^
-/home/shared/ws/fixedwide/src/detail.hpp:105:38: note: in instantiation of variable template specialization 'fixedwide::detail::pow10_table<fixedwide::wide::int128, 39>' requested here
-  105 |     if (exp < pow10_limit<T>) return pow10_table<T, pow10_limit<T>>[exp];
-      |                                      ^
-/home/shared/ws/fixedwide/src/arithmetic.cpp:724:20: note: in instantiation of function template specialization 'fixedwide::detail::pow10_wide<fixedwide::wide::int128>' requested here
-  724 |     auto divisor = pow10_wide<wide::int128>(diff);
-      |                    ^
-In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-   86 |         if (!(table[i] > table[i - 1])) throw "pow10 table entry overflowed its type";
-      |                                         ^
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-/home/shared/ws/fixedwide/src/detail.hpp:79:52: note: while substituting into a lambda expression here
-   79 | inline constexpr std::array<T, N> pow10_table = [] {
-      |                                                    ^
-/home/shared/ws/fixedwide/src/detail.hpp:105:38: note: in instantiation of variable template specialization 'fixedwide::detail::pow10_table<fixedwide::wide::int256, 77>' requested here
-  105 |     if (exp < pow10_limit<T>) return pow10_table<T, pow10_limit<T>>[exp];
-      |                                      ^
-/home/shared/ws/fixedwide/src/arithmetic.cpp:762:18: note: in instantiation of function template specialization 'fixedwide::detail::pow10_wide<fixedwide::wide::int256>' requested here
-  762 |     auto scale = pow10_wide<wide::int256>(decimals);
-      |                  ^
-In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
-/home/shared/ws/fixedwide/src/detail.hpp:86:41: error: cannot use 'throw' with exceptions disabled
-   86 |         if (!(table[i] > table[i - 1])) throw "pow10 table entry overflowed its type";
-      |                                         ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:769:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
-  769 |     auto divres = divmod_knuth(prod, s);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:831:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
+  831 |     auto divres = divmod_knuth(prod, s);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -3480,8 +3660,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:860:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
-  860 |     auto divres = divmod_knuth(mag, udiv);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:922:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
+  922 |     auto divres = divmod_knuth(mag, udiv);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -3520,8 +3700,28 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
-32 warnings and 8 errors generated.
-ninja: build stopped: subcommand failed.
+In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
+/home/shared/ws/fixedwide/src/arithmetic.cpp:12:30: warning: unused function 'fits64' [-Wunused-function]
+   12 | [[nodiscard]] constexpr bool fits64(std::int64_t) noexcept { return true; }
+      |                              ^~~~~~
+/home/shared/ws/fixedwide/src/arithmetic.cpp:145:21: warning: unused function 'divide_product_by_scale' [-Wunused-function]
+  145 | inline wide::int128 divide_product_by_scale(wide::int128 product, wide::uint128 scale, Rounding rounding) noexcept {
+      |                     ^~~~~~~~~~~~~~~~~~~~~~~
+/home/shared/ws/fixedwide/src/arithmetic.cpp:245:1: warning: unused function 'divide_signed_general_n' [-Wunused-function]
+  245 | divide_signed_general_n(i128 numerator, i128 divisor, Rounding rounding) noexcept {
+      | ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
+/home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:345:11: warning: unused type alias 'Fixed' [-Wunused-local-typedef]
+  345 |     using Fixed = basic_fixed<Bits, D>;
+      |           ^
+37 warnings generated.
+[7/7] Linking CXX static library libfixedwide.a
 -- The CXX compiler identification is Clang 22.1.8
 -- Detecting CXX compiler ABI info
 -- Detecting CXX compiler ABI info - done
@@ -3778,7 +3978,14 @@ In file included from /home/shared/ws/fixedwide/src/chars.cpp:3:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
-16 warnings generated.
+In file included from /home/shared/ws/fixedwide/src/chars.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
+17 warnings generated.
 [6/8] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 In file included from /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:2:
@@ -3810,8 +4017,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:769:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
-  769 |     auto divres = divmod_knuth(prod, s);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:831:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<8UL, 4UL>' requested here
+  831 |     auto divres = divmod_knuth(prod, s);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -3853,8 +4060,8 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:292:22: warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
   292 |     unsigned shift = std::countl_zero(den.limbs[n - 1]);
       |              ~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/home/shared/ws/fixedwide/src/arithmetic.cpp:860:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
-  860 |     auto divres = divmod_knuth(mag, udiv);
+/home/shared/ws/fixedwide/src/arithmetic.cpp:922:19: note: in instantiation of function template specialization 'fixedwide::detail::divmod_knuth<4UL, 4UL>' requested here
+  922 |     auto divres = divmod_knuth(mag, udiv);
       |                   ^
 In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:320:33: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
@@ -3893,6 +4100,13 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:4:
 /home/shared/ws/fixedwide/src/limbs.hpp:365:15: warning: implicit conversion changes signedness: 'int' to 'std::size_t' (aka 'unsigned long') [-Wsign-conversion]
   365 |             u[j + n] -= borrow;
       |               ^ ~
+In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:2:
+/home/shared/ws/fixedwide/src/detail.hpp:81:16: warning: inline function 'fixedwide::detail::pow10_table_entry_overflowed_its_type' is not defined [-Wundefined-inline]
+   81 | consteval void pow10_table_entry_overflowed_its_type();
+      |                ^
+/home/shared/ws/fixedwide/src/detail.hpp:91:41: note: used here
+   91 |         if (!(table[i] > table[i - 1])) pow10_table_entry_overflowed_its_type();
+      |                                         ^
 /home/shared/ws/fixedwide/src/arithmetic.cpp:12:30: warning: unused function 'fits64' [-Wunused-function]
    12 | [[nodiscard]] constexpr bool fits64(std::int64_t) noexcept { return true; }
       |                              ^~~~~~
@@ -3906,7 +4120,7 @@ In file included from /home/shared/ws/fixedwide/src/arithmetic.cpp:1:
 /home/shared/ws/fixedwide/include/fixedwide/arithmetic.hpp:345:11: warning: unused type alias 'Fixed' [-Wunused-local-typedef]
   345 |     using Fixed = basic_fixed<Bits, D>;
       |           ^
-36 warnings generated.
+37 warnings generated.
 [7/8] Linking CXX static library libfixedwide.a
 [7/8] Install the project...
 -- Install configuration: "Release"

@@ -91,12 +91,26 @@ evidence() { # name status detail file
 
 evidence "Linux x86-64 Clang 17 (ubuntu:24.04 container) Release" executed-pass \
     "23/23 tests; rebuild with scripts/docker_bench.sh" "scripts/Dockerfile.bench"
-evidence "Linux x86-64 Clang 17 paired performance vs 0.4" executed-pass \
-    "100 rows; 27 exceed the gate, reported per row" "reports/raw/clang-17/comparison.csv"
-evidence "Linux x86-64 Clang 18 paired performance vs 0.4" executed-pass \
-    "100 rows; 22 exceed the gate, reported per row" "reports/raw/clang-18/comparison.csv"
-evidence "Linux x86-64 Clang 22 paired performance vs 0.4" executed-pass \
-    "100 rows; 46 exceed the gate, reported per row" "reports/raw/clang-22/comparison.csv"
+# Read the pass/fail counts out of the result files rather than restating them
+# here. Hardcoded counts in this script had already drifted from the CSVs once.
+paired_row() { # label csv
+    local csv="$SRC/$2"
+    if [ ! -e "$csv" ]; then
+        record "$1" "configured-not-executed" "expected evidence $2 is missing"
+        return
+    fi
+    local summary
+    summary=$(python3 -c "
+import csv, sys
+rows = [r for r in csv.DictReader(open(sys.argv[1])) if r.get('delta_pct')]
+over = sum(1 for r in rows if r['verdict'] == 'FAIL')
+print(f'{len(rows)} rows; {over} exceed the gate, reported per row')" "$csv")
+    record "$1" "executed-pass" "$summary"
+}
+
+paired_row "Linux x86-64 Clang 17 paired performance vs 0.4" "reports/raw/clang-17/comparison.csv"
+paired_row "Linux x86-64 Clang 18 paired performance vs 0.4" "reports/raw/clang-18/comparison.csv"
+paired_row "Linux x86-64 Clang 22 paired performance vs 0.4" "reports/raw/clang-22/comparison.csv"
 record "Linux x86-64 GCC paired performance vs 0.4" not-applicable \
     "0.4 requires C++ _BitInt(256) and will not configure under GCC; no paired GCC row can exist without modifying the baseline"
 evidence "Linux AArch64 on real hardware (Pixel 6, static cross build)" executed-pass \

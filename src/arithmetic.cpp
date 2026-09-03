@@ -678,6 +678,68 @@ mul_div128_impl(wide::int128 a, wide::int128 b, wide::int128 c, Rounding roundin
     return wide::int128(rounded->low, rounded->high);
 }
 
+
+// The portable backend forwards the scale-specialised entry points to the
+// runtime-scale kernels. There is no native path to specialise here, but the
+// public header calls the same symbols either way, so they must exist in both
+// configurations or the portable build does not link.
+template<unsigned D>
+std::expected<wide::int128, ArithmeticError>
+mul128_scaled(wide::int128 a, wide::int128 b, Rounding rounding) noexcept {
+    static_assert(D <= max_decimals_for_bits<128>(), "10^D does not fit the 128-bit storage");
+    return mul128_impl(a, b, D, rounding);
+}
+
+template<unsigned D>
+std::expected<wide::int128, ArithmeticError>
+div128_scaled(wide::int128 a, wide::int128 b, Rounding rounding) noexcept {
+    static_assert(D <= max_decimals_for_bits<128>(), "10^D does not fit the 128-bit storage");
+    return div128_impl(a, b, D, rounding);
+}
+
+template<unsigned D>
+std::expected<std::int64_t, ArithmeticError>
+mul64_scaled(std::int64_t a, std::int64_t b, Rounding rounding) noexcept {
+    static_assert(D <= max_decimals_for_bits<64>(), "10^D does not fit the 64-bit storage");
+    return mul64_impl(a, b, scale_v<D, std::int64_t>, rounding);
+}
+
+template<unsigned D>
+std::expected<std::int64_t, ArithmeticError>
+div64_scaled(std::int64_t a, std::int64_t b, Rounding rounding) noexcept {
+    static_assert(D <= max_decimals_for_bits<64>(), "10^D does not fit the 64-bit storage");
+    return div64_impl(a, b, scale_v<D, std::int64_t>, rounding);
+}
+
+#define FIXEDWIDE_INSTANTIATE_128(D)                                                             \
+    template std::expected<wide::int128, ArithmeticError>                                        \
+        mul128_scaled<D>(wide::int128, wide::int128, Rounding) noexcept;                         \
+    template std::expected<wide::int128, ArithmeticError>                                        \
+        div128_scaled<D>(wide::int128, wide::int128, Rounding) noexcept;
+
+#define FIXEDWIDE_INSTANTIATE_64(D)                                                              \
+    template std::expected<std::int64_t, ArithmeticError>                                        \
+        mul64_scaled<D>(std::int64_t, std::int64_t, Rounding) noexcept;                          \
+    template std::expected<std::int64_t, ArithmeticError>                                        \
+        div64_scaled<D>(std::int64_t, std::int64_t, Rounding) noexcept;
+
+#define FIXEDWIDE_INSTANTIATE_BOTH(D) FIXEDWIDE_INSTANTIATE_128(D) FIXEDWIDE_INSTANTIATE_64(D)
+
+FIXEDWIDE_INSTANTIATE_BOTH(0)  FIXEDWIDE_INSTANTIATE_BOTH(1)
+FIXEDWIDE_INSTANTIATE_BOTH(2)  FIXEDWIDE_INSTANTIATE_BOTH(3)
+FIXEDWIDE_INSTANTIATE_BOTH(4)  FIXEDWIDE_INSTANTIATE_BOTH(5)
+FIXEDWIDE_INSTANTIATE_BOTH(6)  FIXEDWIDE_INSTANTIATE_BOTH(7)
+FIXEDWIDE_INSTANTIATE_BOTH(8)  FIXEDWIDE_INSTANTIATE_BOTH(9)
+FIXEDWIDE_INSTANTIATE_BOTH(10) FIXEDWIDE_INSTANTIATE_BOTH(11)
+FIXEDWIDE_INSTANTIATE_BOTH(12) FIXEDWIDE_INSTANTIATE_BOTH(13)
+FIXEDWIDE_INSTANTIATE_BOTH(14) FIXEDWIDE_INSTANTIATE_BOTH(15)
+FIXEDWIDE_INSTANTIATE_BOTH(16) FIXEDWIDE_INSTANTIATE_BOTH(17)
+FIXEDWIDE_INSTANTIATE_BOTH(18)
+FIXEDWIDE_INSTANTIATE_128(19)
+#undef FIXEDWIDE_INSTANTIATE_BOTH
+#undef FIXEDWIDE_INSTANTIATE_64
+#undef FIXEDWIDE_INSTANTIATE_128
+
 #endif // FIXEDWIDE_HAS_NATIVE_128
 
 std::expected<wide::int128, ArithmeticError>
