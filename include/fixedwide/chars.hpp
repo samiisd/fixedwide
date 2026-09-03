@@ -23,6 +23,26 @@ std::expected<wide::int256, ParseError>
 parse_fixed_kernel(std::string_view text, unsigned decimals,
                    Rounding rounding, std::size_t bits) noexcept;
 
+// One entry point per storage width: routing a Fixed64<12> through the 256-bit
+// kernel widened its raw value to 32 bytes and passed it through memory.
+std::expected<std::size_t, FormatError>
+format_fixed_kernel(char* buffer, std::size_t capacity, std::int64_t raw, unsigned decimals,
+                    FormatOptions options) noexcept;
+
+std::expected<std::size_t, FormatError>
+format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw, unsigned decimals,
+                    FormatOptions options) noexcept;
+
+// One entry point per storage width: routing a Fixed64<12> through the 256-bit
+// kernel widened its raw value to 32 bytes and passed it through memory.
+std::expected<std::size_t, FormatError>
+format_fixed_kernel(char* buffer, std::size_t capacity, std::int64_t raw, unsigned decimals,
+                    FormatOptions options) noexcept;
+
+std::expected<std::size_t, FormatError>
+format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw, unsigned decimals,
+                    FormatOptions options) noexcept;
+
 std::expected<std::size_t, FormatError>
 format_fixed_kernel(char* buffer, std::size_t capacity,
                     wide::int256 raw, unsigned decimals,
@@ -54,8 +74,15 @@ to_chars(char* buffer, std::size_t capacity, basic_fixed<Bits, D> value, FormatO
     if (!options.explicit_digits && options.digits == 0) {
         options.digits = D;
     }
-    return detail::format_fixed_kernel(buffer, capacity, detail::to_int256_raw(value.raw()),
-                                       D, options, Bits);
+    if constexpr (Bits <= 64) {
+        return detail::format_fixed_kernel(buffer, capacity, static_cast<std::int64_t>(value.raw()),
+                                           D, options);
+    } else if constexpr (Bits == 128) {
+        return detail::format_fixed_kernel(buffer, capacity, value.raw(), D, options);
+    } else {
+        return detail::format_fixed_kernel(buffer, capacity, detail::to_int256_raw(value.raw()),
+                                           D, options, Bits);
+    }
 }
 
 template<std::size_t Bits, unsigned D>

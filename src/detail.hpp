@@ -1,7 +1,9 @@
 #pragma once
+#include <fixedwide/fixed.hpp>
 #include <fixedwide/error.hpp>
 #include <fixedwide/rounding.hpp>
 #include <fixedwide/wide.hpp>
+#include <array>
 #include <cstdint>
 #include <expected>
 #include <type_traits>
@@ -65,6 +67,87 @@ inline constexpr std::uint64_t pow10_u64[19] = {
 
 [[nodiscard]] constexpr std::uint64_t pow10(unsigned exp) noexcept {
     return exp < 19 ? pow10_u64[exp] : 0ULL;
+}
+
+// compute_pow10 is a shift-add loop. Calling it with a runtime exponent — which
+// is what generalising the scale into a function argument caused — runs that
+// loop on every arithmetic operation. These tables are built once at compile
+// time so a runtime exponent costs one indexed load instead.
+template<typename T, unsigned N>
+inline constexpr std::array<T, N> pow10_table = [] {
+    std::array<T, N> table{};
+    for (unsigned i = 0; i < N; ++i) table[i] = compute_pow10<T>(i);
+    return table;
+}();
+
+// Largest exponent representable in each width: 10^38 < 2^128, 10^77 < 2^256.
+template<typename T>
+inline constexpr unsigned pow10_limit = sizeof(T) >= 32 ? 78u : (sizeof(T) >= 16 ? 39u : 19u);
+
+// Table lookup for any width, falling back to the loop only for exponents that
+// cannot be represented anyway (where the caller already reports overflow).
+template<typename T>
+[[nodiscard]] constexpr T pow10_wide(unsigned exp) noexcept {
+    if (exp < pow10_limit<T>) return pow10_table<T, pow10_limit<T>>[exp];
+    return compute_pow10<T>(exp);
+}
+
+// ---------------------------------------------------------------------------
+// Compile-time decimal scale
+//
+// 0.4 was a single-scale library, so its kernels saw `scale` as a constant and
+// the optimiser folded every bound, branch and 64-bit division that used it.
+// basic_fixed<Bits, D> turned that constant into a function argument, and the
+// cost is not subtle: `i128_max / scale` alone became a __udivti3 call on every
+// division, and `magnitude / scale` lost its reciprocal multiply.
+//
+// with_decimals gives the constant back. One switch at the top of a compiled
+// kernel hands the body an integral_constant, so `scale_of<D>()` is constexpr
+// again. Every call site passes the same D, so the switch target is perfectly
+// predicted. Scales beyond the dispatched range stay correct on the runtime
+// path — they simply do not get the folding.
+// ---------------------------------------------------------------------------
+// i128_max / 10^k, so the division fast path can range-check without issuing a
+// runtime 128-bit divide (which is a __udivti3 call) on every operation.
+template<typename T>
+inline constexpr std::array<T, 39> pow10_bound = [] {
+    std::array<T, 39> table{};
+    const T limit = static_cast<T>((~static_cast<T>(0)) >> 1);
+    for (unsigned i = 0; i < 39; ++i) table[i] = limit / compute_pow10<T>(i);
+    return table;
+}();
+inline constexpr unsigned dynamic_decimals = ~0u;
+
+template<unsigned D, typename T>
+[[nodiscard]] constexpr T scale_of(unsigned decimals) noexcept {
+    if constexpr (D == dynamic_decimals || D >= pow10_limit<T>) return pow10_wide<T>(decimals);
+    else return pow10_table<T, pow10_limit<T>>[D];
+}
+
+template<typename F>
+[[nodiscard]] constexpr decltype(auto) with_decimals(unsigned decimals, F&& f) {
+    switch (decimals) {
+    case  0: return f(std::integral_constant<unsigned,  0>{});
+    case  1: return f(std::integral_constant<unsigned,  1>{});
+    case  2: return f(std::integral_constant<unsigned,  2>{});
+    case  3: return f(std::integral_constant<unsigned,  3>{});
+    case  4: return f(std::integral_constant<unsigned,  4>{});
+    case  5: return f(std::integral_constant<unsigned,  5>{});
+    case  6: return f(std::integral_constant<unsigned,  6>{});
+    case  7: return f(std::integral_constant<unsigned,  7>{});
+    case  8: return f(std::integral_constant<unsigned,  8>{});
+    case  9: return f(std::integral_constant<unsigned,  9>{});
+    case 10: return f(std::integral_constant<unsigned, 10>{});
+    case 11: return f(std::integral_constant<unsigned, 11>{});
+    case 12: return f(std::integral_constant<unsigned, 12>{});
+    case 13: return f(std::integral_constant<unsigned, 13>{});
+    case 14: return f(std::integral_constant<unsigned, 14>{});
+    case 15: return f(std::integral_constant<unsigned, 15>{});
+    case 16: return f(std::integral_constant<unsigned, 16>{});
+    case 17: return f(std::integral_constant<unsigned, 17>{});
+    case 18: return f(std::integral_constant<unsigned, 18>{});
+    default: return f(std::integral_constant<unsigned, dynamic_decimals>{});
+    }
 }
 
 // Low-level primitives for x86-64 / native vs portable
