@@ -1,0 +1,150 @@
+# fresh-extraction verification
+date:    2026-09-03T21:13:05+00:00
+version: 0.5.0-alpha.4
+archive: fixedwide-0.5.0-alpha.4-source.zip
+sha256:  defa13e68410e2c9de0aa9dcddbe3749beba55ce46fc22493e6f6dc914ba560f
+commit:  4c8539c17571f86a8ce18a34951341d4e415ea49
+
+## unzip -t
+No errors detected in compressed data of fixedwide-0.5.0-alpha.4-source.zip.
+no errors in compressed data
+
+## manifest verification inside the extracted tree
+143 files verified, 0 failures
+
+## build and test from the extracted archive
+-- The CXX compiler identification is GNU 16.2.1
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+CMake Warning (policy) at tests/CMakeLists.txt:43 (find_package):
+  Policy CMP0167 is not set: The FindBoost module is removed.  Run "cmake
+  --help-policy CMP0167" for policy details.  Use the cmake_policy command to
+  set the policy and suppress this warning.
+This warning is for project developers.  Use -Wno-author or -Wno-policy to
+suppress it.
+
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/build
+[1/47] Building CXX object tests/CMakeFiles/test_overflow.dir/test_overflow.cpp.o
+[2/47] Building CXX object tests/CMakeFiles/test_rounding.dir/test_rounding.cpp.o
+[3/47] Building CXX object CMakeFiles/fixedwide.dir/src/bigint.cpp.o
+[4/47] Building CXX object CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o
+[5/47] Building CXX object tests/CMakeFiles/audit_portable_div128.dir/audit_portable_div128.cpp.o
+[6/47] Building CXX object tests/CMakeFiles/audit_portable_edges.dir/audit_portable_edges.cpp.o
+[7/47] Building CXX object tests/CMakeFiles/test_wide.dir/test_wide.cpp.o
+[8/47] Building CXX object tests/CMakeFiles/test_binary.dir/test_binary.cpp.o
+[9/47] Building CXX object tests/CMakeFiles/test_storage.dir/test_storage.cpp.o
+[10/47] Building CXX object CMakeFiles/fixedwide.dir/src/chars.cpp.o
+[11/47] Building CXX object tests/CMakeFiles/test_core.dir/test_core.cpp.o
+[12/47] Building CXX object tests/CMakeFiles/test_chars.dir/test_chars.cpp.o
+[13/47] Building CXX object tests/CMakeFiles/test_floating.dir/test_floating.cpp.o
+[14/47] Building CXX object tests/CMakeFiles/test_no_alloc.dir/test_no_alloc.cpp.o
+[15/47] Building CXX object tests/CMakeFiles/audit_floating.dir/audit_floating.cpp.o
+[16/47] Building CXX object tests/CMakeFiles/audit_text_targeted.dir/audit_text_targeted.cpp.o
+[17/47] Building CXX object examples/CMakeFiles/fixedwide_example.dir/example.cpp.o
+[18/47] Building CXX object CMakeFiles/fixedwide.dir/src/floating.cpp.o
+[19/47] Building CXX object tests/CMakeFiles/test_mixed.dir/test_mixed.cpp.o
+[20/47] Building CXX object tests/CMakeFiles/audit_known.dir/audit_known.cpp.o
+[21/47] Building CXX object tests/CMakeFiles/test_signed_min.dir/test_signed_min.cpp.o
+[22/47] Building CXX object CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o
+In file included from /tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/src/arithmetic.cpp:1:
+/tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/include/fixedwide/arithmetic.hpp: In function ‘constexpr std::expected<Target, fixedwide::ArithmeticError> fixedwide::from_integer(Integer)’:
+/tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/include/fixedwide/arithmetic.hpp:142:23: warning: declaration of ‘scale’ shadows a global declaration [-Wshadow]
+  142 |         wide::uint256 scale = detail::to_uint256_raw(Target::scale());
+      |                       ^~~~~
+In file included from /tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/include/fixedwide/arithmetic.hpp:2:
+/tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/include/fixedwide/fixed.hpp:279:31: note: shadowed declaration is here
+  279 | inline constexpr std::int64_t scale = 1'000'000'000'000LL;
+      |                               ^~~~~
+/tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/include/fixedwide/arithmetic.hpp: In function ‘constexpr std::expected<fixedwide::basic_fixed<Bits, Decimals>, fixedwide::ArithmeticError> fixedwide::abs(basic_fixed<Bits, Decimals>)’:
+/tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/include/fixedwide/arithmetic.hpp:317:11: warning: typedef ‘using Fixed = struct fixedwide::basic_fixed<Bits, Decimals>’ locally defined but not used [-Wunused-local-typedefs]
+  317 |     using Fixed = basic_fixed<Bits, D>;
+      |           ^~~~~
+/tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/src/arithmetic.cpp: At global scope:
+/tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/src/arithmetic.cpp:299:1: warning: ‘fixedwide::detail::nat::i128 fixedwide::detail::{anonymous}::divide_product_by_scale_n(fixedwide::detail::nat::i128, fixedwide::detail::nat::u128, fixedwide::Rounding)’ defined but not used [-Wunused-function]
+  299 | divide_product_by_scale_n(i128 product, u128 scale, Rounding rounding) noexcept {
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~
+/tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/src/arithmetic.cpp:244:1: warning: ‘std::expected<__int128, fixedwide::ArithmeticError> fixedwide::detail::{anonymous}::divide_signed_general_n(fixedwide::detail::nat::i128, fixedwide::detail::nat::i128, fixedwide::Rounding)’ defined but not used [-Wunused-function]
+  244 | divide_signed_general_n(i128 numerator, i128 divisor, Rounding rounding) noexcept {
+      | ^~~~~~~~~~~~~~~~~~~~~~~
+[23/47] Building CXX object tests/CMakeFiles/audit_io.dir/audit_io.cpp.o
+[24/47] Building CXX object CMakeFiles/fixedwide.dir/src/mixed.cpp.o
+[25/47] Linking CXX static library libfixedwide.a
+[26/47] Linking CXX executable tests/test_rounding
+[27/47] Linking CXX executable tests/test_chars
+[28/47] Linking CXX executable tests/audit_portable_div128
+[29/47] Linking CXX executable tests/test_storage
+[30/47] Linking CXX executable tests/audit_known
+[31/47] Linking CXX executable tests/test_binary
+[32/47] Linking CXX executable tests/test_core
+[33/47] Linking CXX executable tests/audit_text_targeted
+[34/47] Linking CXX executable tests/audit_floating
+[35/47] Linking CXX executable tests/audit_portable_edges
+[36/47] Linking CXX executable tests/test_mixed
+[37/47] Linking CXX executable tests/audit_io
+[38/47] Linking CXX executable tests/test_signed_min
+[39/47] Linking CXX executable tests/test_wide
+[40/47] Linking CXX executable tests/test_floating
+[41/47] Linking CXX executable examples/fixedwide_example
+[42/47] Linking CXX executable tests/test_no_alloc
+[43/47] Linking CXX executable tests/test_overflow
+[44/47] Building CXX object tests/CMakeFiles/audit_mixed.dir/audit_mixed.cpp.o
+[45/47] Linking CXX executable tests/audit_mixed
+[46/47] Building CXX object tests/CMakeFiles/audit_same_domain.dir/audit_same_domain.cpp.o
+[47/47] Linking CXX executable tests/audit_same_domain
+Test project /tmp/tmp.BHovHEnam9/fixedwide-0.5.0-alpha.4/build
+      Start  1: fixedwide.storage
+ 1/23 Test  #1: fixedwide.storage ........................   Passed    0.00 sec
+      Start  2: fixedwide.wide
+ 2/23 Test  #2: fixedwide.wide ...........................   Passed    0.00 sec
+      Start  3: fixedwide.rounding
+ 3/23 Test  #3: fixedwide.rounding .......................   Passed    0.00 sec
+      Start  4: fixedwide.core
+ 4/23 Test  #4: fixedwide.core ...........................   Passed    0.00 sec
+      Start  5: fixedwide.mixed
+ 5/23 Test  #5: fixedwide.mixed ..........................   Passed    0.00 sec
+      Start  6: fixedwide.chars
+ 6/23 Test  #6: fixedwide.chars ..........................   Passed    0.00 sec
+      Start  7: fixedwide.binary
+ 7/23 Test  #7: fixedwide.binary .........................   Passed    0.00 sec
+      Start  8: fixedwide.floating
+ 8/23 Test  #8: fixedwide.floating .......................   Passed    0.00 sec
+      Start  9: fixedwide.no_alloc
+ 9/23 Test  #9: fixedwide.no_alloc .......................   Passed    0.00 sec
+      Start 10: fixedwide.signed_min
+10/23 Test #10: fixedwide.signed_min .....................   Passed    0.00 sec
+      Start 11: fixedwide.overflow
+11/23 Test #11: fixedwide.overflow .......................   Passed    0.06 sec
+      Start 12: fixedwide.audit.audit_same_domain
+12/23 Test #12: fixedwide.audit.audit_same_domain ........   Passed    0.43 sec
+      Start 13: fixedwide.audit.audit_mixed
+13/23 Test #13: fixedwide.audit.audit_mixed ..............   Passed    0.80 sec
+      Start 14: fixedwide.audit.audit_known
+14/23 Test #14: fixedwide.audit.audit_known ..............   Passed    0.00 sec
+      Start 15: fixedwide.audit.audit_floating
+15/23 Test #15: fixedwide.audit.audit_floating ...........   Passed    0.00 sec
+      Start 16: fixedwide.audit.audit_io
+16/23 Test #16: fixedwide.audit.audit_io .................   Passed    0.01 sec
+      Start 17: fixedwide.audit.audit_text_targeted
+17/23 Test #17: fixedwide.audit.audit_text_targeted ......   Passed    0.00 sec
+      Start 18: fixedwide.audit.audit_portable_edges
+18/23 Test #18: fixedwide.audit.audit_portable_edges .....   Passed    0.00 sec
+      Start 19: fixedwide.audit.audit_portable_div128
+19/23 Test #19: fixedwide.audit.audit_portable_div128 ....   Passed    0.00 sec
+      Start 20: fixedwide.negative.ambiguous_mixed_mul
+20/23 Test #20: fixedwide.negative.ambiguous_mixed_mul ...   Passed    0.04 sec
+      Start 21: fixedwide.negative.invalid_bits
+21/23 Test #21: fixedwide.negative.invalid_bits ..........   Passed    0.03 sec
+      Start 22: fixedwide.negative.invalid_scale
+22/23 Test #22: fixedwide.negative.invalid_scale .........   Passed    0.03 sec
+      Start 23: fixedwide.negative.runtime_scale
+23/23 Test #23: fixedwide.negative.runtime_scale .........   Passed    0.03 sec
+
+100% tests passed out of 23
+
+Total Test time (real) =   1.44 sec
+RESULT: 100% tests passed out of 23
