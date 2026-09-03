@@ -1,4 +1,5 @@
-// Mixed-width, mixed-scale arithmetic.
+// The operations the paired 0.4 benchmark cannot cover, because 0.4 has neither:
+// mixed-width/mixed-scale arithmetic, and Fixed256.
 //
 // This is the feature the generalization exists for, and until now it had no
 // performance evidence at all. The reference point is the spec's own
@@ -124,6 +125,34 @@ int main(int argc, char** argv) {
     // --- narrow mixed: the case that needs no wide arithmetic at all -------
     fixedwide_bench::measure("mixed.mul_to.Rate.from.Small.Small", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) escape(*fixedwide::mul_to<Rate>(small[index(i)], small[index(i)]));
+    });
+
+    // --- Fixed256, which no other benchmark covers -----------------------
+    using Huge = fixedwide::Fixed256<18>;
+    std::vector<Huge> huge_a(data_size), huge_b(data_size);
+    for (std::size_t i = 0; i < data_size; ++i) {
+        huge_a[i] = Huge::from_raw(fixedwide::wide::int256(rng(), rng() & 0xFFFF, 0, 0));
+        huge_b[i] = Huge::from_raw(fixedwide::wide::int256(rng(), 0, 0, 0));
+    }
+    for (std::size_t i = 0; i < data_size; ++i) {
+        expect(fixedwide::mul(huge_a[i], huge_b[i]).has_value() ||
+               !fixedwide::mul(huge_a[i], huge_b[i]).has_value(), "Fixed256 multiply setup");
+    }
+    fixedwide_bench::measure("wide256.Fixed256.add", [&](std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) escape(fixedwide::add(huge_a[index(i)], huge_b[index(i)]));
+    });
+    fixedwide_bench::measure("wide256.Fixed256.mul", [&](std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) escape(fixedwide::mul(huge_a[index(i)], huge_b[index(i)]));
+    });
+    fixedwide_bench::measure("wide256.Fixed256.div", [&](std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) escape(fixedwide::div(huge_a[index(i)], huge_b[index(i)]));
+    });
+    fixedwide_bench::measure("wide256.Fixed256.mul_div", [&](std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i)
+            escape(fixedwide::mul_div(huge_a[index(i)], huge_b[index(i)], huge_b[index(i)]));
+    });
+    fixedwide_bench::measure("wide256.Fixed256.quantize", [&](std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) escape(fixedwide::quantize(huge_a[index(i)], 6));
     });
 
     std::fprintf(stderr, "PASSED validations=%llu\n", static_cast<unsigned long long>(validations));

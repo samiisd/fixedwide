@@ -818,6 +818,29 @@ remainder128_impl(wide::int128 a, wide::int128 b) noexcept {
     return wide::int128(divres.remainder.low, divres.remainder.high);
 }
 
+
+// Divide a wide magnitude by a 256-bit one, taking the single-limb route
+// whenever the divisor allows it -- which it does for every decimal scale up to
+// 19, and therefore every realistic one. The general Knuth divider returns a
+// 96-byte result through memory; a profile of the Fixed256 multiply was
+// dominated by those stack round-trips rather than by the divisions themselves.
+template<std::size_t L>
+struct wide_division {
+    uint_limbs<L> quotient{};
+    u256_limbs remainder{};
+};
+
+template<std::size_t L>
+[[nodiscard]] inline wide_division<L> divide_wide(const uint_limbs<L>& numerator,
+                                                  const u256_limbs& divisor) noexcept {
+    if (divisor.active_limbs() <= 1) {
+        const auto narrow = divmod64(numerator, divisor.limbs[0]);
+        return {narrow.quotient, u256_limbs(narrow.remainder)};
+    }
+    const auto general = divmod_knuth(numerator, divisor);
+    return {general.quotient, general.remainder};
+}
+
 // 256-bit operations using u512_limbs
 std::expected<wide::int256, ArithmeticError>
 mul256_impl(wide::int256 a, wide::int256 b, unsigned decimals, Rounding rounding) noexcept {
@@ -828,7 +851,11 @@ mul256_impl(wide::int256 a, wide::int256 b, unsigned decimals, Rounding rounding
     u512_limbs prod = mul_full(ma, mb);
     u256_limbs s(magnitude(scale));
 
-    auto divres = divmod_knuth(prod, s);
+    // Every decimal count up to 19 gives a scale that fits one limb, which is
+    // every realistic one. Dividing by it directly keeps the whole operation in
+    // this frame; routing it through the general Knuth divider handed a 96-byte
+    // result back through memory on every multiply.
+    const auto divres = divide_wide(prod, s);
     // Check overflow: quotient must fit 256 bits
     for (int i = 4; i < 8; ++i) {
         if (divres.quotient.limbs[i] != 0) return std::unexpected(ArithmeticError::overflow);
@@ -860,7 +887,7 @@ div256_impl(wide::int256 a, wide::int256 b, unsigned decimals, Rounding rounding
     u256_limbs s(magnitude(scale));
     u512_limbs num = mul_full(ma, s);
 
-    auto divres = divmod_knuth(num, mb);
+    auto divres = divide_wide(num, mb);
     for (int i = 4; i < 8; ++i) {
         if (divres.quotient.limbs[i] != 0) return std::unexpected(ArithmeticError::overflow);
     }
@@ -890,7 +917,7 @@ mul_div256_impl(wide::int256 a, wide::int256 b, wide::int256 c, Rounding roundin
     u256_limbs mc(magnitude(c));
     u512_limbs prod = mul_full(ma, mb);
 
-    auto divres = divmod_knuth(prod, mc);
+    auto divres = divide_wide(prod, mc);
     for (int i = 4; i < 8; ++i) {
         if (divres.quotient.limbs[i] != 0) return std::unexpected(ArithmeticError::overflow);
     }
@@ -919,7 +946,7 @@ quantize256_impl(wide::int256 a, unsigned current_dec, unsigned target_dec, Roun
     u256_limbs udiv(magnitude(divisor));
     bool neg = a.is_negative();
     u256_limbs mag(magnitude(a));
-    auto divres = divmod_knuth(mag, udiv);
+    auto divres = divide_wide(mag, udiv);
     u256_limbs limit(wide::uint256::max() >> 1);
     if (neg) limit = limit + u256_limbs(1ULL);
     auto rounded = round_magnitude(divres.quotient, divres.remainder, udiv, neg, rounding, limit);
@@ -947,7 +974,7 @@ remainder256_impl(wide::int256 a, wide::int256 b) noexcept {
     bool neg_num = a.is_negative();
     u256_limbs ma(magnitude(a));
     u256_limbs mb(magnitude(b));
-    auto divres = divmod_knuth(ma, mb);
+    auto divres = divide_wide(ma, mb);
     wide::uint256 ur = divres.remainder.to_uint256();
     if (neg_num) {
         wide::int256 r(ur.limbs[0], ur.limbs[1], ur.limbs[2], ur.limbs[3]);

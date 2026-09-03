@@ -250,13 +250,23 @@ struct DivMod64Result {
     std::uint64_t remainder{0};
 };
 
+// always_inline: the caller keeps the limbs in its own frame instead of handing
+// a 72-byte result back through memory. The profile of a Fixed256 multiply was
+// dominated by exactly those stack round-trips, not by the divisions.
 template<std::size_t L>
-[[nodiscard]] inline DivMod64Result<L> divmod64(const uint_limbs<L>& num, std::uint64_t divisor) noexcept {
+[[nodiscard, gnu::always_inline]] inline DivMod64Result<L> divmod64(const uint_limbs<L>& num, std::uint64_t divisor) noexcept {
     DivMod64Result<L> res{};
     std::uint64_t rem = 0;
-    for (std::size_t i = L; i > 0; --i) {
-        std::uint64_t limb = num.limbs[i - 1];
-        res.quotient.limbs[i - 1] = div128by64(rem, limb, divisor, rem);
+    // Skip leading zero limbs. While the remainder is still zero, a zero limb
+    // yields a zero quotient limb and leaves the remainder zero, so the divide
+    // is pure cost -- and these divides are serially dependent, each waiting on
+    // the previous remainder. A Fixed256 product usually occupies three of the
+    // eight limbs of its 512-bit intermediate, so five of the eight hardware
+    // divisions were being executed for nothing.
+    std::size_t i = L;
+    while (i > 0 && num.limbs[i - 1] == 0) --i;
+    for (; i > 0; --i) {
+        res.quotient.limbs[i - 1] = div128by64(rem, num.limbs[i - 1], divisor, rem);
     }
     res.remainder = rem;
     return res;
