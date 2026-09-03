@@ -27,26 +27,9 @@ std::int64_t max_digits_for_bits(std::size_t bits) noexcept {
 }
 
 u256_limbs limit_for_bits_u256(std::size_t bits, bool negative) noexcept {
+    auto lim256 = detail::limit_for_bits(bits, negative);
     u256_limbs lim{};
-    if (bits == 8) {
-        lim.limbs[0] = static_cast<std::uint64_t>(INT8_MAX) + (negative ? 1 : 0);
-    } else if (bits == 16) {
-        lim.limbs[0] = static_cast<std::uint64_t>(INT16_MAX) + (negative ? 1 : 0);
-    } else if (bits == 32) {
-        lim.limbs[0] = static_cast<std::uint64_t>(INT32_MAX) + (negative ? 1 : 0);
-    } else if (bits == 64) {
-        lim.limbs[0] = static_cast<std::uint64_t>(INT64_MAX) + (negative ? 1 : 0);
-    } else if (bits == 128) {
-        lim.limbs[0] = ~0ULL;
-        lim.limbs[1] = 0x7FFF'FFFF'FFFF'FFFFULL;
-        if (negative) lim.limbs[0] += 1;
-    } else { // 256
-        lim.limbs[0] = ~0ULL;
-        lim.limbs[1] = ~0ULL;
-        lim.limbs[2] = ~0ULL;
-        lim.limbs[3] = 0x7FFF'FFFF'FFFF'FFFFULL;
-        if (negative) lim.limbs[0] += 1;
-    }
+    for (int i = 0; i < 4; ++i) lim.limbs[i] = lim256.limbs[i];
     return lim;
 }
 
@@ -108,16 +91,9 @@ parse_fixed_kernel(std::string_view text, unsigned decimals,
     if (keep > max_d) return std::unexpected(ParseError::overflow);
 
     if (bits <= 128) {
-        std::uint64_t lim_lo = ~0ULL;
-        std::uint64_t lim_hi = (bits == 128) ? 0x7FFF'FFFF'FFFF'FFFFULL : 0ULL;
-        if (bits == 64) lim_lo = static_cast<std::uint64_t>(INT64_MAX);
-        else if (bits == 32) lim_lo = static_cast<std::uint64_t>(INT32_MAX);
-        else if (bits == 16) lim_lo = static_cast<std::uint64_t>(INT16_MAX);
-        else if (bits == 8) lim_lo = static_cast<std::uint64_t>(INT8_MAX);
-        if (negative) {
-            lim_lo += 1;
-            if (lim_lo == 0) lim_hi += 1;
-        }
+        auto lim256 = detail::limit_for_bits(bits, negative);
+        std::uint64_t lim_lo = lim256.limbs[0];
+        std::uint64_t lim_hi = lim256.limbs[1];
 #if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
         unsigned __int128 limit = (static_cast<unsigned __int128>(lim_hi) << 64) | lim_lo;
         unsigned __int128 cutoff = limit / 10;
@@ -217,8 +193,8 @@ parse_fixed_kernel(std::string_view text, unsigned decimals,
 
     wide::uint256 uq = rounded->to_uint256();
     if (negative) {
-        wide::int256 s(uq.limbs[0], uq.limbs[1], uq.limbs[2], uq.limbs[3]);
-        return -s;
+        wide::uint256 neg_uq = ~uq + wide::uint256(1ULL);
+        return wide::int256(neg_uq.limbs[0], neg_uq.limbs[1], neg_uq.limbs[2], neg_uq.limbs[3]);
     }
     return wide::int256(uq.limbs[0], uq.limbs[1], uq.limbs[2], uq.limbs[3]);
 }

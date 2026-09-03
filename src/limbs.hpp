@@ -224,6 +224,25 @@ template<std::size_t L1, std::size_t L2>
     return res;
 }
 
+template<std::size_t L>
+constexpr uint_limbs<L> operator*(const uint_limbs<L>& a, const uint_limbs<L>& b) noexcept {
+    uint_limbs<L> res{};
+    for (std::size_t i = 0; i < L; ++i) {
+        std::uint64_t carry = 0;
+        for (std::size_t j = 0; i + j < L; ++j) {
+            std::uint64_t hi, lo;
+            mul64x64(a.limbs[i], b.limbs[j], hi, lo);
+            std::uint64_t s1 = res.limbs[i + j] + lo;
+            std::uint64_t c1 = (s1 < lo) ? 1 : 0;
+            std::uint64_t s2 = s1 + carry;
+            std::uint64_t c2 = (s2 < s1) ? 1 : 0;
+            res.limbs[i + j] = s2;
+            carry = hi + c1 + c2;
+        }
+    }
+    return res;
+}
+
 // Multi-limb division by a 64-bit divisor
 template<std::size_t L>
 struct DivMod64Result {
@@ -370,5 +389,13 @@ using u256_limbs = uint_limbs<4>;
 using u512_limbs = uint_limbs<8>;
 using u768_limbs = uint_limbs<12>;
 using u1024_limbs = uint_limbs<16>;
+
+inline u1024_limbs pow10_limbs(unsigned exp) noexcept {
+    u1024_limbs v(1ULL);
+    for (unsigned i = 0; i < exp; ++i) {
+        v = (v << 3) + (v << 1);
+    }
+    return v;
+}
 
 } // namespace fixedwide::detail

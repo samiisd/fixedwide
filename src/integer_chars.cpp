@@ -9,11 +9,11 @@
 namespace fixedwide::detail {
 
 namespace {
-char* append_chunk_reverse(char* end, std::uint64_t chunk, bool pad) noexcept {
+char* append_chunk_reverse(char* end, std::uint64_t chunk, bool pad, std::size_t pad_width) noexcept {
     char digits[24];
     const auto result = std::to_chars(digits, digits + sizeof(digits), chunk);
     const auto count = static_cast<std::size_t>(result.ptr - digits);
-    const std::size_t width = pad ? 19 : count;
+    const std::size_t width = pad ? pad_width : count;
     end -= width;
     std::memset(end, '0', width - count);
     std::memcpy(end + width - count, digits, count);
@@ -23,12 +23,12 @@ char* append_chunk_reverse(char* end, std::uint64_t chunk, bool pad) noexcept {
 
 char* integer_digits(char* end, wide::uint128 value) noexcept {
     if (value.high == 0) {
-        return append_chunk_reverse(end, value.low, false);
+        return append_chunk_reverse(end, value.low, false, 19);
     }
     constexpr std::uint64_t base = 10'000'000'000'000'000'000ULL; // 10^19
     do {
         const auto result = divide128by64(value, base);
-        end = append_chunk_reverse(end, result.remainder.low, !result.quotient.is_zero());
+        end = append_chunk_reverse(end, result.remainder.low, !result.quotient.is_zero(), 19);
         value = result.quotient;
     } while (!value.is_zero());
     return end;
@@ -39,7 +39,7 @@ char* integer_digits(char* end, wide::uint256 value) noexcept {
     u256_limbs v(value);
     do {
         const auto result = divmod64(v, base);
-        end = append_chunk_reverse(end, result.remainder, !result.quotient.is_zero());
+        end = append_chunk_reverse(end, result.remainder, !result.quotient.is_zero(), 18);
         v = result.quotient;
     } while (!v.is_zero());
     return end;

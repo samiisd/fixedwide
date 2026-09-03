@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(fixedwide VERSION 1.0.0 LANGUAGES CXX)
+project(fixedwide VERSION 0.5.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -24,6 +24,7 @@ add_library(fixedwide
     src/chars.cpp
     src/integer_chars.cpp
     src/floating.cpp
+    src/bigint.cpp
 )
 add_library(fixedwide::fixedwide ALIAS fixedwide)
 

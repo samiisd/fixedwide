@@ -12,3 +12,4 @@
 #include <fixedwide/string.hpp>
 #include <fixedwide/format.hpp>
 #include <fixedwide/iostream.hpp>
+#include <fixedwide/version.hpp>

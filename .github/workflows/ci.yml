@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [ { cc: clang-18, cxx: clang++-18 }, { cc: gcc-14, cxx: g++-14 } ]
+        build_type: [ Debug, Release ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libboost-dev cmake ninja-build
+
+      - name: Configure CMake
+        env:
+          CC: ${{ matrix.compiler.cc }}
+          CXX: ${{ matrix.compiler.cxx }}
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DFIXEDWIDE_BUILD_TESTS=ON \
+            -DFIXEDWIDE_BUILD_EXAMPLES=ON \
+            -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Run Tests
+        run: ctest --test-dir build --output-on-failure
+
+  sanitizers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 libboost-dev cmake ninja-build
+
+      - name: Configure with ASan & UBSan
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DFIXEDWIDE_SANITIZE=ON \
+            -DFIXEDWIDE_BUILD_TESTS=ON
+
+      - name: Build and Test
+        run: |
+          cmake --build build
+          ctest --test-dir build --output-on-failure

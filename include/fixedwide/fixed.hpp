@@ -5,6 +5,10 @@
 #include <compare>
 #include <type_traits>
 
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__)) && !defined(FIXEDWIDE_FORCE_PORTABLE)
+#  define FIXEDWIDE_HAS_X86_64_ASM 1
+#endif
+
 namespace fixedwide {
 
 template<typename T>
@@ -15,6 +19,67 @@ constexpr T compute_pow10(unsigned exp) noexcept {
     }
     return res;
 }
+
+namespace detail {
+
+template<std::size_t Bits>
+[[nodiscard]] constexpr wide::uint256 limit_magnitude_u256(bool negative) noexcept {
+    static_assert(Bits == 8 || Bits == 16 || Bits == 32 || Bits == 64 || Bits == 128 || Bits == 256,
+                  "Invalid bit width for limit_magnitude_u256");
+    wide::uint256 lim{};
+    if (negative) {
+        if constexpr (Bits == 8) {
+            lim.limbs[0] = 0x80ULL;
+        } else if constexpr (Bits == 16) {
+            lim.limbs[0] = 0x8000ULL;
+        } else if constexpr (Bits == 32) {
+            lim.limbs[0] = 0x8000'0000ULL;
+        } else if constexpr (Bits == 64) {
+            lim.limbs[0] = 0x8000'0000'0000'0000ULL;
+        } else if constexpr (Bits == 128) {
+            lim.limbs[0] = 0ULL;
+            lim.limbs[1] = 0x8000'0000'0000'0000ULL;
+        } else if constexpr (Bits == 256) {
+            lim.limbs[0] = 0ULL;
+            lim.limbs[1] = 0ULL;
+            lim.limbs[2] = 0ULL;
+            lim.limbs[3] = 0x8000'0000'0000'0000ULL;
+        }
+    } else {
+        if constexpr (Bits == 8) {
+            lim.limbs[0] = 0x7FULL;
+        } else if constexpr (Bits == 16) {
+            lim.limbs[0] = 0x7FFFULL;
+        } else if constexpr (Bits == 32) {
+            lim.limbs[0] = 0x7FFF'FFFFULL;
+        } else if constexpr (Bits == 64) {
+            lim.limbs[0] = 0x7FFF'FFFF'FFFF'FFFFULL;
+        } else if constexpr (Bits == 128) {
+            lim.limbs[0] = ~0ULL;
+            lim.limbs[1] = 0x7FFF'FFFF'FFFF'FFFFULL;
+        } else if constexpr (Bits == 256) {
+            lim.limbs[0] = ~0ULL;
+            lim.limbs[1] = ~0ULL;
+            lim.limbs[2] = ~0ULL;
+            lim.limbs[3] = 0x7FFF'FFFF'FFFF'FFFFULL;
+        }
+    }
+    return lim;
+}
+
+[[nodiscard]] constexpr wide::uint256 limit_for_bits(std::size_t bits, bool negative) noexcept {
+    switch (bits) {
+    case 8: return limit_magnitude_u256<8>(negative);
+    case 16: return limit_magnitude_u256<16>(negative);
+    case 32: return limit_magnitude_u256<32>(negative);
+    case 64: return limit_magnitude_u256<64>(negative);
+    case 128: return limit_magnitude_u256<128>(negative);
+    case 256: return limit_magnitude_u256<256>(negative);
+    default: return wide::uint256{};
+    }
+}
+
+} // namespace detail
 
 template<std::size_t Bits>
 struct raw_type_helper;
@@ -56,6 +121,25 @@ struct basic_fixed {
     }
 
     constexpr basic_fixed() noexcept : m_raw(0) {}
+
+    template<std::size_t OtherBits>
+        requires (OtherBits < Bits)
+    explicit constexpr basic_fixed(basic_fixed<OtherBits, Decimals> other) noexcept
+        : m_raw(0) {
+        if constexpr (Bits <= 64) {
+            m_raw = static_cast<raw_type>(other.raw());
+        } else if constexpr (Bits == 128) {
+            if constexpr (OtherBits <= 64) {
+                m_raw = wide::int128(static_cast<std::int64_t>(other.raw()));
+            }
+        } else {
+            if constexpr (OtherBits <= 64) {
+                m_raw = wide::int256(static_cast<std::int64_t>(other.raw()));
+            } else if constexpr (OtherBits == 128) {
+                m_raw = wide::int256(other.raw());
+            }
+        }
+    }
 
     [[nodiscard]] static constexpr basic_fixed from_raw(raw_type r) noexcept {
         basic_fixed f;
@@ -118,6 +202,44 @@ constexpr wide::int256 to_int256_raw(T val) noexcept {
         return wide::int256(val);
     } else {
         return wide::int256(static_cast<std::int64_t>(val));
+    }
+}
+
+template<class T>
+constexpr wide::uint256 to_uint256_raw(T val) noexcept {
+    if constexpr (std::is_same_v<T, wide::uint256>) {
+        return val;
+    } else if constexpr (std::is_same_v<T, wide::int256>) {
+        return wide::uint256(val.limbs[0], val.limbs[1], val.limbs[2], val.limbs[3]);
+    } else if constexpr (std::is_same_v<T, wide::uint128>) {
+        return wide::uint256(val.low, val.high, 0, 0);
+    } else if constexpr (std::is_same_v<T, wide::int128>) {
+        return wide::uint256(val.low, val.high, 0, 0);
+    } else {
+        return wide::uint256(static_cast<std::uint64_t>(val));
+    }
+}
+
+template<std::size_t Bits, unsigned Decimals>
+consteval wide::uint256 max_integer_allowed(bool negative) noexcept {
+    auto lim = limit_magnitude_u256<Bits>(negative);
+    if constexpr (Decimals == 0) {
+        return lim;
+    } else {
+        auto sc = to_uint256_raw(basic_fixed<Bits, Decimals>::scale());
+        wide::uint256 q{};
+        wide::uint256 rem{};
+        for (int i = 255; i >= 0; --i) {
+            rem = rem << 1;
+            unsigned limb_idx = static_cast<unsigned>(i / 64);
+            unsigned bit_idx = static_cast<unsigned>(i % 64);
+            rem.limbs[0] |= (lim.limbs[limb_idx] >> bit_idx) & 1ULL;
+            if (rem >= sc) {
+                rem = rem - sc;
+                q.limbs[limb_idx] |= (1ULL << bit_idx);
+            }
+        }
+        return q;
     }
 }
 

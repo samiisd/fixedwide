@@ -42,7 +42,7 @@ template<class UInt>
 }
 
 // Low-level primitives for x86-64 / native vs portable
-#if defined(__x86_64__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__)) && !defined(FIXEDWIDE_FORCE_PORTABLE)
 
 [[nodiscard]] inline std::uint64_t div128by64(std::uint64_t high, std::uint64_t low,
                                               std::uint64_t divisor, std::uint64_t& remainder) noexcept {
@@ -130,7 +130,7 @@ struct SignedQuotient64 { std::int64_t quotient; std::int64_t remainder; };
         ulo = ~ulo + 1;
         uhi = ~uhi + (ulo == 0 ? 1 : 0);
     }
-    std::uint64_t udiv = static_cast<std::uint64_t>(neg_den ? -divisor : divisor);
+    std::uint64_t udiv = neg_den ? (0ULL - static_cast<std::uint64_t>(divisor)) : static_cast<std::uint64_t>(divisor);
     std::uint64_t urem;
     std::uint64_t uq = div128by64(uhi, ulo, udiv, urem);
     std::int64_t q = static_cast<std::int64_t>(uq);
@@ -142,8 +142,8 @@ struct SignedQuotient64 { std::int64_t quotient; std::int64_t remainder; };
 
 inline void imul64x64(std::int64_t u, std::int64_t v, std::int64_t& hi, std::uint64_t& lo) noexcept {
     bool neg = (u < 0) != (v < 0);
-    std::uint64_t uu = static_cast<std::uint64_t>(u < 0 ? -u : u);
-    std::uint64_t vv = static_cast<std::uint64_t>(v < 0 ? -v : v);
+    std::uint64_t uu = u < 0 ? (0ULL - static_cast<std::uint64_t>(u)) : static_cast<std::uint64_t>(u);
+    std::uint64_t vv = v < 0 ? (0ULL - static_cast<std::uint64_t>(v)) : static_cast<std::uint64_t>(v);
     std::uint64_t h, l;
     mul64x64(uu, vv, h, l);
     if (neg) {
@@ -195,8 +195,14 @@ struct Quotient128 { wide::uint128 quotient; wide::uint128 remainder; };
     std::uint64_t u1 = norm_n.high;
     std::uint64_t u0 = norm_n.low;
 
-    std::uint64_t rhat;
-    std::uint64_t qhat = (u2 == v1) ? ~0ULL : div128by64(u2, u1, v1, rhat);
+    std::uint64_t rhat = 0;
+    std::uint64_t qhat;
+    if (u2 == v1) {
+        qhat = ~0ULL;
+        rhat = u1 + v1;
+    } else {
+        qhat = div128by64(u2, u1, v1, rhat);
+    }
     std::uint64_t ph, pl;
     mul64x64(qhat, v0, ph, pl);
     while (qhat != ~0ULL && (ph > rhat || (ph == rhat && pl > u0))) {

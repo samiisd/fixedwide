@@ -1,88 +1,120 @@
 #include <fixedwide/floating.hpp>
 #include "detail.hpp"
+#include "limbs.hpp"
 #include <cmath>
 
 namespace fixedwide::detail {
 
+namespace {
+
+template<typename Float>
 std::expected<wide::int256, ArithmeticError>
-from_float_kernel(double value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
-    if (std::isnan(value) || std::isinf(value)) return std::unexpected(ArithmeticError::invalid_value);
-    double scale = std::pow(10.0, static_cast<double>(decimals));
-    double scaled = value * scale;
-
-    double rounded_val = 0.0;
-    switch (rounding) {
-    case Rounding::toward_zero:
-        rounded_val = std::trunc(scaled);
-        break;
-    case Rounding::floor:
-        rounded_val = std::floor(scaled);
-        break;
-    case Rounding::ceil:
-        rounded_val = std::ceil(scaled);
-        break;
-    case Rounding::nearest_away:
-        rounded_val = std::round(scaled);
-        break;
-    case Rounding::nearest_even: {
-        double t = std::trunc(scaled);
-        double diff = std::abs(scaled - t);
-        if (diff == 0.5) {
-            double half = t / 2.0;
-            rounded_val = (half == std::trunc(half)) ? t : (scaled > 0 ? t + 1.0 : t - 1.0);
-        } else {
-            rounded_val = std::round(scaled);
-        }
-        break;
+from_float_impl(Float value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
+    if (std::isnan(value) || std::isinf(value)) {
+        return std::unexpected(ArithmeticError::invalid_value);
     }
-    case Rounding::exact:
-        if (scaled != std::trunc(scaled)) return std::unexpected(ArithmeticError::inexact);
-        rounded_val = scaled;
-        break;
+    if (value == Float(0.0)) {
+        return wide::int256{};
     }
 
-    double max_lim, min_lim;
-    if (bits == 8)   { max_lim = INT8_MAX; min_lim = INT8_MIN; }
-    else if (bits == 16)  { max_lim = INT16_MAX; min_lim = INT16_MIN; }
-    else if (bits == 32)  { max_lim = INT32_MAX; min_lim = INT32_MIN; }
-    else if (bits == 64)  { max_lim = static_cast<double>(INT64_MAX); min_lim = static_cast<double>(INT64_MIN); }
-    else if (bits == 128) { max_lim = 1.7e38; min_lim = -1.7e38; }
-    else { max_lim = 1e76; min_lim = -1e76; }
+    bool negative = std::signbit(value);
+    int exp = 0;
+    Float m = 0;
+    if constexpr (std::is_same_v<Float, long double>) {
+        m = std::abs(std::frexpl(value, &exp));
+    } else {
+        m = std::abs(std::frexp(value, &exp));
+    }
 
-    if (rounded_val > max_lim || rounded_val < min_lim) {
+    constexpr int sig_bits = (sizeof(Float) == sizeof(float)) ? 24 : (sizeof(Float) == sizeof(double)) ? 53 : 64;
+    Float scaled_m = 0;
+    if constexpr (std::is_same_v<Float, long double>) {
+        scaled_m = std::ldexpl(m, sig_bits);
+    } else {
+        scaled_m = std::ldexp(m, sig_bits);
+    }
+
+    std::uint64_t significand = static_cast<std::uint64_t>(scaled_m);
+    int pwr = exp - sig_bits;
+
+    if (pwr > 300) {
         return std::unexpected(ArithmeticError::overflow);
     }
 
-    if (bits <= 64) {
-        return wide::int256(static_cast<std::int64_t>(rounded_val));
+    u1024_limbs num = u1024_limbs(significand) * pow10_limbs(decimals);
+    u1024_limbs den(1ULL);
+
+    if (pwr >= 0) {
+        num = num << static_cast<unsigned>(pwr);
+    } else {
+        unsigned neg_pwr = static_cast<unsigned>(-pwr);
+        if (neg_pwr >= 1024) {
+            num = u1024_limbs(0ULL);
+        } else {
+            den = den << neg_pwr;
+        }
     }
 
-    // Wide conversion
-    bool neg = rounded_val < 0;
-    double m = std::abs(rounded_val);
-    std::uint64_t l0 = static_cast<std::uint64_t>(std::fmod(m, 18446744073709551616.0));
-    m = std::floor(m / 18446744073709551616.0);
-    std::uint64_t l1 = static_cast<std::uint64_t>(std::fmod(m, 18446744073709551616.0));
-    m = std::floor(m / 18446744073709551616.0);
-    std::uint64_t l2 = static_cast<std::uint64_t>(std::fmod(m, 18446744073709551616.0));
-    m = std::floor(m / 18446744073709551616.0);
-    std::uint64_t l3 = static_cast<std::uint64_t>(std::fmod(m, 18446744073709551616.0));
+    auto divres = divmod_knuth(num, den);
+    auto lim256 = detail::limit_for_bits(bits, negative);
+    u1024_limbs limit{};
+    for (int i = 0; i < 4; ++i) limit.limbs[i] = lim256.limbs[i];
 
-    wide::int256 res(l0, l1, l2, l3);
-    if (neg) return -res;
-    return res;
+    if (divres.quotient > limit) {
+        return std::unexpected(ArithmeticError::overflow);
+    }
+
+    auto rounded = round_magnitude(divres.quotient, divres.remainder, den, negative, rounding, limit);
+    if (!rounded) return std::unexpected(rounded.error());
+
+    wide::uint256 uq(rounded->limbs[0], rounded->limbs[1], rounded->limbs[2], rounded->limbs[3]);
+    if (negative) {
+        wide::uint256 neg_uq = ~uq + wide::uint256(1ULL);
+        return wide::int256(neg_uq.limbs[0], neg_uq.limbs[1], neg_uq.limbs[2], neg_uq.limbs[3]);
+    }
+    return wide::int256(uq.limbs[0], uq.limbs[1], uq.limbs[2], uq.limbs[3]);
 }
 
-double to_float_kernel(wide::int256 raw, unsigned decimals) noexcept {
+template<typename Float>
+Float to_float_impl(wide::int256 raw, unsigned decimals) noexcept {
     bool neg = raw.is_negative();
     auto mag = magnitude(raw);
-    double d = static_cast<double>(mag.limbs[0]) +
-               static_cast<double>(mag.limbs[1]) * 18446744073709551616.0 +
-               static_cast<double>(mag.limbs[2]) * 18446744073709551616.0 * 18446744073709551616.0 +
-               static_cast<double>(mag.limbs[3]) * 18446744073709551616.0 * 18446744073709551616.0 * 18446744073709551616.0;
-    double scale = std::pow(10.0, static_cast<double>(decimals));
-    double res = d / scale;
+    Float d = static_cast<Float>(mag.limbs[0]) +
+              static_cast<Float>(mag.limbs[1]) * std::ldexp(Float(1.0), 64) +
+              static_cast<Float>(mag.limbs[2]) * std::ldexp(Float(1.0), 128) +
+              static_cast<Float>(mag.limbs[3]) * std::ldexp(Float(1.0), 192);
+    Float scale = std::pow(Float(10.0), static_cast<Float>(decimals));
+    Float res = d / scale;
     return neg ? -res : res;
+}
+
+} // namespace
+
+std::expected<wide::int256, ArithmeticError>
+from_float_kernel(float value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
+    return from_float_impl(value, decimals, rounding, bits);
+}
+
+std::expected<wide::int256, ArithmeticError>
+from_float_kernel(double value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
+    return from_float_impl(value, decimals, rounding, bits);
+}
+
+std::expected<wide::int256, ArithmeticError>
+from_float_kernel(long double value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
+    return from_float_impl(value, decimals, rounding, bits);
+}
+
+float to_float_kernel(wide::int256 raw, unsigned decimals, float) noexcept {
+    return to_float_impl<float>(raw, decimals);
+}
+
+double to_float_kernel(wide::int256 raw, unsigned decimals, double) noexcept {
+    return to_float_impl<double>(raw, decimals);
+}
+
+long double to_float_kernel(wide::int256 raw, unsigned decimals, long double) noexcept {
+    return to_float_impl<long double>(raw, decimals);
 }
 
 } // namespace fixedwide::detail

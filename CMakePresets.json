@@ -1,0 +1,105 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default Debug",
+      "description": "Debug build with unit tests enabled",
+      "binaryDir": "${sourceDir}/build/default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "FIXEDWIDE_BUILD_TESTS": "ON",
+        "FIXEDWIDE_BUILD_EXAMPLES": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "description": "Optimized release build",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "FIXEDWIDE_BUILD_TESTS": "ON",
+        "FIXEDWIDE_BUILD_EXAMPLES": "ON"
+      }
+    },
+    {
+      "name": "sanitize",
+      "displayName": "Sanitizers (ASan + UBSan)",
+      "description": "Debug build with AddressSanitizer and UndefinedBehaviorSanitizer",
+      "binaryDir": "${sourceDir}/build/sanitize",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "FIXEDWIDE_SANITIZE": "ON",
+        "FIXEDWIDE_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "coverage",
+      "displayName": "Coverage",
+      "description": "Build with instrumentation for code coverage",
+      "binaryDir": "${sourceDir}/build/coverage",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "FIXEDWIDE_COVERAGE": "ON",
+        "FIXEDWIDE_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "benchmarks",
+      "displayName": "Benchmarks",
+      "description": "Optimized Release build with benchmarks and oracle tests",
+      "binaryDir": "${sourceDir}/build/benchmarks",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "FIXEDWIDE_BUILD_BENCHMARKS": "ON",
+        "FIXEDWIDE_BUILD_ORACLE_TESTS": "ON",
+        "FIXEDWIDE_BUILD_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    },
+    {
+      "name": "sanitize",
+      "configurePreset": "sanitize"
+    },
+    {
+      "name": "coverage",
+      "configurePreset": "coverage"
+    },
+    {
+      "name": "benchmarks",
+      "configurePreset": "benchmarks"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "sanitize",
+      "configurePreset": "sanitize",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

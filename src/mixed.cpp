@@ -6,13 +6,6 @@ namespace fixedwide::detail {
 
 namespace {
 
-u1024_limbs pow10_limbs(unsigned exp) noexcept {
-    u1024_limbs v(1ULL);
-    for (unsigned i = 0; i < exp; ++i) {
-        v = (v << 3) + (v << 1);
-    }
-    return v;
-}
 
 u1024_limbs make_u1024(wide::uint256 val) noexcept {
     u1024_limbs res{};
@@ -21,26 +14,9 @@ u1024_limbs make_u1024(wide::uint256 val) noexcept {
 }
 
 u1024_limbs limit_for_bits(std::size_t bits, bool negative) noexcept {
+    auto lim256 = detail::limit_for_bits(bits, negative);
     u1024_limbs lim{};
-    if (bits == 8) {
-        lim.limbs[0] = static_cast<std::uint64_t>(INT8_MAX) + (negative ? 1 : 0);
-    } else if (bits == 16) {
-        lim.limbs[0] = static_cast<std::uint64_t>(INT16_MAX) + (negative ? 1 : 0);
-    } else if (bits == 32) {
-        lim.limbs[0] = static_cast<std::uint64_t>(INT32_MAX) + (negative ? 1 : 0);
-    } else if (bits == 64) {
-        lim.limbs[0] = static_cast<std::uint64_t>(INT64_MAX) + (negative ? 1 : 0);
-    } else if (bits == 128) {
-        lim.limbs[0] = ~0ULL;
-        lim.limbs[1] = 0x7FFF'FFFF'FFFF'FFFFULL;
-        if (negative) lim.limbs[0] += 1;
-    } else { // 256
-        lim.limbs[0] = ~0ULL;
-        lim.limbs[1] = ~0ULL;
-        lim.limbs[2] = ~0ULL;
-        lim.limbs[3] = 0x7FFF'FFFF'FFFF'FFFFULL;
-        if (negative) lim.limbs[0] += 1;
-    }
+    for (int i = 0; i < 4; ++i) lim.limbs[i] = lim256.limbs[i];
     return lim;
 }
 
@@ -58,8 +34,8 @@ evaluate_rational(bool negative, const u1024_limbs& num, const u1024_limbs& den,
 
     wide::uint256 uq(rounded->limbs[0], rounded->limbs[1], rounded->limbs[2], rounded->limbs[3]);
     if (negative) {
-        wide::int256 s(uq.limbs[0], uq.limbs[1], uq.limbs[2], uq.limbs[3]);
-        return -s;
+        wide::uint256 neg_uq = ~uq + wide::uint256(1ULL);
+        return wide::int256(neg_uq.limbs[0], neg_uq.limbs[1], neg_uq.limbs[2], neg_uq.limbs[3]);
     }
     return wide::int256(uq.limbs[0], uq.limbs[1], uq.limbs[2], uq.limbs[3]);
 }

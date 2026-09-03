@@ -59,3 +59,10 @@ struct std::hash<fixedwide::wide::int256> {
         return seed;
     }
 };
+
+namespace fixedwide {
+template<std::size_t Bits, unsigned D>
+[[nodiscard]] inline std::size_t hash_value(basic_fixed<Bits, D> v) noexcept {
+    return std::hash<basic_fixed<Bits, D>>{}(v);
+}
+} // namespace fixedwide

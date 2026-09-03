@@ -7,6 +7,23 @@
 using namespace fixedwide;
 namespace mp = boost::multiprecision;
 
+#define ALWAYS_CHECK(cond) \
+    do { \
+        if (!(cond)) { \
+            std::cerr << "ORACLE CHECK FAILED: " #cond << " at " << __FILE__ << ":" << __LINE__ << "\n"; \
+            std::abort(); \
+        } \
+    } while (0)
+
+#define ALWAYS_CHECK_EQ(a, b) \
+    do { \
+        if (!((a) == (b))) { \
+            std::cerr << "ORACLE CHECK FAILED: " #a " == " #b \
+                      << " (" << (a) << " vs " << (b) << ") at " << __FILE__ << ":" << __LINE__ << "\n"; \
+            std::abort(); \
+        } \
+    } while (0)
+
 // Exact rational oracle with all 6 rounding modes
 struct OracleResult {
     bool ok{false};
@@ -115,7 +132,7 @@ void test_same_domain_oracle(int iterations) {
             auto oracle_mul = round_rational(num_mul, scale, rm, min_val, max_val);
             auto fw_mul = mul(a, b, rm);
 
-            assert(oracle_mul.ok == fw_mul.has_value());
+            ALWAYS_CHECK_EQ(oracle_mul.ok, fw_mul.has_value());
             if (oracle_mul.ok) {
                 mp::cpp_int fw_val;
                 if constexpr (F::bits <= 64) fw_val = fw_mul->raw();
@@ -131,7 +148,7 @@ void test_same_domain_oracle(int iterations) {
                     for (int k = 3; k >= 0; --k) fw_val = (fw_val << 64) | mag.limbs[k];
                     if (neg) fw_val = -fw_val;
                 }
-                assert(oracle_mul.value == fw_val);
+                ALWAYS_CHECK_EQ(oracle_mul.value, fw_val);
             }
 
             // Test div: (raw_a * scale) / raw_b
@@ -139,7 +156,7 @@ void test_same_domain_oracle(int iterations) {
             auto oracle_div = round_rational(num_div, raw_b, rm, min_val, max_val);
             auto fw_div = div(a, b, rm);
 
-            assert(oracle_div.ok == fw_div.has_value());
+            ALWAYS_CHECK_EQ(oracle_div.ok, fw_div.has_value());
             if (oracle_div.ok) {
                 mp::cpp_int fw_val;
                 if constexpr (F::bits <= 64) fw_val = fw_div->raw();
@@ -155,7 +172,7 @@ void test_same_domain_oracle(int iterations) {
                     for (int k = 3; k >= 0; --k) fw_val = (fw_val << 64) | mag.limbs[k];
                     if (neg) fw_val = -fw_val;
                 }
-                assert(oracle_div.value == fw_val);
+                ALWAYS_CHECK_EQ(oracle_div.value, fw_val);
             }
         }
     }
@@ -187,42 +204,42 @@ void test_mixed_oracle(int iterations) {
         bool lt_oracle = (left < right);
         bool gt_oracle = (left > right);
 
-        assert((a == b) == eq_oracle);
-        assert((a < b) == lt_oracle);
-        assert((a > b) == gt_oracle);
+        ALWAYS_CHECK_EQ(a == b, eq_oracle);
+        ALWAYS_CHECK_EQ(a < b, lt_oracle);
+        ALWAYS_CHECK_EQ(a > b, gt_oracle);
 
         // Mixed mul_to<Dest>: (ra / 10^4) * (rb / 10^8) * 10^12 = ra * rb
         mp::cpp_int num = mp::cpp_int(ra) * rb;
         auto oracle_mul = round_rational(num, 1, Rounding::nearest_even, min_val, max_val);
         auto fw_mul = mul_to<Dest>(a, b, Rounding::nearest_even);
 
-        assert(oracle_mul.ok == fw_mul.has_value());
+        ALWAYS_CHECK_EQ(oracle_mul.ok, fw_mul.has_value());
         if (oracle_mul.ok) {
             bool neg = fw_mul->raw().is_negative();
             auto mag = magnitude(fw_mul->raw());
             mp::cpp_int fw_val = (mp::cpp_int(mag.high) << 64) | mag.low;
             if (neg) fw_val = -fw_val;
-            assert(oracle_mul.value == fw_val);
+            ALWAYS_CHECK_EQ(oracle_mul.value, fw_val);
         }
     }
 }
 
 int main() {
     std::cout << "Running Boost.Multiprecision differential oracle tests...\n";
-    test_same_domain_oracle<Fixed8<2>>(500);
+    test_same_domain_oracle<Fixed8<2>>(2000);
     std::cout << "Fixed8 oracle passed.\n";
-    test_same_domain_oracle<Fixed16<4>>(500);
+    test_same_domain_oracle<Fixed16<4>>(2000);
     std::cout << "Fixed16 oracle passed.\n";
-    test_same_domain_oracle<Fixed32<9>>(500);
+    test_same_domain_oracle<Fixed32<9>>(2000);
     std::cout << "Fixed32 oracle passed.\n";
-    test_same_domain_oracle<Fixed64<12>>(500);
+    test_same_domain_oracle<Fixed64<12>>(2000);
     std::cout << "Fixed64 oracle passed.\n";
-    test_same_domain_oracle<Fixed128<12>>(500);
+    test_same_domain_oracle<Fixed128<12>>(2000);
     std::cout << "Fixed128 oracle passed.\n";
-    test_same_domain_oracle<Fixed256<18>>(200);
+    test_same_domain_oracle<Fixed256<18>>(1000);
     std::cout << "Fixed256 oracle passed.\n";
 
-    test_mixed_oracle(500);
+    test_mixed_oracle(2000);
     std::cout << "Mixed oracle passed.\n";
 
     std::cout << "ALL DIFFERENTIAL ORACLE TESTS PASSED PERFECTLY!\n";

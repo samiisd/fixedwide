@@ -75,7 +75,10 @@ int main() {
     // Assert that NO allocations occurred
     int total_allocations = g_alloc_count.load();
     std::cout << "Total heap allocations during fixedwide operations: " << total_allocations << "\n";
-    assert(total_allocations == 0);
+    if (total_allocations != 0) {
+        std::cerr << "FAIL: heap allocations occurred: " << total_allocations << "\n";
+        return 1;
+    }
 
     std::cout << "ZERO HEAP ALLOCATION VERIFIED!\n";
     return 0;

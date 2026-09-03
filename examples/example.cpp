@@ -28,9 +28,9 @@ int main() {
     // Format output with trailing zeros trimmed
     auto str = to_string(*notional, FormatOptions{.trim_trailing_zeros = true});
 
-    std::printf("Price:    %s\n", to_string(*price).c_str());
-    std::printf("Quantity: %s\n", to_string(*qty).c_str());
-    std::printf("Notional: %s\n", str.c_str());
+    std::printf("Price:    %s\n", to_string(*price).value().c_str());
+    std::printf("Quantity: %s\n", to_string(*qty).value().c_str());
+    std::printf("Notional: %s\n", str.value().c_str());
 
     // Binary serialization
     auto bytes = to_bytes<endian::little>(*notional);

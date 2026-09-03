@@ -19,6 +19,26 @@ if(FIXEDWIDE_BUILD_TESTS)
         add_test(NAME fixedwide.${NAME} COMMAND test_${NAME})
     endforeach()
 
+    set(AUDIT_TESTS
+        audit_same_domain
+        audit_mixed
+        audit_known
+        audit_floating
+        audit_io
+        audit_text_targeted
+        audit_portable_edges
+        audit_portable_div128
+    )
+
+    foreach(NAME ${AUDIT_TESTS})
+        add_executable(${NAME} ${NAME}.cpp)
+        target_link_libraries(${NAME} PRIVATE fixedwide::fixedwide)
+        target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+        target_include_directories(${NAME} PRIVATE ${CMAKE_SOURCE_DIR})
+        target_include_directories(${NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
+        add_test(NAME fixedwide.audit.${NAME} COMMAND ${NAME})
+    endforeach()
+
     # Negative compilation tests (must fail to compile)
     set(NEGATIVE_TESTS
         ambiguous_mixed_mul

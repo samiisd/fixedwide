@@ -21,14 +21,39 @@ struct alignas(8) uint128 {
     constexpr uint128(std::uint64_t lo, std::uint64_t hi = 0) noexcept : low(lo), high(hi) {}
 
 #if defined(__SIZEOF_INT128__)
-    template<typename T>
-        requires std::is_same_v<T, unsigned __int128>
-    constexpr explicit uint128(T v) noexcept
+    constexpr uint128(unsigned __int128 v) noexcept
         : low(static_cast<std::uint64_t>(v)), high(static_cast<std::uint64_t>(v >> 64)) {}
+    constexpr uint128(__int128 v) noexcept
+        : low(static_cast<std::uint64_t>(v)), high(static_cast<std::uint64_t>(static_cast<unsigned __int128>(v) >> 64)) {}
     constexpr explicit operator unsigned __int128() const noexcept {
         return (static_cast<unsigned __int128>(high) << 64) | low;
     }
+    constexpr explicit operator __int128() const noexcept {
+        return static_cast<__int128>((static_cast<unsigned __int128>(high) << 64) | low);
+    }
 #endif
+#if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 128
+    constexpr uint128(unsigned _BitInt(128) v) noexcept
+        : low(static_cast<std::uint64_t>(v)), high(static_cast<std::uint64_t>(v >> 64)) {}
+    constexpr uint128(_BitInt(128) v) noexcept
+        : low(static_cast<std::uint64_t>(v)), high(static_cast<std::uint64_t>(static_cast<unsigned _BitInt(128)>(v) >> 64)) {}
+    constexpr explicit operator unsigned _BitInt(128)() const noexcept {
+        return (static_cast<unsigned _BitInt(128)>(high) << 64) | low;
+    }
+    constexpr explicit operator _BitInt(128)() const noexcept {
+        return static_cast<_BitInt(128)>((static_cast<unsigned _BitInt(128)>(high) << 64) | low);
+    }
+#endif
+    template<std::integral T>
+    constexpr uint128(T val) noexcept {
+        if constexpr (std::is_signed_v<T>) {
+            low = static_cast<std::uint64_t>(val);
+            high = val < 0 ? ~0ULL : 0ULL;
+        } else {
+            low = static_cast<std::uint64_t>(val);
+            high = 0ULL;
+        }
+    }
 
     [[nodiscard]] static constexpr uint128 min() noexcept { return {0ULL, 0ULL}; }
     [[nodiscard]] static constexpr uint128 max() noexcept { return {~0ULL, ~0ULL}; }
@@ -126,15 +151,34 @@ struct alignas(8) int128 {
 
     constexpr int128() noexcept = default;
     constexpr int128(std::uint64_t lo, std::uint64_t hi) noexcept : low(lo), high(hi) {}
+#if defined(__SIZEOF_INT128__)
+    constexpr int128(__int128 val) noexcept
+        : low(static_cast<std::uint64_t>(val)),
+          high(static_cast<std::uint64_t>(static_cast<unsigned __int128>(val) >> 64)) {}
+    constexpr int128(unsigned __int128 val) noexcept
+        : low(static_cast<std::uint64_t>(val)),
+          high(static_cast<std::uint64_t>(val >> 64)) {}
+    constexpr explicit operator __int128() const noexcept {
+        return static_cast<__int128>((static_cast<unsigned __int128>(high) << 64) | low);
+    }
+    constexpr explicit operator unsigned __int128() const noexcept {
+        return (static_cast<unsigned __int128>(high) << 64) | low;
+    }
+#endif
+#if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 128
+    constexpr int128(_BitInt(128) v) noexcept
+        : low(static_cast<std::uint64_t>(v)), high(static_cast<std::uint64_t>(static_cast<unsigned _BitInt(128)>(v) >> 64)) {}
+    constexpr int128(unsigned _BitInt(128) v) noexcept
+        : low(static_cast<std::uint64_t>(v)), high(static_cast<std::uint64_t>(v >> 64)) {}
+    constexpr explicit operator _BitInt(128)() const noexcept {
+        return static_cast<_BitInt(128)>((static_cast<unsigned _BitInt(128)>(high) << 64) | low);
+    }
+    constexpr explicit operator unsigned _BitInt(128)() const noexcept {
+        return (static_cast<unsigned _BitInt(128)>(high) << 64) | low;
+    }
+#endif
     template<std::integral T>
     constexpr int128(T val) noexcept {
-#if defined(__SIZEOF_INT128__)
-        if constexpr (sizeof(T) > 8) {
-            low = static_cast<std::uint64_t>(val);
-            high = static_cast<std::uint64_t>(static_cast<unsigned __int128>(val) >> 64);
-            return;
-        }
-#endif
         if constexpr (std::is_signed_v<T>) {
             low = static_cast<std::uint64_t>(val);
             high = val < 0 ? ~0ULL : 0ULL;
@@ -143,12 +187,6 @@ struct alignas(8) int128 {
             high = 0ULL;
         }
     }
-
-#if defined(__SIZEOF_INT128__)
-    constexpr explicit operator __int128() const noexcept {
-        return static_cast<__int128>((static_cast<unsigned __int128>(high) << 64) | low);
-    }
-#endif
 
     [[nodiscard]] static constexpr int128 min() noexcept { return {0ULL, 0x8000'0000'0000'0000ULL}; }
     [[nodiscard]] static constexpr int128 max() noexcept { return {~0ULL, 0x7FFF'FFFF'FFFF'FFFFULL}; }
@@ -221,6 +259,39 @@ struct alignas(8) uint256 {
     constexpr uint256(std::uint64_t l0, std::uint64_t l1, std::uint64_t l2, std::uint64_t l3) noexcept
         : limbs{l0, l1, l2, l3} {}
     constexpr uint256(uint128 v) noexcept : limbs{v.low, v.high, 0, 0} {}
+#if defined(__SIZEOF_INT128__)
+    constexpr uint256(unsigned __int128 v) noexcept
+        : limbs{static_cast<std::uint64_t>(v), static_cast<std::uint64_t>(v >> 64), 0, 0} {}
+    constexpr uint256(__int128 v) noexcept {
+        unsigned __int128 uv = static_cast<unsigned __int128>(v);
+        std::uint64_t sign = v < 0 ? ~0ULL : 0ULL;
+        limbs[0] = static_cast<std::uint64_t>(uv);
+        limbs[1] = static_cast<std::uint64_t>(uv >> 64);
+        limbs[2] = sign;
+        limbs[3] = sign;
+    }
+#endif
+#if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 256
+    constexpr uint256(unsigned _BitInt(256) v) noexcept
+        : limbs{static_cast<std::uint64_t>(v),
+                static_cast<std::uint64_t>(v >> 64),
+                static_cast<std::uint64_t>(v >> 128),
+                static_cast<std::uint64_t>(v >> 192)} {}
+    constexpr uint256(_BitInt(256) v) noexcept
+        : uint256(static_cast<unsigned _BitInt(256)>(v)) {}
+    constexpr explicit operator unsigned _BitInt(256)() const noexcept {
+        return (static_cast<unsigned _BitInt(256)>(limbs[3]) << 192) |
+               (static_cast<unsigned _BitInt(256)>(limbs[2]) << 128) |
+               (static_cast<unsigned _BitInt(256)>(limbs[1]) << 64) |
+               static_cast<unsigned _BitInt(256)>(limbs[0]);
+    }
+    constexpr explicit operator _BitInt(256)() const noexcept {
+        return static_cast<_BitInt(256)>((static_cast<unsigned _BitInt(256)>(limbs[3]) << 192) |
+               (static_cast<unsigned _BitInt(256)>(limbs[2]) << 128) |
+               (static_cast<unsigned _BitInt(256)>(limbs[1]) << 64) |
+               static_cast<unsigned _BitInt(256)>(limbs[0]));
+    }
+#endif
     template<std::integral T>
     constexpr uint256(T val) noexcept {
         if constexpr (std::is_signed_v<T>) {
@@ -246,6 +317,10 @@ struct alignas(8) uint256 {
             if (auto cmp = limbs[i] <=> o.limbs[i]; cmp != 0) return cmp;
         }
         return std::strong_ordering::equal;
+    }
+
+    constexpr explicit operator uint128() const noexcept {
+        return uint128(limbs[0], limbs[1]);
     }
 
     constexpr uint256 operator~() const noexcept {
@@ -364,6 +439,43 @@ struct alignas(8) int256 {
     constexpr int256() noexcept = default;
     constexpr int256(std::uint64_t l0, std::uint64_t l1, std::uint64_t l2, std::uint64_t l3) noexcept
         : limbs{l0, l1, l2, l3} {}
+    constexpr int256(uint128 v) noexcept : limbs{v.low, v.high, 0, 0} {}
+#if defined(__SIZEOF_INT128__)
+    constexpr int256(unsigned __int128 v) noexcept
+        : limbs{static_cast<std::uint64_t>(v), static_cast<std::uint64_t>(v >> 64), 0, 0} {}
+    constexpr int256(__int128 v) noexcept {
+        unsigned __int128 uv = static_cast<unsigned __int128>(v);
+        std::uint64_t sign = v < 0 ? ~0ULL : 0ULL;
+        limbs[0] = static_cast<std::uint64_t>(uv);
+        limbs[1] = static_cast<std::uint64_t>(uv >> 64);
+        limbs[2] = sign;
+        limbs[3] = sign;
+    }
+#endif
+#if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 256
+    constexpr int256(_BitInt(256) v) noexcept
+        : limbs{static_cast<std::uint64_t>(v),
+                static_cast<std::uint64_t>(static_cast<unsigned _BitInt(256)>(v) >> 64),
+                static_cast<std::uint64_t>(static_cast<unsigned _BitInt(256)>(v) >> 128),
+                static_cast<std::uint64_t>(static_cast<unsigned _BitInt(256)>(v) >> 192)} {}
+    constexpr int256(unsigned _BitInt(256) v) noexcept
+        : limbs{static_cast<std::uint64_t>(v),
+                static_cast<std::uint64_t>(v >> 64),
+                static_cast<std::uint64_t>(v >> 128),
+                static_cast<std::uint64_t>(v >> 192)} {}
+    constexpr explicit operator _BitInt(256)() const noexcept {
+        return static_cast<_BitInt(256)>((static_cast<unsigned _BitInt(256)>(limbs[3]) << 192) |
+               (static_cast<unsigned _BitInt(256)>(limbs[2]) << 128) |
+               (static_cast<unsigned _BitInt(256)>(limbs[1]) << 64) |
+               static_cast<unsigned _BitInt(256)>(limbs[0]));
+    }
+    constexpr explicit operator unsigned _BitInt(256)() const noexcept {
+        return (static_cast<unsigned _BitInt(256)>(limbs[3]) << 192) |
+               (static_cast<unsigned _BitInt(256)>(limbs[2]) << 128) |
+               (static_cast<unsigned _BitInt(256)>(limbs[1]) << 64) |
+               static_cast<unsigned _BitInt(256)>(limbs[0]);
+    }
+#endif
     template<std::integral T>
     constexpr int256(T val) noexcept {
         if constexpr (std::is_signed_v<T>) {
@@ -522,17 +634,105 @@ template<std::integral T> constexpr int128 operator-(int128 a, T b) noexcept { r
 template<std::integral T> constexpr int128 operator-(T a, int128 b) noexcept { return int128(a) - b; }
 
 template<std::integral T> constexpr int128 operator/(int128 a, T b) noexcept {
-#if defined(__SIZEOF_INT128__)
+#if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
     return int128(static_cast<__int128>(a) / static_cast<__int128>(b));
 #else
     bool neg = a.is_negative() != (b < 0);
     uint128 ma = magnitude(a);
-    uint64_t mb = static_cast<uint64_t>(b < 0 ? -b : b);
-    uint64_t rem;
-    uint64_t qlo = detail::div128by64(ma.high, ma.low, mb, rem);
-    uint128 q(qlo, 0);
+    uint64_t mb = static_cast<uint64_t>(b < 0 ? 0ULL - static_cast<uint64_t>(b) : static_cast<uint64_t>(b));
+    uint64_t qhi = ma.high / mb;
+    uint64_t rem = ma.high % mb;
+    uint64_t qlo = 0;
+    for (int i = 63; i >= 0; --i) {
+        uint64_t carry = (rem >> 63) & 1;
+        rem = (rem << 1) | ((ma.low >> i) & 1);
+        if (carry || rem >= mb) {
+            rem -= mb;
+            qlo |= (1ULL << i);
+        }
+    }
+    uint128 q(qlo, qhi);
     return neg ? -int128(q.low, q.high) : int128(q.low, q.high);
 #endif
+}
+
+constexpr uint128 operator/(uint128 a, uint128 b) noexcept {
+#if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
+    if (b.is_zero()) return uint128{};
+    return uint128(static_cast<unsigned __int128>(a) / static_cast<unsigned __int128>(b));
+#else
+    if (b.is_zero() || a < b) return uint128{};
+    uint128 q{};
+    uint128 rem{};
+    for (int i = 127; i >= 0; --i) {
+        rem = rem << 1;
+        unsigned limb_idx = static_cast<unsigned>(i / 64);
+        unsigned bit_idx = static_cast<unsigned>(i % 64);
+        std::uint64_t limb = (limb_idx == 1) ? a.high : a.low;
+        rem.low |= (limb >> bit_idx) & 1ULL;
+        if (rem >= b) {
+            rem = rem - b;
+            if (limb_idx == 1) q.high |= (1ULL << bit_idx);
+            else q.low |= (1ULL << bit_idx);
+        }
+    }
+    return q;
+#endif
+}
+
+constexpr uint128 operator%(uint128 a, uint128 b) noexcept {
+#if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
+    if (b.is_zero()) return uint128{};
+    return uint128(static_cast<unsigned __int128>(a) % static_cast<unsigned __int128>(b));
+#else
+    if (b.is_zero()) return uint128{};
+    if (a < b) return a;
+    uint128 rem{};
+    for (int i = 127; i >= 0; --i) {
+        rem = rem << 1;
+        unsigned limb_idx = static_cast<unsigned>(i / 64);
+        unsigned bit_idx = static_cast<unsigned>(i % 64);
+        std::uint64_t limb = (limb_idx == 1) ? a.high : a.low;
+        rem.low |= (limb >> bit_idx) & 1ULL;
+        if (rem >= b) {
+            rem = rem - b;
+        }
+    }
+    return rem;
+#endif
+}
+
+constexpr uint256 operator/(uint256 a, uint256 b) noexcept {
+    if (b.is_zero() || a < b) return uint256{};
+    uint256 q{};
+    uint256 rem{};
+    for (int i = 255; i >= 0; --i) {
+        rem = rem << 1;
+        unsigned limb_idx = static_cast<unsigned>(i / 64);
+        unsigned bit_idx = static_cast<unsigned>(i % 64);
+        rem.limbs[0] |= (a.limbs[limb_idx] >> bit_idx) & 1ULL;
+        if (rem >= b) {
+            rem = rem - b;
+            q.limbs[limb_idx] |= (1ULL << bit_idx);
+        }
+    }
+    return q;
+}
+
+constexpr uint256 operator%(uint256 a, uint256 b) noexcept {
+    if (b.is_zero()) return uint256{};
+    if (a < b) return a;
+    uint256 rem{};
+    for (int i = 255; i >= 0; --i) {
+        rem = rem << 1;
+        unsigned limb_idx = static_cast<unsigned>(i / 64);
+        unsigned bit_idx = static_cast<unsigned>(i % 64);
+        rem.limbs[0] |= (a.limbs[limb_idx] >> bit_idx) & 1ULL;
+        if (rem >= b) {
+            rem = rem - b;
+        }
+    }
+    return rem;
 }
 
 } // namespace fixedwide::wide
