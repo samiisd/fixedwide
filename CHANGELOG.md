@@ -64,9 +64,28 @@ predecessor. The type system and public API are unchanged.
   macOS arm64 and x86-64, Windows MSVC and clang-cl, both sanitizer backends,
   the portable and no-`__int128` configurations, and the install consumer.
 
+- Scale-specialised kernels: `mul128_scaled<D>`, `div128_scaled<D>`,
+  `mul64_scaled<D>` and `div64_scaled<D>` are declared in the public header and
+  explicitly instantiated per decimal count, so a compiled kernel sees the scale
+  as a compile-time constant exactly as 0.4's did. `i128_max / scale` is a
+  constant again rather than a `__udivti3` call per division.
+- The rounding increment is branchless. Whether a rounding mode increments is a
+  coin flip on real data, so branching on it mispredicted on nearly every
+  operation: 17.3 million branch misses over 12.3 million wide multiplies, at an
+  otherwise identical instruction count. The wide nearest-even multiply went
+  from 11.05 ns to 6.07 ns, past 0.4's 6.25 ns.
+- `parse_fixed_kernel` is templated on the destination width and explicitly
+  instantiated, with a fast path for plain decimals whose kept digits fit 64
+  bits. Parsing went from 6-11% slower than 0.4 to 17-19% faster, and is now
+  faster than Boost.Decimal on the same contract.
+- `pow10` tables are sized from the per-width decimal cap rather than
+  `sizeof(T)`, which had left a silently wrapped `10^77` in the last slot of the
+  signed 256-bit table. The table builder now rejects any entry that failed to
+  exceed its predecessor, so a scale that wraps is a compile error.
+
 ### Known limitations
-- The performance gate against 0.4 does not pass. Wide `Fixed128` operations
-  remain up to +67% on Clang 17. Reported per row in
+- The performance gate against 0.4 does not pass. Wide `Fixed128` `mul_div` and
+  some `div` rows remain up to +63% on Clang 17. Reported per row in
   `reports/BENCHMARK_VS_0_4.md`, not averaged away.
 - No paired GCC performance row can exist: 0.4 requires C++ `_BitInt(256)` and
   will not configure under GCC.

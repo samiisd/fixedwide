@@ -16,7 +16,7 @@ alpha.3. The type system is unchanged.
 |---|---|
 | 75/100 rows slower than 0.4 on Clang 17 | Root-caused and partly fixed. See `reports/BENCHMARK_VS_0_4.md`. |
 | Performance reported from one compiler | The gate now runs on Clang 17, 18 and 22, with a measured noise floor. |
-| `arithmetic.hpp` +68.9% compile time | Now +37.5% on this host, measured with instantiation included. |
+| `arithmetic.hpp` +68.9% compile time | Now +38.2% on this host, measured with instantiation included. |
 | Competitor suite not reproducible | Rebuilt: pinned FetchContent, medians, validated outputs, semantic classes. |
 | MSVC claim unsupported | The header-level blockers are removed. Still not executed; marked as such. |
 | AArch64 claim unsupported | Executed on real hardware: 17/17 on a Pixel 6. |
@@ -53,23 +53,32 @@ core-pinned and interleaved, medians of 27 samples. Full per-row output in
 
 | Clang 17, versus 0.4 | alpha.3 | alpha.4 |
 |---|---:|---:|
-| rows faster than 0.4 | 42 | 43 |
-| rows >5% slower | 32 | 27 |
-| rows >10% slower | 22 | 16 |
-| rows >25% slower | 15 | 10 |
-| worst row | +161.0% | +66.9% |
+| rows faster than 0.4 | 42 | 48 |
+| rows >5% slower | 32 | 20 |
+| rows >10% slower | 22 | 11 |
+| rows >25% slower | 15 | 7 |
+| worst row | +161.0% | +63.0% |
+| median row | +0.9% | +0.5% |
 
-**This does not meet the release gate.** The remaining gap is the wide
-`Fixed128` paths, and the cause is structural rather than an oversight: 0.4 was
-a single-scale library whose kernels saw the scale as a compile-time constant.
-The alternative — one compiled kernel per decimal count — was implemented and
-measured, and it was slower.
+**This does not meet the release gate.** What remains is the wide `Fixed128`
+paths, chiefly `mul_div`, whose divisor is a runtime value and so offers the
+kernel no constant to fold.
+
+An earlier draft of this file called the gap *structural*, on the grounds that a
+generalized `basic_fixed<Bits, D>` cannot hand a compiled kernel a constant
+scale. That was wrong: `D` is a compile-time constant at every call site. The
+kernels are templated on it and explicitly instantiated per decimal count, and
+they now see the scale exactly as 0.4's did.
 
 ## Known open items
 
-1. Wide `Fixed128` multiply, divide and `mul_div` remain up to +67% on Clang 17.
-2. Decimal parsing is about 4x slower than `std::from_chars` on a `double`, and
-   6-11% slower than 0.4.
-3. `arithmetic.hpp` costs about 37% more to include than 0.4's.
-4. Windows and macOS are configured in CI but have never been executed.
-5. Big-endian byte order is implemented in `binary.hpp` but never executed.
+1. Wide `Fixed128` `mul_div` and some `div` rows remain up to +63% on Clang 17.
+2. Decimal parsing is about 2x slower than `std::from_chars` on a `double`. It is
+   now 17-19% faster than 0.4 and faster than Boost.Decimal, which does the
+   comparable job; `std::from_chars` produces a binary float and rejects nothing
+   on a decimal grid.
+3. Formatting is faster than 0.4 and than `std::to_chars` on a `double`, but
+   slower than Boost.Decimal (14.9 ns against 12.4 ns).
+4. `arithmetic.hpp` costs about 38% more to include than 0.4's.
+5. Windows and macOS are configured in CI but have never been executed.
+6. Big-endian byte order is implemented in `binary.hpp` but never executed.

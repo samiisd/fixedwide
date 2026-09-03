@@ -128,28 +128,30 @@ benchmark source with the same compiler and flags, core-pinned and interleaved,
 medians of 27 samples per row.
 
 **The generalized version is not yet at parity with 0.4, and this README will
-say so until it is.** On Clang 17, 27 of 100 rows are more than 5% slower and the
-worst is +67%; the previous release's worst was +161%. The gap is concentrated in
-wide `Fixed128` multiply, divide and `mul_div`, and its cause is structural: 0.4
-was a single-scale library whose kernels saw the decimal scale as a compile-time
-constant.
+say so until it is.** On Clang 17, 20 of 100 rows are more than 5% slower and the
+worst is +63%; the previous release's figures were 32 rows and +161%. What
+remains is concentrated in wide `Fixed128` `mul_div`, whose divisor is a runtime
+value with nothing for the compiler to fold.
 
 Where this version is ahead of 0.4:
 
-- reduced-digit formatting: **10-30% faster**
+- decimal parsing: **17-19% faster**
+- reduced-digit formatting: **12-32% faster**
 - toward-zero `quantize`: **36% faster**
-- 43 of 100 benchmark rows are at or faster than 0.4
+- 48 of 100 benchmark rows are at or faster than 0.4
 
 Against other libraries, by semantic class and with every timed result validated
 outside the timed region ([full table](reports/BENCHMARK_COMPETITORS.md)):
 
 - versus **Boost.Decimal** `decimal64_t`, the closest comparable contract:
-  multiply 2.6 ns vs 3.6 ns, divide 2.2 ns vs 8.7 ns
+  multiply 2.6 ns vs 3.6 ns, divide 2.2 ns vs 8.7 ns, parse 11.5 ns vs 14.2 ns.
+  Formatting is the one row it loses: 14.9 ns vs 12.4 ns.
 - **formatting** is about twice as fast as `std::to_chars` on a `double`
 - **CNL's unchecked decimal multiply is about 8x faster** than the checked one
   here. That is the cost of returning `std::expected` on overflow instead of
   silently producing a wrong answer, and it is stated rather than omitted.
-- **parsing is about 4x slower** than `std::from_chars` on a `double`
+- **parsing is about 2x slower** than `std::from_chars` on a `double`, which
+  produces a binary float and rejects nothing on a decimal grid
 
 Per-row results, raw samples, the measured noise floor and the environment for
 every compiler are in [`reports/BENCHMARK_VS_0_4.md`](reports/BENCHMARK_VS_0_4.md)
