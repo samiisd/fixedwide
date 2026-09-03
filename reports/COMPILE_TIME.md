@@ -1,20 +1,16 @@
-# Compile-Time & Header Parsing Benchmark: fixedwide 0.5.0-alpha.3
+# Compile-time and object size versus 0.4
 
-## Methodology
-Measured parsing and syntax-checking duration using Clang 22.1.8:
-```bash
-clang++ -std=c++23 -Iinclude -fsyntax-only -x c++ -
-```
+Compiler: `clang version 22.1.8`
+Flags: `-std=c++23 -O2 -c`. Median of 11 runs after one warmup.
+Host: Linux 7.2.0-1-cachyos x86_64
+Date: 2026-09-03T20:59:17+00:00
 
-## Results Across Releases
+Each row compiles a translation unit that includes one header and
+instantiates the work that header exists for, so the number covers
+template instantiation and not only parsing.
 
-| Header Included | 0.4.0 Baseline | 0.5.0-alpha.2 | 0.5.0-alpha.3 | Delta vs alpha.2 | Gate Status |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| `<fixedwide/fixed.hpp>` | 52.5 ms | 79.3 ms | **30.0 ms** | **-62.2%** | **PASS** |
-| `<fixedwide/arithmetic.hpp>` | 77.2 ms | 152.8 ms | **47.1 ms** | **-69.2%** | **PASS** |
-| `<fixedwide/chars.hpp>` | 176.9 ms | 198.1 ms | **71.7 ms** | **-63.8%** | **PASS** |
-| `<fixedwide/wide.hpp>` | 38.1 ms | 41.2 ms | **24.5 ms** | **-40.5%** | **PASS** |
-
-## Key Optimizations
-1. **`max_integer_allowed`**: Replaced consteval 256-iteration Knuth long-division loop with direct single-word division for `Bits <= 64`.
-2. **Modular Inlining**: Shifted heavy multi-precision fallback routines to compiled source translation units (`arithmetic.cpp`, `chars.cpp`) while retaining inlined hardware fast paths in headers.
+| Include | 0.4 | this version | delta | object size 0.4 / now |
+|---|---:|---:|---:|---|
+| `fixed.hpp` | 21 ms | 27 ms | +28.6% | 936 / 936 bytes |
+| `arithmetic.hpp` | 32 ms | 44 ms | +37.5% | 1136 / 1176 bytes |
+| `chars.hpp` | 62 ms | 71 ms | +14.5% | 1264 / 1264 bytes |

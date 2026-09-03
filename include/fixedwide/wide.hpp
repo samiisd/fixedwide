@@ -1,18 +1,33 @@
 #pragma once
 #include <cstdint>
 #include <compare>
-#include <concepts>
-#include <bit>
 #include <type_traits>
 
 namespace fixedwide::wide {
+
+// <bit> and <concepts> together cost about 15 ms of parse time in every
+// translation unit that includes fixed.hpp, for one function and one predicate.
+// Both are cheaper to spell out than to include.
+template<typename T>
+concept integral = std::is_integral_v<T>;
+
+[[nodiscard]] constexpr int countl_zero64(std::uint64_t v) noexcept {
+    if (v == 0) return 64;
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_clzll(v);
+#else
+    int zeros = 0;
+    for (std::uint64_t bit = std::uint64_t{1} << 63; (v & bit) == 0; bit >>= 1) ++zeros;
+    return zeros;
+#endif
+}
 
 // std::int64_t is `long` on some targets and `long long` on others (LP64 Linux
 // versus AArch64 here), so spelling out both overloads is a redefinition on one
 // and a missing conversion on the other. This constraint covers every 64-bit
 // integer spelling exactly once.
 template<typename T>
-concept narrow_int64 = std::integral<T> && sizeof(T) <= 8 && !std::is_same_v<T, bool>;
+concept narrow_int64 = integral<T> && sizeof(T) <= 8 && !std::is_same_v<T, bool>;
 
 
 struct alignas(8) uint128;
@@ -42,7 +57,7 @@ struct alignas(8) uint128 {
 #endif
 #if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 128
 #endif
-    template<std::integral T>
+    template<integral T>
     constexpr uint128(T val) noexcept {
         if constexpr (std::is_signed_v<T>) {
             low = static_cast<std::uint64_t>(val);
@@ -163,7 +178,7 @@ struct alignas(8) int128 {
 #endif
 #if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 128
 #endif
-    template<std::integral T>
+    template<integral T>
     constexpr int128(T val) noexcept {
         if constexpr (std::is_signed_v<T>) {
             low = static_cast<std::uint64_t>(val);
@@ -257,7 +272,7 @@ struct alignas(8) uint256 {
 #endif
 #if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 256
 #endif
-    template<std::integral T>
+    template<integral T>
     constexpr uint256(T val) noexcept {
         if constexpr (std::is_signed_v<T>) {
             std::uint64_t u = static_cast<std::uint64_t>(val);
@@ -419,7 +434,7 @@ struct alignas(8) int256 {
 #endif
 #if defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 256
 #endif
-    template<std::integral T>
+    template<integral T>
     constexpr int256(T val) noexcept {
         if constexpr (std::is_signed_v<T>) {
             std::uint64_t u = static_cast<std::uint64_t>(val);
@@ -540,14 +555,14 @@ struct alignas(8) int256 {
 }
 
 [[nodiscard]] constexpr int bit_width(uint128 v) noexcept {
-    if (v.high != 0) return 128 - std::countl_zero(v.high);
-    if (v.low != 0) return 64 - std::countl_zero(v.low);
+    if (v.high != 0) return 128 - countl_zero64(v.high);
+    if (v.low != 0) return 64 - countl_zero64(v.low);
     return 0;
 }
 
 [[nodiscard]] constexpr int bit_width(uint256 v) noexcept {
     for (int i = 3; i >= 0; --i) {
-        if (v.limbs[i] != 0) return (i + 1) * 64 - std::countl_zero(v.limbs[i]);
+        if (v.limbs[i] != 0) return (i + 1) * 64 - countl_zero64(v.limbs[i]);
     }
     return 0;
 }
@@ -567,14 +582,14 @@ constexpr uint128::operator int128() const noexcept {
 }
 
 // Mixed operators with integers
-template<std::integral T> constexpr int128 operator*(T a, int128 b) noexcept { return int128(a) * b; }
-template<std::integral T> constexpr int128 operator*(int128 a, T b) noexcept { return a * int128(b); }
-template<std::integral T> constexpr int128 operator+(T a, int128 b) noexcept { return int128(a) + b; }
-template<std::integral T> constexpr int128 operator+(int128 a, T b) noexcept { return a + int128(b); }
-template<std::integral T> constexpr int128 operator-(int128 a, T b) noexcept { return a - int128(b); }
-template<std::integral T> constexpr int128 operator-(T a, int128 b) noexcept { return int128(a) - b; }
+template<integral T> constexpr int128 operator*(T a, int128 b) noexcept { return int128(a) * b; }
+template<integral T> constexpr int128 operator*(int128 a, T b) noexcept { return a * int128(b); }
+template<integral T> constexpr int128 operator+(T a, int128 b) noexcept { return int128(a) + b; }
+template<integral T> constexpr int128 operator+(int128 a, T b) noexcept { return a + int128(b); }
+template<integral T> constexpr int128 operator-(int128 a, T b) noexcept { return a - int128(b); }
+template<integral T> constexpr int128 operator-(T a, int128 b) noexcept { return int128(a) - b; }
 
-template<std::integral T> constexpr int128 operator/(int128 a, T b) noexcept {
+template<integral T> constexpr int128 operator/(int128 a, T b) noexcept {
 #if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
     return int128(static_cast<__int128>(a) / static_cast<__int128>(b));
 #else
@@ -685,13 +700,13 @@ using u256 = wide::uint256;
 using i256 = wide::int256;
 
 [[nodiscard]] constexpr unsigned bit_width(wide::uint128 v) noexcept {
-    if (v.high != 0) return 128 - std::countl_zero(v.high);
-    if (v.low != 0) return 64 - std::countl_zero(v.low);
+    if (v.high != 0) return 128 - wide::countl_zero64(v.high);
+    if (v.low != 0) return 64 - wide::countl_zero64(v.low);
     return 0;
 }
 [[nodiscard]] constexpr unsigned bit_width(wide::uint256 v) noexcept {
     for (int i = 3; i >= 0; --i) {
-        if (v.limbs[i] != 0) return (i + 1) * 64 - std::countl_zero(v.limbs[i]);
+        if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
     }
     return 0;
 }
