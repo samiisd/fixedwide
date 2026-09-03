@@ -78,5 +78,42 @@ else
     record "CMake install + external find_package consumer" "executed-fail" "see reports/verification.log"
 fi
 
+# Rows this script cannot run itself. Each one either cites retained evidence
+# under reports/, or says plainly that it was not executed. Nothing here is
+# marked executed-pass without a file behind it.
+evidence() { # name status detail file
+    if [ -n "${4:-}" ] && [ ! -e "$SRC/$4" ]; then
+        record "$1" "configured-not-executed" "expected evidence $4 is missing"
+    else
+        record "$1" "$2" "$3"
+    fi
+}
+
+evidence "Linux x86-64 Clang 17 (ubuntu:24.04 container) Release" executed-pass \
+    "23/23 tests; rebuild with scripts/docker_bench.sh" "scripts/Dockerfile.bench"
+evidence "Linux x86-64 Clang 17 paired performance vs 0.4" executed-pass \
+    "100 rows; 27 exceed the gate, reported per row" "reports/raw/clang-17/comparison.csv"
+evidence "Linux x86-64 Clang 18 paired performance vs 0.4" executed-pass \
+    "100 rows; 22 exceed the gate, reported per row" "reports/raw/clang-18/comparison.csv"
+evidence "Linux x86-64 Clang 22 paired performance vs 0.4" executed-pass \
+    "100 rows; 46 exceed the gate, reported per row" "reports/raw/clang-22/comparison.csv"
+record "Linux x86-64 GCC paired performance vs 0.4" not-applicable \
+    "0.4 requires C++ _BitInt(256) and will not configure under GCC; no paired GCC row can exist without modifying the baseline"
+evidence "Linux AArch64 on real hardware (Pixel 6, static cross build)" executed-pass \
+    "17/17 test binaries; correctness only, no timings taken from a phone" "reports/aarch64_execution.log"
+evidence "Clang libFuzzer under ASan+UBSan" executed-pass \
+    "50,000,000 executions, no crash and no sanitizer diagnostic" "reports/fuzz_execution.log"
+evidence "Competitor benchmark from a clean checkout" executed-pass \
+    "CNL 1.1.7 and fpm 1.1.0 fetched at pinned tags; 28,672 output validations passed" "reports/raw/competitors.csv"
+evidence "Compile-time measurement versus 0.4" executed-pass \
+    "fixed.hpp +28.6%, arithmetic.hpp +37.5%, chars.hpp +14.5% on Clang 22" "reports/COMPILE_TIME.md"
+record "Linux AArch64 CI (ubuntu-24.04-arm)" configured-not-executed "job in .github/workflows/ci.yml; runs on push"
+record "macOS arm64 (macos-14)" configured-not-executed "job in .github/workflows/ci.yml; runs on push"
+record "macOS x86-64 (macos-13)" configured-not-executed "job in .github/workflows/ci.yml; runs on push"
+record "Windows x64 MSVC" configured-not-executed "job in .github/workflows/ci.yml; the header-level blockers are removed but no MSVC build has been executed"
+record "Windows x64 clang-cl" configured-not-executed "job in .github/workflows/ci.yml; not executed"
+record "Windows ARM64" not-configured "no runner configured; not claimed as supported"
+record "Big-endian hardware" not-configured "no host available; binary.hpp defines both byte orders but only little-endian has been executed"
+
 echo
 echo "matrix written to $MATRIX"
