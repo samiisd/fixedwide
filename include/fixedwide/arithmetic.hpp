@@ -194,10 +194,16 @@ inline std::uint64_t div128by64_asm(std::uint64_t high, std::uint64_t low, std::
     return quotient;
 }
 #endif
-inline bool round_inc_u64(std::uint64_t q_lo, std::uint64_t rem, std::uint64_t divisor, Rounding rounding) noexcept {
+inline bool round_inc_u64(std::uint64_t q_lo, std::uint64_t rem, std::uint64_t divisor, Rounding rounding, bool neg = false) noexcept {
     if (rem == 0) return false;
     if (rounding == Rounding::nearest_even) {
         return nearest_even_inc(q_lo, rem, divisor);
+    } else if (rounding == Rounding::floor) {
+        return neg;
+    } else if (rounding == Rounding::ceil) {
+        return !neg;
+    } else if (rounding == Rounding::nearest_away) {
+        return (rem * 2 >= divisor);
     }
     return false;
 }
@@ -390,6 +396,27 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
                         }
                     }
                     return Fixed::from_raw(wide::int128(q));
+                } else {
+                    bool neg = hi < 0;
+                    std::uint64_t ulo = lo;
+                    std::uint64_t u_hi = static_cast<std::uint64_t>(hi);
+                    if (neg) {
+                        ulo = ~ulo + 1;
+                        u_hi = ~u_hi + (ulo == 0 ? 1 : 0);
+                    }
+                    std::uint64_t rem;
+                    std::uint64_t qhi = u_hi / static_cast<std::uint64_t>(scale_val);
+                    std::uint64_t rem_hi = u_hi % static_cast<std::uint64_t>(scale_val);
+                    std::uint64_t qlo = detail_arith::div128by64_asm(rem_hi, ulo, static_cast<std::uint64_t>(scale_val), rem);
+                    wide::uint128 quotient(qlo, qhi);
+                    if (detail_arith::round_inc_u64(qlo, rem, static_cast<std::uint64_t>(scale_val), rounding, neg)) {
+                        quotient = quotient + wide::uint128(1ULL);
+                    }
+                    if (neg) {
+                        wide::uint128 neg_q = ~quotient + wide::uint128(1ULL);
+                        return Fixed::from_raw(wide::int128(neg_q.low, neg_q.high));
+                    }
+                    return Fixed::from_raw(wide::int128(quotient.low, quotient.high));
                 }
             }
 #if defined(__SIZEOF_INT128__) && defined(__clang__)
@@ -561,6 +588,36 @@ div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
                             }
                             return Fixed::from_raw(wide::int128(quotient.low, quotient.high));
                         }
+                    }
+                } else if (!b.raw().is_zero()) {
+                    if (ma <= bound128) {
+                        unsigned __int128 scaled_a = ma * scale_val;
+                        unsigned __int128 mb = (static_cast<unsigned __int128>(magnitude(b.raw()).high) << 64) | magnitude(b.raw()).low;
+                        unsigned __int128 q = scaled_a / mb;
+                        unsigned __int128 rem = scaled_a % mb;
+                        if (rem != 0) {
+                            if (rounding == Rounding::exact) return std::unexpected(ArithmeticError::inexact);
+                            bool inc = false;
+                            if (rounding == Rounding::nearest_even) {
+                                inc = detail_arith::nearest_even_inc(q, rem, mb);
+                            } else if (rounding == Rounding::floor) {
+                                inc = negative;
+                            } else if (rounding == Rounding::ceil) {
+                                inc = !negative;
+                            } else if (rounding == Rounding::nearest_away) {
+                                inc = (rem * 2 >= mb);
+                            }
+                            if (inc) q += 1;
+                        }
+                        wide::uint128 quotient(static_cast<std::uint64_t>(q), static_cast<std::uint64_t>(q >> 64));
+                        wide::uint128 limit = wide::uint128::max() >> 1;
+                        if (negative) limit = limit + wide::uint128(1ULL);
+                        if (quotient > limit) return std::unexpected(ArithmeticError::overflow);
+                        if (negative) {
+                            wide::uint128 neg_q = ~quotient + wide::uint128(1ULL);
+                            return Fixed::from_raw(wide::int128(neg_q.low, neg_q.high));
+                        }
+                        return Fixed::from_raw(wide::int128(quotient.low, quotient.high));
                     }
                 }
             }
@@ -747,46 +804,61 @@ void mul_div(T, U, V) = delete;
 // Backward compatibility mul_wide
 [[nodiscard]] inline std::expected<basic_fixed<128, 12>, ArithmeticError>
 mul_wide(basic_fixed<64, 12> a, basic_fixed<64, 12> b, Rounding rounding = Rounding::nearest_even) noexcept {
-#if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
-    __int128 prod = static_cast<__int128>(a.raw()) * b.raw();
-    constexpr __int128 s = basic_fixed<64, 12>::scale();
-    __int128 q = prod / s;
-    __int128 rem = prod - q * s;
-    if (rem == 0) {
+#if defined(FIXEDWIDE_HAS_X86_64_ASM)
+    constexpr std::int64_t scale_val = 1'000'000'000'000LL;
+    std::uint64_t lo;
+    std::int64_t hi;
+    __asm__("imulq %[rhs]" : "=a"(lo), "=d"(hi) : "a"(a.raw()), [rhs] "r"(b.raw()) : "cc");
+    std::uint64_t uhi = static_cast<std::uint64_t>(hi);
+    std::uint64_t half = static_cast<std::uint64_t>(scale_val) / 2;
+    if (uhi + half < 2 * half) {
+        std::int64_t q, r;
+        __asm__("idivq %[div]" : "=a"(q), "=d"(r) : "a"(lo), "d"(hi), [div] "r"(scale_val) : "cc");
+        if (r != 0) {
+            if (rounding == Rounding::exact) return std::unexpected(ArithmeticError::inexact);
+            bool neg = hi < 0;
+            if (rounding == Rounding::nearest_even) {
+                std::uint64_t ur = neg ? (0ULL - static_cast<std::uint64_t>(r)) : static_cast<std::uint64_t>(r);
+                bool is_odd = (q & 1) != 0;
+                if ((ur * 2 > static_cast<std::uint64_t>(scale_val)) ||
+                    (ur * 2 == static_cast<std::uint64_t>(scale_val) && is_odd)) {
+                    q += (neg ? -1 : 1);
+                }
+            } else if (rounding == Rounding::floor) {
+                if (neg) q -= 1;
+            } else if (rounding == Rounding::ceil) {
+                if (!neg) q += 1;
+            } else if (rounding == Rounding::nearest_away) {
+                std::uint64_t ur = neg ? (0ULL - static_cast<std::uint64_t>(r)) : static_cast<std::uint64_t>(r);
+                if (ur * 2 >= static_cast<std::uint64_t>(scale_val)) q += (neg ? -1 : 1);
+            }
+        }
         return basic_fixed<128, 12>::from_raw(wide::int128(q));
+    } else {
+        bool neg = hi < 0;
+        std::uint64_t ulo = lo;
+        std::uint64_t u_hi = static_cast<std::uint64_t>(hi);
+        if (neg) {
+            ulo = ~ulo + 1;
+            u_hi = ~u_hi + (ulo == 0 ? 1 : 0);
+        }
+        std::uint64_t rem;
+        std::uint64_t qhi = u_hi / static_cast<std::uint64_t>(scale_val);
+        std::uint64_t rem_hi = u_hi % static_cast<std::uint64_t>(scale_val);
+        std::uint64_t qlo = detail_arith::div128by64_asm(rem_hi, ulo, static_cast<std::uint64_t>(scale_val), rem);
+        wide::uint128 quotient(qlo, qhi);
+        if (rem != 0) {
+            if (rounding == Rounding::exact) return std::unexpected(ArithmeticError::inexact);
+            if (detail_arith::round_inc_u64(qlo, rem, static_cast<std::uint64_t>(scale_val), rounding, neg)) {
+                quotient = quotient + wide::uint128(1ULL);
+            }
+        }
+        if (neg) {
+            wide::uint128 neg_q = ~quotient + wide::uint128(1ULL);
+            return basic_fixed<128, 12>::from_raw(wide::int128(neg_q.low, neg_q.high));
+        }
+        return basic_fixed<128, 12>::from_raw(wide::int128(quotient.low, quotient.high));
     }
-    if (rounding == Rounding::exact) {
-        return std::unexpected(ArithmeticError::inexact);
-    }
-    bool neg = prod < 0;
-    bool inc = false;
-    switch (rounding) {
-    case Rounding::toward_zero:
-        break;
-    case Rounding::floor:
-        inc = neg;
-        break;
-    case Rounding::ceil:
-        inc = !neg;
-        break;
-    case Rounding::nearest_away: {
-        unsigned __int128 urem = rem < 0 ? 0 - static_cast<unsigned __int128>(rem) : static_cast<unsigned __int128>(rem);
-        inc = (urem * 2 >= s);
-        break;
-    }
-    case Rounding::nearest_even: {
-        unsigned __int128 urem = rem < 0 ? 0 - static_cast<unsigned __int128>(rem) : static_cast<unsigned __int128>(rem);
-        bool is_odd = (static_cast<std::uint64_t>(q) & 1) != 0;
-        inc = (urem * 2 > s) || (urem * 2 == s && is_odd);
-        break;
-    }
-    case Rounding::exact:
-        break;
-    }
-    if (inc) {
-        q += (neg ? -1 : 1);
-    }
-    return basic_fixed<128, 12>::from_raw(wide::int128(q));
 #else
     wide::int128 w_a(a.raw());
     wide::int128 w_b(b.raw());

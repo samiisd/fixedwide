@@ -38,7 +38,11 @@ target_include_directories(fixedwide PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_compile_options(fixedwide PRIVATE -Wall -Wextra -Wconversion -Wshadow)
+if(MSVC)
+    target_compile_options(fixedwide PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(fixedwide PRIVATE -Wall -Wextra -Wconversion -Wshadow)
+endif()
 
 set_target_properties(fixedwide PROPERTIES
     VERSION ${PROJECT_VERSION}
@@ -51,13 +55,22 @@ if(FIXEDWIDE_FORCE_PORTABLE)
 endif()
 
 if(FIXEDWIDE_SANITIZE)
-    target_compile_options(fixedwide PUBLIC -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all)
-    target_link_options(fixedwide PUBLIC -fsanitize=address,undefined)
+    if(MSVC)
+        target_compile_options(fixedwide PUBLIC /fsanitize=address)
+    else()
+        target_compile_options(fixedwide PUBLIC -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all)
+        target_link_options(fixedwide PUBLIC -fsanitize=address,undefined)
+    endif()
 endif()
 
 if(FIXEDWIDE_COVERAGE)
-    target_compile_options(fixedwide PUBLIC -fprofile-instr-generate -fcoverage-mapping)
-    target_link_options(fixedwide PUBLIC -fprofile-instr-generate)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(fixedwide PUBLIC -fprofile-instr-generate -fcoverage-mapping)
+        target_link_options(fixedwide PUBLIC -fprofile-instr-generate)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        target_compile_options(fixedwide PUBLIC --coverage)
+        target_link_options(fixedwide PUBLIC --coverage)
+    endif()
 endif()
 
 if(FIXEDWIDE_BUILD_TESTS OR FIXEDWIDE_BUILD_ORACLE_TESTS)

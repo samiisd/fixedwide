@@ -206,10 +206,65 @@ format_fixed_kernel(char* buffer, std::size_t capacity,
     (void)bits;
     if (options.digits > decimals) return std::unexpected(FormatError::invalid_precision);
     auto mag = magnitude(raw);
-    if (bits <= 128) {
+    if (bits <= 64) {
+        unsigned reduce = decimals - options.digits;
+        std::uint64_t d = (reduce < 19) ? pow10(reduce) : 0ULL;
+        std::uint64_t m = mag.limbs[0];
+        std::uint64_t q = 0, r = 0;
+        if (d != 0) {
+            q = m / d;
+            r = m % d;
+        } else {
+            auto divres = divide128(wide::uint128(m, 0ULL), compute_pow10<wide::uint128>(reduce), false);
+            q = divres.quotient.low;
+            r = divres.remainder.low;
+            d = 0;
+        }
+        auto rounded = round_magnitude(q, r, d, raw.is_negative(), options.rounding, UINT64_MAX);
+        if (!rounded) return std::unexpected(FormatError::inexact);
+
+        char digits_buf[32];
+        char* const end = digits_buf + sizeof(digits_buf);
+        const char* const begin = integer_digits(end, wide::uint128(*rounded));
+        const auto count = static_cast<unsigned>(end - begin);
+
+        char output[text_capacity];
+        char* cursor = output;
+        if (raw.is_negative() && *rounded != 0) *cursor++ = '-';
+
+        if (count > options.digits) {
+            const auto integer_count = count - options.digits;
+            std::memcpy(cursor, begin, integer_count);
+            cursor += integer_count;
+            if (options.digits != 0) {
+                *cursor++ = '.';
+                std::memcpy(cursor, begin + integer_count, options.digits);
+                cursor += options.digits;
+            }
+        } else {
+            *cursor++ = '0';
+            if (options.digits != 0) {
+                *cursor++ = '.';
+                const auto zeros = options.digits - count;
+                std::memset(cursor, '0', zeros);
+                cursor += zeros;
+                std::memcpy(cursor, begin, count);
+                cursor += count;
+            }
+        }
+        if (options.trim_trailing_zeros && options.digits != 0) {
+            while (cursor[-1] == '0') --cursor;
+            if (cursor[-1] == '.') --cursor;
+        }
+        const auto size = static_cast<std::size_t>(cursor - output);
+        if (capacity < size) return std::unexpected(FormatError::buffer_too_small);
+        std::memcpy(buffer, output, size);
+        return size;
+    } else if (bits <= 128) {
         wide::uint128 mag128(mag.limbs[0], mag.limbs[1]);
         unsigned reduce = decimals - options.digits;
-        auto divisor128 = compute_pow10<wide::uint128>(reduce);
+        auto divisor128 = (reduce < 19) ? wide::uint128(pow10(reduce), 0ULL)
+                                        : compute_pow10<wide::uint128>(reduce);
         wide::uint128 q, r;
         if (divisor128.high == 0) {
             std::uint64_t d = divisor128.low;

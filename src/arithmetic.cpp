@@ -83,15 +83,31 @@ std::expected<std::int64_t, ArithmeticError> quotient64_signed(
 inline wide::int128 divide_native_general(wide::int128 numerator, wide::int128 divisor, Rounding rounding) noexcept {
     __int128 n = static_cast<__int128>(numerator);
     __int128 d = static_cast<__int128>(divisor);
-    __int128 q = n / d;
-    if (rounding == Rounding::toward_zero) return wide::int128(q);
-    __int128 rem = n - q * d;
-    if (rem == 0) return wide::int128(q);
-    unsigned __int128 urem = rem < 0 ? static_cast<unsigned __int128>(-rem) : static_cast<unsigned __int128>(rem);
-    unsigned __int128 udiv = d < 0 ? static_cast<unsigned __int128>(-d) : static_cast<unsigned __int128>(d);
-    bool increment = nearest_even_increment(static_cast<unsigned __int128>(q), urem, udiv);
-    __int128 adj = ((n < 0) != (d < 0)) ? -increment : increment;
-    return wide::int128(q + adj);
+    bool neg = (n < 0) != (d < 0);
+    unsigned __int128 un = n < 0 ? (static_cast<unsigned __int128>(0) - static_cast<unsigned __int128>(n))
+                                 : static_cast<unsigned __int128>(n);
+    unsigned __int128 ud = d < 0 ? (static_cast<unsigned __int128>(0) - static_cast<unsigned __int128>(d))
+                                 : static_cast<unsigned __int128>(d);
+    unsigned __int128 q = un / ud;
+    unsigned __int128 rem = un % ud;
+    if (rem != 0) {
+        bool inc = false;
+        if (rounding == Rounding::nearest_even) {
+            inc = nearest_even_increment(q, rem, ud);
+        } else if (rounding == Rounding::floor) {
+            inc = neg;
+        } else if (rounding == Rounding::ceil) {
+            inc = !neg;
+        } else if (rounding == Rounding::nearest_away) {
+            inc = (rem * 2 >= ud);
+        }
+        if (inc) q += 1;
+    }
+    if (neg) {
+        unsigned __int128 neg_q = static_cast<unsigned __int128>(0) - q;
+        return wide::int128(static_cast<std::uint64_t>(neg_q), static_cast<std::uint64_t>(neg_q >> 64));
+    }
+    return wide::int128(static_cast<std::uint64_t>(q), static_cast<std::uint64_t>(q >> 64));
 }
 
 inline wide::int128 divide_native(wide::int128 numerator, wide::int128 divisor, Rounding rounding) noexcept {
@@ -232,11 +248,13 @@ mul128_impl(wide::int128 a, wide::int128 b, unsigned decimals, Rounding rounding
 std::expected<wide::int128, ArithmeticError>
 div128_impl(wide::int128 a, wide::int128 b, unsigned decimals, Rounding rounding) noexcept {
     if (b.is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
-    auto scale = compute_pow10<wide::int128>(decimals);
+    wide::int128 scale = (decimals < 19) ? wide::int128(pow10(decimals), 0ULL)
+                                         : compute_pow10<wide::int128>(decimals);
     auto uscale = wide::uint128(scale.low, scale.high);
 
 #if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
-    wide::uint128 bound = divide128(wide::uint128::max() >> 1, uscale).quotient;
+    wide::uint128 bound = (decimals < 19) ? wide::uint128((((~static_cast<unsigned __int128>(0)) >> 1) / pow10(decimals)))
+                                         : divide128(wide::uint128::max() >> 1, uscale).quotient;
     auto ua = magnitude(a);
     if (common_rounding(rounding) && ua <= bound) {
         __int128 scaled_a = static_cast<__int128>(a) * static_cast<__int128>(scale);
@@ -252,7 +270,19 @@ div128_impl(wide::int128 a, wide::int128 b, unsigned decimals, Rounding rounding
     auto mb = magnitude(b);
 
     // Numerator = ma * uscale (up to 256 bits)
+#if defined(__SIZEOF_INT128__) && defined(__clang__)
+    using u256_internal = unsigned _BitInt(256);
+    unsigned __int128 ma_128 = (static_cast<unsigned __int128>(ma.high) << 64) | ma.low;
+    u256_internal num_256 = (uscale.high == 0)
+        ? (static_cast<u256_internal>(ma_128) * uscale.low)
+        : (static_cast<u256_internal>(ma_128) * ((static_cast<unsigned __int128>(uscale.high) << 64) | uscale.low));
+    wide::uint256 num(static_cast<std::uint64_t>(num_256),
+                      static_cast<std::uint64_t>(num_256 >> 64),
+                      static_cast<std::uint64_t>(num_256 >> 128),
+                      static_cast<std::uint64_t>(num_256 >> 192));
+#else
     wide::uint256 num = multiply128(ma, uscale);
+#endif
     if (num.limbs[2] == 0 && num.limbs[3] == 0) {
         wide::uint128 n128(num.limbs[0], num.limbs[1]);
         auto divres = divide128(n128, mb, rounding != Rounding::toward_zero);
@@ -261,8 +291,8 @@ div128_impl(wide::int128 a, wide::int128 b, unsigned decimals, Rounding rounding
         auto rounded = round_magnitude(divres.quotient, divres.remainder, mb, neg, rounding, limit);
         if (!rounded) return std::unexpected(rounded.error());
         if (neg) {
-            wide::int128 s(rounded->low, rounded->high);
-            return -s;
+            wide::uint128 neg_r = ~(*rounded) + wide::uint128(1ULL);
+            return wide::int128(neg_r.low, neg_r.high);
         }
         return wide::int128(rounded->low, rounded->high);
     }
@@ -274,8 +304,8 @@ div128_impl(wide::int128 a, wide::int128 b, unsigned decimals, Rounding rounding
     auto rounded = round_magnitude(divres->quotient, divres->remainder, mb, neg, rounding, limit);
     if (!rounded) return std::unexpected(rounded.error());
     if (neg) {
-        wide::int128 s(rounded->low, rounded->high);
-        return -s;
+        wide::uint128 neg_r = ~(*rounded) + wide::uint128(1ULL);
+        return wide::int128(neg_r.low, neg_r.high);
     }
     return wide::int128(rounded->low, rounded->high);
 }
@@ -298,7 +328,18 @@ mul_div128_impl(wide::int128 a, wide::int128 b, wide::int128 c, Rounding roundin
     auto ma = magnitude(a);
     auto mb = magnitude(b);
     auto mc = magnitude(c);
+#if defined(__SIZEOF_INT128__) && defined(__clang__)
+    using u256_internal = unsigned _BitInt(256);
+    unsigned __int128 ma_128 = (static_cast<unsigned __int128>(ma.high) << 64) | ma.low;
+    unsigned __int128 mb_128 = (static_cast<unsigned __int128>(mb.high) << 64) | mb.low;
+    u256_internal p256 = static_cast<u256_internal>(ma_128) * static_cast<u256_internal>(mb_128);
+    wide::uint256 prod256(static_cast<std::uint64_t>(p256),
+                          static_cast<std::uint64_t>(p256 >> 64),
+                          static_cast<std::uint64_t>(p256 >> 128),
+                          static_cast<std::uint64_t>(p256 >> 192));
+#else
     auto prod256 = multiply128(ma, mb);
+#endif
 
     if (prod256.limbs[2] == 0 && prod256.limbs[3] == 0) {
         wide::uint128 p128(prod256.limbs[0], prod256.limbs[1]);
@@ -331,10 +372,44 @@ std::expected<wide::int128, ArithmeticError>
 quantize128_impl(wide::int128 a, unsigned current_dec, unsigned target_dec, Rounding rounding) noexcept {
     if (target_dec > current_dec) return std::unexpected(ArithmeticError::invalid_precision);
     if (target_dec == current_dec) return a;
-    auto divisor = compute_pow10<wide::int128>(current_dec - target_dec);
-    auto udiv = wide::uint128(divisor.low, divisor.high);
+    unsigned diff = current_dec - target_dec;
     bool neg = a.is_negative();
     auto mag = magnitude(a);
+#if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
+    if (diff < 19) {
+        std::uint64_t udiv = pow10(diff);
+        unsigned __int128 ma = (static_cast<unsigned __int128>(mag.high) << 64) | mag.low;
+        unsigned __int128 q = ma / udiv;
+        unsigned __int128 r = ma % udiv;
+        constexpr unsigned __int128 limit = (~static_cast<unsigned __int128>(0)) >> 1;
+        unsigned __int128 lim = limit + (neg ? 1 : 0);
+        if (r != 0) {
+            if (rounding == Rounding::exact) return std::unexpected(ArithmeticError::inexact);
+            bool inc = false;
+            if (rounding == Rounding::nearest_even) {
+                inc = detail::nearest_even_increment(q, r, static_cast<unsigned __int128>(udiv));
+            } else if (rounding == Rounding::floor) {
+                inc = neg;
+            } else if (rounding == Rounding::ceil) {
+                inc = !neg;
+            } else if (rounding == Rounding::nearest_away) {
+                inc = (r * 2 >= udiv);
+            }
+            if (inc) {
+                if (q == lim) return std::unexpected(ArithmeticError::overflow);
+                q += 1;
+            }
+        }
+        if (q > lim / udiv) return std::unexpected(ArithmeticError::overflow);
+        unsigned __int128 res_u = q * udiv;
+        if (neg) {
+            res_u = static_cast<unsigned __int128>(0) - res_u;
+        }
+        return wide::int128(static_cast<std::uint64_t>(res_u), static_cast<std::uint64_t>(res_u >> 64));
+    }
+#endif
+    auto divisor = compute_pow10<wide::int128>(diff);
+    auto udiv = wide::uint128(divisor.low, divisor.high);
     auto divres = divide128(mag, udiv, rounding != Rounding::toward_zero);
     wide::uint128 limit = wide::uint128::max() >> 1;
     if (neg) limit = limit + wide::uint128(1ULL);
@@ -344,8 +419,8 @@ quantize128_impl(wide::int128 a, unsigned current_dec, unsigned target_dec, Roun
     auto res_mag = multiply128(*rounded, udiv);
     wide::uint128 r128(res_mag.limbs[0], res_mag.limbs[1]);
     if (neg) {
-        wide::int128 s(r128.low, r128.high);
-        return -s;
+        wide::uint128 neg_r = ~r128 + wide::uint128(1ULL);
+        return wide::int128(neg_r.low, neg_r.high);
     }
     return wide::int128(r128.low, r128.high);
 }

@@ -41,6 +41,32 @@ template<class UInt>
     return quotient;
 }
 
+inline constexpr std::uint64_t pow10_u64[19] = {
+    1ULL,
+    10ULL,
+    100ULL,
+    1'000ULL,
+    10'000ULL,
+    100'000ULL,
+    1'000'000ULL,
+    10'000'000ULL,
+    100'000'000ULL,
+    1'000'000'000ULL,
+    10'000'000'000ULL,
+    100'000'000'000ULL,
+    1'000'000'000'000ULL,
+    10'000'000'000'000ULL,
+    100'000'000'000'000ULL,
+    1'000'000'000'000'000ULL,
+    10'000'000'000'000'000ULL,
+    100'000'000'000'000'000ULL,
+    1'000'000'000'000'000'000ULL
+};
+
+[[nodiscard]] constexpr std::uint64_t pow10(unsigned exp) noexcept {
+    return exp < 19 ? pow10_u64[exp] : 0ULL;
+}
+
 // Low-level primitives for x86-64 / native vs portable
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__)) && !defined(FIXEDWIDE_FORCE_PORTABLE)
 
@@ -133,10 +159,8 @@ struct SignedQuotient64 { std::int64_t quotient; std::int64_t remainder; };
     std::uint64_t udiv = neg_den ? (0ULL - static_cast<std::uint64_t>(divisor)) : static_cast<std::uint64_t>(divisor);
     std::uint64_t urem;
     std::uint64_t uq = div128by64(uhi, ulo, udiv, urem);
-    std::int64_t q = static_cast<std::int64_t>(uq);
-    std::int64_t r = static_cast<std::int64_t>(urem);
-    if (neg_num != neg_den) q = -q;
-    if (neg_num) r = -r;
+    std::int64_t q = static_cast<std::int64_t>(neg_num != neg_den ? (0ULL - uq) : uq);
+    std::int64_t r = static_cast<std::int64_t>(neg_num ? (0ULL - urem) : urem);
     return {q, r};
 }
 

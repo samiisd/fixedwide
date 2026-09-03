@@ -225,6 +225,9 @@ consteval wide::uint256 max_integer_allowed(bool negative) noexcept {
     auto lim = limit_magnitude_u256<Bits>(negative);
     if constexpr (Decimals == 0) {
         return lim;
+    } else if constexpr (Bits <= 64) {
+        auto sc = basic_fixed<Bits, Decimals>::scale();
+        return wide::uint256(lim.limbs[0] / static_cast<std::uint64_t>(sc), 0, 0, 0);
     } else {
         auto sc = to_uint256_raw(basic_fixed<Bits, Decimals>::scale());
         wide::uint256 q{};

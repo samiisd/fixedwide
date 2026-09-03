@@ -9,6 +9,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         binary
         floating
         no_alloc
+        signed_min
     )
 
     foreach(NAME ${TEST_NAMES})

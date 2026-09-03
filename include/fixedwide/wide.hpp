@@ -584,16 +584,14 @@ struct alignas(8) int256 {
 
 [[nodiscard]] constexpr uint128 magnitude(int128 v) noexcept {
     if (v.is_negative()) {
-        int128 neg = -v;
-        return {neg.low, neg.high};
+        return ~uint128(v.low, v.high) + uint128(1ULL, 0ULL);
     }
     return {v.low, v.high};
 }
 
 [[nodiscard]] constexpr uint256 magnitude(int256 v) noexcept {
     if (v.is_negative()) {
-        int256 neg = -v;
-        return {neg.limbs[0], neg.limbs[1], neg.limbs[2], neg.limbs[3]};
+        return ~uint256(v.limbs[0], v.limbs[1], v.limbs[2], v.limbs[3]) + uint256(1ULL, 0ULL, 0ULL, 0ULL);
     }
     return {v.limbs[0], v.limbs[1], v.limbs[2], v.limbs[3]};
 }
