@@ -238,6 +238,30 @@ int main(int argc, char** argv) {
         row("boost.decimal", "decimal64_t", "decimal_float", "div", [&](std::size_t n) {
             for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] / b[i & (data_size - 1)]);
         });
+        // Same-contract text comparison: a decimal type parsing decimal text.
+        // std::from_chars on a double is a useful floor, but it is not the same
+        // job -- it produces a binary float and rejects nothing on a decimal grid.
+        for (std::size_t i = 0; i < data_size; ++i) {
+            T parsed{};
+            const auto& text = ops.text[i];
+            auto result = boost::decimal::from_chars(text.data(), text.data() + text.size(), parsed);
+            expect(result.ec == std::errc{}, "boost.decimal from_chars failed");
+            expect(std::abs(static_cast<double>(parsed) - ops.a[i]) < 0.01,
+                   "boost.decimal from_chars disagrees with the double oracle");
+        }
+        row("boost.decimal", "decimal64_t", "decimal_float", "parse", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) {
+                const auto& text = ops.text[i & (data_size - 1)];
+                T parsed{};
+                escape(boost::decimal::from_chars(text.data(), text.data() + text.size(), parsed));
+            }
+        });
+        row("boost.decimal", "decimal64_t", "decimal_float", "format", [&](std::size_t n) {
+            char buffer[64];
+            for (std::size_t i = 0; i < n; ++i) {
+                escape(boost::decimal::to_chars(buffer, buffer + sizeof buffer, a[i & (data_size - 1)]));
+            }
+        });
     }
 #endif
 

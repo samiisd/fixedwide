@@ -19,9 +19,11 @@ inline constexpr std::size_t text_capacity = 128;
 
 namespace detail {
 
+// Explicitly instantiated per width in chars.cpp, so the destination's limits
+// are constants inside the kernel rather than a runtime switch.
+template<std::size_t Bits>
 std::expected<wide::int256, ParseError>
-parse_fixed_kernel(std::string_view text, unsigned decimals,
-                   Rounding rounding, std::size_t bits) noexcept;
+parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) noexcept;
 
 // One entry point per storage width: routing a Fixed64<12> through the 256-bit
 // kernel widened its raw value to 32 bytes and passed it through memory.
@@ -55,7 +57,7 @@ template<typename T>
 from_chars(const char* first, const char* last, Rounding rounding = Rounding::exact) noexcept {
     if (first == nullptr || last == nullptr || first >= last) return std::unexpected(ParseError::empty);
     std::string_view text(first, static_cast<std::size_t>(last - first));
-    auto res = detail::parse_fixed_kernel(text, T::fractional_digits, rounding, T::bits);
+    auto res = detail::parse_fixed_kernel<T::bits>(text, T::fractional_digits, rounding);
     if (!res) return std::unexpected(res.error());
     return detail::from_int256_raw<T>(*res);
 }
@@ -63,7 +65,7 @@ from_chars(const char* first, const char* last, Rounding rounding = Rounding::ex
 template<typename T>
 [[nodiscard]] inline std::expected<T, ParseError>
 parse(std::string_view text, Rounding rounding = Rounding::exact) noexcept {
-    auto res = detail::parse_fixed_kernel(text, T::fractional_digits, rounding, T::bits);
+    auto res = detail::parse_fixed_kernel<T::bits>(text, T::fractional_digits, rounding);
     if (!res) return std::unexpected(res.error());
     return detail::from_int256_raw<T>(*res);
 }

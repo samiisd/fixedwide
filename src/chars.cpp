@@ -35,9 +35,14 @@ u256_limbs limit_for_bits_u256(std::size_t bits, bool negative) noexcept {
 
 } // namespace
 
+// Templated on the destination width for the same reason the arithmetic kernels
+// are templated on the scale: Bits is a compile-time constant at every call
+// site. As a runtime argument it forced limit_for_bits into an out-of-line call
+// building a 32-byte value on every parse, and kept every width test live.
+template<std::size_t Bits>
 std::expected<wide::int256, ParseError>
-parse_fixed_kernel(std::string_view text, unsigned decimals,
-                   Rounding rounding, std::size_t bits) noexcept {
+parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) noexcept {
+    constexpr std::size_t bits = Bits;
     if (text.empty()) return std::unexpected(ParseError::empty);
     if (text.size() > 4096) return std::unexpected(ParseError::invalid);
 
@@ -89,6 +94,80 @@ parse_fixed_kernel(std::string_view text, unsigned decimals,
     const std::int64_t keep = significant + static_cast<std::int64_t>(decimals) + exponent - fractional;
     const std::int64_t max_d = max_digits_for_bits(bits);
     if (keep > max_d) return std::unexpected(ParseError::overflow);
+
+    // Fast path: a plain decimal, no exponent, whose kept digits fit 64 bits.
+    //
+    // The general loops below do a 128-bit multiply-add AND a 128-bit overflow
+    // comparison for every digit. keep <= 19 bounds the accumulator by
+    // 10^19 - 1 < 2^64, so neither is needed: the digits go into a uint64_t with
+    // no per-digit check, and the single range test at the end is the same one
+    // the general path ends with. This is the shape essentially all real input
+    // has, and it is where the gap against std::from_chars was.
+    if (bits <= 128 && mantissa_end == text.size() && keep >= 0 && keep <= 19) {
+        const auto lim256 = detail::limit_for_bits(bits, negative);
+        const wide::uint128 limit(lim256.limbs[0], lim256.limbs[1]);
+
+        std::uint64_t value = 0;
+        std::int64_t index = 0;
+        bool started = false, discarded_nonzero = false, tail_nonzero = false;
+        unsigned first_discarded = 0;
+
+        for (std::size_t pos = 0; pos < mantissa_end; ++pos) {
+            const char c = text[pos];
+            if (c == '.') continue;
+            const unsigned digit = static_cast<unsigned>(c - '0');
+            if (!started && digit == 0) continue;
+            started = true;
+            if (index < keep) {
+                value = value * 10 + digit;
+            } else {
+                discarded_nonzero |= (digit != 0);
+                if (index == keep) first_discarded = digit;
+                else tail_nonzero |= (digit != 0);
+            }
+            ++index;
+        }
+        // Scaling up to the target precision is ONE multiply, not one per place.
+        // Parsing "1234.5678" into a 12-digit type needs eight of them, which was
+        // half the loop. index is at least one here: an all-zero mantissa has
+        // already returned above, so the exponent stays within the table.
+        if (index < keep) {
+            value *= pow10_wide<std::uint64_t>(static_cast<unsigned>(keep - index));
+        }
+
+        // Map the discarded tail onto a remainder over a denominator of ten, so
+        // every rounding mode sees the same decision the general path gives it.
+        std::uint64_t remainder = 0;
+        if (discarded_nonzero) {
+            remainder = 1;
+            if (first_discarded >= 5) remainder = (first_discarded > 5 || tail_nonzero) ? 6 : 5;
+        }
+        // Round in 64 bits when the destination is 64 bits. Rounding a value
+        // that fits a uint64_t through the 128-bit struct costs two-register
+        // arithmetic for every comparison and shift in round_magnitude.
+        wide::uint128 magnitude_out;
+        if (limit.high == 0) {
+            auto rounded = round_magnitude(value, remainder, std::uint64_t{10},
+                                           negative, rounding, limit.low);
+            if (!rounded) {
+                return std::unexpected(rounded.error() == ArithmeticError::overflow
+                                           ? ParseError::overflow : ParseError::too_precise);
+            }
+            magnitude_out = wide::uint128(*rounded, 0ULL);
+        } else {
+            auto rounded = round_magnitude(wide::uint128(value, 0ULL), wide::uint128(remainder, 0ULL),
+                                           wide::uint128(10, 0), negative, rounding, limit);
+            if (!rounded) {
+                return std::unexpected(rounded.error() == ArithmeticError::overflow
+                                           ? ParseError::overflow : ParseError::too_precise);
+            }
+            magnitude_out = *rounded;
+        }
+        wide::int128 result(magnitude_out.low, magnitude_out.high);
+        if (negative) result = -result;
+        const std::uint64_t sign = result.is_negative() ? ~0ULL : 0ULL;
+        return wide::int256(result.low, result.high, sign, sign);
+    }
 
     if (bits <= 128) {
         auto lim256 = detail::limit_for_bits(bits, negative);
@@ -203,6 +282,14 @@ parse_fixed_kernel(std::string_view text, unsigned decimals,
 // taking wide::int256 by value, so formatting a Fixed64<12> widened its raw
 // value to 32 bytes and passed it through memory on every call. That alone was
 // most of the reduced-digit formatting regression against 0.4.
+#define FIXEDWIDE_INSTANTIATE_PARSE(B)                                     \
+    template std::expected<wide::int256, ParseError>                       \
+        parse_fixed_kernel<B>(std::string_view, unsigned, Rounding) noexcept;
+FIXEDWIDE_INSTANTIATE_PARSE(8)  FIXEDWIDE_INSTANTIATE_PARSE(16)
+FIXEDWIDE_INSTANTIATE_PARSE(32) FIXEDWIDE_INSTANTIATE_PARSE(64)
+FIXEDWIDE_INSTANTIATE_PARSE(128) FIXEDWIDE_INSTANTIATE_PARSE(256)
+#undef FIXEDWIDE_INSTANTIATE_PARSE
+
 std::expected<std::size_t, FormatError>
 format_fixed_kernel(char* buffer, std::size_t capacity, std::int64_t raw, unsigned decimals,
                     FormatOptions options) noexcept {

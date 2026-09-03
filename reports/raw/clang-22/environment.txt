@@ -1,9 +1,9 @@
-label=purekernel
+label=clang-22
 compiler=clang version 22.1.8
 baseline_src=/home/mega/local/downloads/fixedwide-0.4.0-nearest-even/fixedwide
 bench_source_sha256=3afa755e84ef51879f75faf029c7e035cbd55b2ae86b6745cb44598ad42fabdc
 baseline_bin_sha256=c23cd35219a6bad34cd6d4fd45623d7bbd0ed7fad649c3e0ed4ba605e1e21ed8
-current_bin_sha256=cff29ae1b311d7459c09babedc7f5db705f93485b2ae7c6197a2fdb2f0d42c7f
+current_bin_sha256=4085b7a2c75de5240f53730356941afadbf7fc85901823297c05a0fe85903053
 iterations=1048576 repetitions=9 seeds=1 2 3
 host=Linux 7.2.0-1-cachyos x86_64 cpu=AMD Ryzen 9 9950X3D 16-Core Processor
-date=2026-09-03T16:46:54+00:00
+date=2026-09-03T21:56:43+00:00

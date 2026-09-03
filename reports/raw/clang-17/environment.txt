@@ -3,7 +3,7 @@ compiler=Ubuntu clang version 17.0.6 (9ubuntu1)
 baseline_src=/baseline
 bench_source_sha256=3afa755e84ef51879f75faf029c7e035cbd55b2ae86b6745cb44598ad42fabdc
 baseline_bin_sha256=6109da93b18d9f246a48224c716108f9bfd47e7653c2ea44ef8dbf81adb5734a
-current_bin_sha256=23b5f5c86313be87a5615dab956a00c286e69ce5a950c741ae8d4abdaea80b7f
+current_bin_sha256=ac77f6dd8b538deefb319dd160966395be603474cc7fcf9f8ae4b6bccd27123d
 iterations=1048576 repetitions=9 seeds=1 2 3
 host=Linux 7.2.0-1-cachyos x86_64 cpu=AMD Ryzen 9 9950X3D 16-Core Processor
-date=2026-09-03T16:59:36+00:00
+date=2026-09-03T21:57:29+00:00
