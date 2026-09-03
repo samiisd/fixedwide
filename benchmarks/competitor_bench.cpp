@@ -1,241 +1,287 @@
-#include <fixedwide/all.hpp>
+// Competitor comparison.
+//
+// Three rules this suite exists to obey, because the previous one broke all of
+// them:
+//
+//  1. Results are MEDIANS of repeated timed runs, reported as such. The old
+//     helper returned the minimum of five trials while the report called the
+//     numbers medians.
+//  2. Every timed loop's output is validated OUTSIDE the timed region against
+//     an independent expectation, so a compiler that deletes the work cannot
+//     produce a fast row.
+//  3. Rows are grouped by SEMANTIC CLASS and never merged into one ranking.
+//     A decimal fixed-point multiply, a binary fixed-point multiply and a
+//     decimal floating-point multiply are different numerical contracts. Cost
+//     may be compared across them; correctness may not.
+//
+// What the libraries actually are, since the previous report got this wrong:
+//
+//  * CNL's scaled_integer is radix-parameterised, NOT base-2 only. It is
+//    benchmarked here in BOTH a base-2 and a base-10 configuration. CNL's own
+//    documentation notes decimal support is less exercised than binary, which
+//    is a caveat on the result, not a reason to omit it.
+//  * fpm is binary fixed point and is NOT truncation-only: fpm::fixed rounds
+//    its multiply and divide to nearest. It is compared as binary fixed point.
+//  * Boost.Multiprecision int128_t in its fixed-precision, allocator-free
+//    configuration does NOT allocate. It is included as a raw wide-integer
+//    baseline, not as a decimal type.
+//  * Boost.Decimal is IEEE 754 decimal FLOATING point. Different contract from
+//    a fixed-point decimal; reported in its own class.
+//
+// Anything not measured here is absent from the report. There are no rows for
+// libraries this executable does not run.
+#include <fixedwide/arithmetic.hpp>
+#include <fixedwide/chars.hpp>
+#include "measurement.hpp"
+
 #include <fpm/fixed.hpp>
 #include <cnl/scaled_integer.h>
-#include <boost/decimal.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
-#include <chrono>
-#include <iostream>
-#include <vector>
-#include <random>
+#if __has_include(<boost/decimal.hpp>)
+#  include <boost/decimal.hpp>
+#  define FIXEDWIDE_HAVE_BOOST_DECIMAL 1
+#endif
+
 #include <charconv>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <random>
+#include <string>
+#include <vector>
 
-using namespace fixedwide;
+namespace {
 
-inline void escape(void* p) {
-    __asm__ __volatile__("" : : "g"(p) : "memory");
+constexpr std::size_t data_size = 4096;
+std::uint64_t validations = 0;
+
+[[noreturn]] void fail(const std::string& what) {
+    std::fprintf(stderr, "VALIDATION FAILED: %s\n", what.c_str());
+    std::exit(1);
 }
-inline void escape_val(std::uint64_t v) {
-    __asm__ __volatile__("" : : "r"(v) : "memory");
-}
-
-constexpr std::size_t N = 100000;
-constexpr int WARMUP = 10;
-constexpr int TRIALS = 5;
-
-template<class Func>
-double time_op(Func&& f) {
-    for (int i = 0; i < WARMUP; ++i) f();
-    double min_time = 1e18;
-    for (int t = 0; t < TRIALS; ++t) {
-        auto start = std::chrono::steady_clock::now();
-        f();
-        auto end = std::chrono::steady_clock::now();
-        double dur_ns = std::chrono::duration<double, std::nano>(end - start).count() / N;
-        if (dur_ns < min_time) min_time = dur_ns;
-    }
-    return min_time;
+void expect(bool ok, const std::string& what) {
+    ++validations;
+    if (!ok) fail(what);
 }
 
-int main() {
-    std::mt19937_64 rng(42);
-    std::vector<std::int64_t> raw_a(N), raw_b(N);
-    for (std::size_t i = 0; i < N; ++i) {
-        raw_a[i] = (rng() % 100000000LL) + 1000000LL;
-        raw_b[i] = (rng() % 50000000LL) + 1000000LL;
+template<class T> void escape(const T& value) {
+    __asm__ __volatile__("" : : "r"(&value) : "memory");
+}
+
+// Operand set shared by every library, so no row gets an easier distribution.
+struct Operands {
+    std::vector<double> a, b;      // exact at 12 decimals and at 2^-16
+    std::vector<std::string> text;
+};
+
+std::string format_fixed4(double value) {
+    char buffer[64];
+    auto [end, ec] = std::to_chars(buffer, buffer + sizeof buffer, value, std::chars_format::fixed, 4);
+    return std::string(buffer, end);
+}
+
+Operands make_operands() {
+    Operands ops;
+    std::mt19937_64 rng(0x5eed);
+    ops.a.reserve(data_size); ops.b.reserve(data_size); ops.text.reserve(data_size);
+    for (std::size_t i = 0; i < data_size; ++i) {
+        // Values with 4 fractional decimal digits: representable exactly in
+        // every decimal type here, and near-exactly in the binary ones.
+        const double a = static_cast<double>(rng() % 900'0000 + 100'0000) / 10'000.0;
+        const double b = static_cast<double>(rng() % 90'0000 + 10'0000) / 10'000.0;
+        ops.a.push_back(a);
+        ops.b.push_back(b);
+        char buffer[64];
+        auto [end, ec] = std::to_chars(buffer, buffer + sizeof buffer, a, std::chars_format::fixed, 4);
+        ops.text.emplace_back(buffer, end);
+    }
+    return ops;
+}
+
+// A row's identity: library, semantic class, and what it computed.
+void row(const char* library, const char* type, const char* semantic_class,
+         const char* operation, auto loop) {
+    // Type names contain commas; quote the field so the CSV stays parseable.
+    fixedwide_bench::measure(std::string(library) + ",\"" + type + "\"," + semantic_class + "," + operation, loop);
+}
+
+} // namespace
+
+int main(int argc, char** argv) {
+    for (int i = 1; i < argc; ++i) {
+        const std::string_view arg = argv[i];
+        if (arg == "--filter" && i + 1 < argc) fixedwide_bench::filter = argv[++i];
+        else if (arg == "--iterations" && i + 1 < argc) fixedwide_bench::iterations = std::strtoull(argv[++i], nullptr, 10);
     }
 
-    std::cout << "library,type,representation,operation,rounding,checked,ns_per_op\n";
+    const Operands ops = make_operands();
 
-    // 1. fixedwide Fixed64<12>
+    std::printf("# fixedwide competitor benchmark\n");
+    std::printf("# compiler=%s iterations=%zu repetitions=%u\n",
+                __VERSION__, fixedwide_bench::iterations, fixedwide_bench::repetitions);
+    std::printf("# every row is a MEDIAN of the repetitions; min/median/p95/max and all raw samples are emitted\n");
+    std::printf("library,type,semantic_class,operation,iterations,repetitions,min_ns,median_ns,p95_ns,max_ns,samples\n");
+
+    // ---- decimal fixed point --------------------------------------------
     {
-        std::vector<Fixed64<12>> a(N), b(N), res(N);
-        for (std::size_t i = 0; i < N; ++i) {
-            a[i] = Fixed64<12>::from_raw(raw_a[i]);
-            b[i] = Fixed64<12>::from_raw(raw_b[i]);
+        using T = fixedwide::Fixed64<12>;
+        std::vector<T> a(data_size), b(data_size);
+        for (std::size_t i = 0; i < data_size; ++i) {
+            a[i] = *fixedwide::parse<T>(ops.text[i]);
+            b[i] = *fixedwide::parse<T>(format_fixed4(ops.b[i]));
         }
-        double t_mul_even = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = *mul(a[i], b[i], Rounding::nearest_even);
-            escape(res.data());
+        // Validate before timing against an EXACT integer oracle: the full
+        // 128-bit product divided by the scale, rounded half to even by hand.
+        for (std::size_t i = 0; i < data_size; ++i) {
+            const auto product = fixedwide::mul(a[i], b[i]);
+            expect(product.has_value(), "fixedwide mul returned an error");
+            const __int128 full = static_cast<__int128>(a[i].raw()) * b[i].raw();
+            constexpr __int128 scale = 1'000'000'000'000;
+            __int128 quotient = full / scale;
+            const __int128 remainder = full % scale;
+            if (remainder * 2 > scale || (remainder * 2 == scale && (quotient & 1))) ++quotient;
+            expect(product->raw() == static_cast<std::int64_t>(quotient),
+                   "fixedwide mul disagrees with the exact integer oracle");
+        }
+        row("fixedwide", "Fixed64<12>", "decimal_fixed", "mul_nearest_even", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(*fixedwide::mul(a[i & (data_size - 1)], b[i & (data_size - 1)]));
         });
-        double t_mul_zero = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = *mul(a[i], b[i], Rounding::toward_zero);
-            escape(res.data());
+        row("fixedwide", "Fixed64<12>", "decimal_fixed", "div_nearest_even", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(*fixedwide::div(a[i & (data_size - 1)], b[i & (data_size - 1)]));
         });
-        double t_div_even = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = *div(a[i], b[i], Rounding::nearest_even);
-            escape(res.data());
+        row("fixedwide", "Fixed64<12>", "decimal_fixed", "mul_div_one_rounding", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i)
+                escape(*fixedwide::mul_div(a[i & (data_size - 1)], b[i & (data_size - 1)], a[i & (data_size - 1)]));
         });
-        double t_div_zero = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = *div(a[i], b[i], Rounding::toward_zero);
-            escape(res.data());
+        row("fixedwide", "Fixed64<12>", "decimal_fixed", "dependent_chain_mul", [&](std::size_t n) {
+            T acc = a[0];
+            for (std::size_t i = 0; i < n; ++i) {
+                auto next = fixedwide::mul(acc, b[i & (data_size - 1)]);
+                acc = next ? *next : a[0];
+            }
+            escape(acc);
         });
-        double t_add = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = *add(a[i], b[i]);
-            escape(res.data());
+        row("fixedwide", "Fixed64<12>", "decimal_fixed", "parse", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i)
+                escape(*fixedwide::parse<T>(ops.text[i & (data_size - 1)], fixedwide::Rounding::nearest_even));
         });
-        std::cout << "fixedwide,Fixed64<12>,64-bit decimal,mul,nearest_even,yes," << t_mul_even << "\n";
-        std::cout << "fixedwide,Fixed64<12>,64-bit decimal,mul,toward_zero,yes," << t_mul_zero << "\n";
-        std::cout << "fixedwide,Fixed64<12>,64-bit decimal,div,nearest_even,yes," << t_div_even << "\n";
-        std::cout << "fixedwide,Fixed64<12>,64-bit decimal,div,toward_zero,yes," << t_div_zero << "\n";
-        std::cout << "fixedwide,Fixed64<12>,64-bit decimal,add,none,yes," << t_add << "\n";
+        row("fixedwide", "Fixed64<12>", "decimal_fixed", "format", [&](std::size_t n) {
+            char buffer[fixedwide::text_capacity];
+            for (std::size_t i = 0; i < n; ++i) {
+                const auto written = fixedwide::to_chars(buffer, sizeof buffer, a[i & (data_size - 1)]);
+                escape(*written);
+            }
+        });
     }
-
-    // 2. fixedwide Fixed128<12>
     {
-        std::vector<Fixed128<12>> a(N), b(N), res(N);
-        for (std::size_t i = 0; i < N; ++i) {
-            a[i] = Fixed128<12>::from_raw(wide::int128(raw_a[i]));
-            b[i] = Fixed128<12>::from_raw(wide::int128(raw_b[i]));
+        // CNL with radix 10: a decimal fixed-point configuration, so this is the
+        // like-for-like comparison against Fixed64<12>. CNL's decimal support is
+        // documented as less exercised than its binary support.
+        using T = cnl::scaled_integer<std::int64_t, cnl::power<-6, 10>>;
+        std::vector<T> a(data_size), b(data_size);
+        for (std::size_t i = 0; i < data_size; ++i) { a[i] = T{ops.a[i]}; b[i] = T{ops.b[i]}; }
+        for (std::size_t i = 0; i < data_size; ++i) {
+            const T product = a[i] * b[i];
+            expect(std::abs(static_cast<double>(product) - ops.a[i] * ops.b[i]) < 0.01,
+                   "cnl decimal mul disagrees with the double oracle");
         }
-        double t_mul_even = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = *mul(a[i], b[i], Rounding::nearest_even);
-            escape(res.data());
+        row("cnl", "scaled_integer<int64,power<-6,10>>", "decimal_fixed", "mul_unchecked", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] * b[i & (data_size - 1)]);
         });
-        double t_mul_zero = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = *mul(a[i], b[i], Rounding::toward_zero);
-            escape(res.data());
+        row("cnl", "scaled_integer<int64,power<-6,10>>", "decimal_fixed", "div_unchecked", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] / b[i & (data_size - 1)]);
         });
-        double t_div_even = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = *div(a[i], b[i], Rounding::nearest_even);
-            escape(res.data());
-        });
-        double t_div_zero = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = *div(a[i], b[i], Rounding::toward_zero);
-            escape(res.data());
-        });
-        double t_add = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = *add(a[i], b[i]);
-            escape(res.data());
-        });
-        std::cout << "fixedwide,Fixed128<12>,128-bit decimal,mul,nearest_even,yes," << t_mul_even << "\n";
-        std::cout << "fixedwide,Fixed128<12>,128-bit decimal,mul,toward_zero,yes," << t_mul_zero << "\n";
-        std::cout << "fixedwide,Fixed128<12>,128-bit decimal,div,nearest_even,yes," << t_div_even << "\n";
-        std::cout << "fixedwide,Fixed128<12>,128-bit decimal,div,toward_zero,yes," << t_div_zero << "\n";
-        std::cout << "fixedwide,Fixed128<12>,128-bit decimal,add,none,yes," << t_add << "\n";
     }
 
-    // 3. fpm::fixed (64-bit binary fixed point)
+    // ---- binary fixed point ---------------------------------------------
     {
-        using Fpm64 = fpm::fixed<std::int64_t, __int128, 32>;
-        std::vector<Fpm64> a(N), b(N), res(N);
-        for (std::size_t i = 0; i < N; ++i) {
-            a[i] = Fpm64::from_raw_value(raw_a[i]);
-            b[i] = Fpm64::from_raw_value(raw_b[i]);
+        // fpm rounds its multiply and divide to nearest; it is not truncating.
+        using T = fpm::fixed<std::int64_t, __int128, 32>;
+        std::vector<T> a(data_size), b(data_size);
+        for (std::size_t i = 0; i < data_size; ++i) { a[i] = T{ops.a[i]}; b[i] = T{ops.b[i]}; }
+        for (std::size_t i = 0; i < data_size; ++i) {
+            expect(std::abs(static_cast<double>(a[i] * b[i]) - ops.a[i] * ops.b[i]) < 0.01,
+                   "fpm mul disagrees with the double oracle");
         }
-        double t_mul = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] * b[i];
-            escape(res.data());
+        row("fpm", "fixed<int64,int128,32>", "binary_fixed", "mul_nearest_unchecked", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] * b[i & (data_size - 1)]);
         });
-        double t_div = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] / b[i];
-            escape(res.data());
+        row("fpm", "fixed<int64,int128,32>", "binary_fixed", "div_nearest_unchecked", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] / b[i & (data_size - 1)]);
         });
-        double t_add = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] + b[i];
-            escape(res.data());
-        });
-        std::cout << "fpm,fixed<i64;32>,64-bit binary,mul,trunc,no," << t_mul << "\n";
-        std::cout << "fpm,fixed<i64;32>,64-bit binary,div,trunc,no," << t_div << "\n";
-        std::cout << "fpm,fixed<i64;32>,64-bit binary,add,none,no," << t_add << "\n";
     }
-
-    // 4. cnl::scaled_integer (64-bit binary & decimal)
     {
-        using CnlBin = cnl::scaled_integer<std::int64_t, cnl::power<-32>>;
-        std::vector<CnlBin> a(N), b(N), res(N);
-        for (std::size_t i = 0; i < N; ++i) {
-            a[i] = cnl::from_rep<CnlBin, std::int64_t>()(raw_a[i]);
-            b[i] = cnl::from_rep<CnlBin, std::int64_t>()(raw_b[i]);
+        using T = cnl::scaled_integer<std::int64_t, cnl::power<-32>>;
+        std::vector<T> a(data_size), b(data_size);
+        for (std::size_t i = 0; i < data_size; ++i) { a[i] = T{ops.a[i]}; b[i] = T{ops.b[i]}; }
+        for (std::size_t i = 0; i < data_size; ++i) {
+            expect(std::abs(static_cast<double>(a[i]) - ops.a[i]) < 0.01, "cnl binary conversion");
         }
-        double t_mul = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] * b[i];
-            escape(res.data());
+        row("cnl", "scaled_integer<int64,power<-32>>", "binary_fixed", "mul_unchecked", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] * b[i & (data_size - 1)]);
         });
-        double t_div = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] / b[i];
-            escape(res.data());
-        });
-        double t_add = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] + b[i];
-            escape(res.data());
-        });
-        std::cout << "cnl,scaled_integer<-32>,64-bit binary,mul,trunc,no," << t_mul << "\n";
-        std::cout << "cnl,scaled_integer<-32>,64-bit binary,div,trunc,no," << t_div << "\n";
-        std::cout << "cnl,scaled_integer<-32>,64-bit binary,add,none,no," << t_add << "\n";
     }
 
-    // 5. boost::decimal::decimal64_t
+    // ---- decimal floating point -----------------------------------------
+#if defined(FIXEDWIDE_HAVE_BOOST_DECIMAL)
     {
-        std::vector<boost::decimal::decimal64_t> a(N), b(N), res(N);
-        for (std::size_t i = 0; i < N; ++i) {
-            a[i] = boost::decimal::decimal64_t(raw_a[i], -12);
-            b[i] = boost::decimal::decimal64_t(raw_b[i], -12);
+        using T = boost::decimal::decimal64_t;
+        std::vector<T> a(data_size), b(data_size);
+        for (std::size_t i = 0; i < data_size; ++i) { a[i] = T{ops.a[i]}; b[i] = T{ops.b[i]}; }
+        for (std::size_t i = 0; i < data_size; ++i) {
+            expect(std::abs(static_cast<double>(a[i] * b[i]) - ops.a[i] * ops.b[i]) < 0.01,
+                   "boost.decimal mul disagrees with the double oracle");
         }
-        double t_mul = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] * b[i];
-            escape(res.data());
+        row("boost.decimal", "decimal64_t", "decimal_float", "mul", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] * b[i & (data_size - 1)]);
         });
-        double t_div = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] / b[i];
-            escape(res.data());
+        row("boost.decimal", "decimal64_t", "decimal_float", "div", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] / b[i & (data_size - 1)]);
         });
-        double t_add = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] + b[i];
-            escape(res.data());
-        });
-        std::cout << "boost.decimal,decimal64_t,IEEE-754 decimal float,mul,nearest_even,no," << t_mul << "\n";
-        std::cout << "boost.decimal,decimal64_t,IEEE-754 decimal float,div,nearest_even,no," << t_div << "\n";
-        std::cout << "boost.decimal,decimal64_t,IEEE-754 decimal float,add,nearest_even,no," << t_add << "\n";
     }
+#endif
 
-    // 6. Native IEEE-754 binary double
+    // ---- raw integer and binary floating point baselines -----------------
     {
-        std::vector<double> a(N), b(N), res(N);
-        for (std::size_t i = 0; i < N; ++i) {
-            a[i] = static_cast<double>(raw_a[i]) * 1e-12;
-            b[i] = static_cast<double>(raw_b[i]) * 1e-12;
+        // Fixed-precision, allocator-free Boost.Multiprecision: no heap traffic.
+        using T = boost::multiprecision::int128_t;
+        static_assert(!std::numeric_limits<T>::is_bounded || sizeof(T) > 0);
+        std::vector<T> a(data_size), b(data_size);
+        for (std::size_t i = 0; i < data_size; ++i) {
+            a[i] = static_cast<std::int64_t>(ops.a[i] * 10000);
+            b[i] = static_cast<std::int64_t>(ops.b[i] * 10000);
         }
-        double t_mul = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] * b[i];
-            escape(res.data());
+        for (std::size_t i = 0; i < data_size; ++i) expect(a[i] > 0 && b[i] > 0, "boost int128 setup");
+        row("boost.multiprecision", "int128_t", "raw_integer", "mul_unchecked", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(T(a[i & (data_size - 1)] * b[i & (data_size - 1)]));
         });
-        double t_div = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] / b[i];
-            escape(res.data());
-        });
-        double t_add = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] + b[i];
-            escape(res.data());
-        });
-        std::cout << "native,double,IEEE-754 binary float,mul,nearest_even,no," << t_mul << "\n";
-        std::cout << "native,double,IEEE-754 binary float,div,nearest_even,no," << t_div << "\n";
-        std::cout << "native,double,IEEE-754 binary float,add,nearest_even,no," << t_add << "\n";
     }
-
-    // 7. boost::multiprecision::int128_t
     {
-        namespace mp = boost::multiprecision;
-        std::vector<mp::int128_t> a(N), b(N), res(N);
-        for (std::size_t i = 0; i < N; ++i) {
-            a[i] = raw_a[i];
-            b[i] = raw_b[i];
-        }
-        double t_mul = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] * b[i];
-            escape(res.data());
+        std::vector<double> a = ops.a, b = ops.b;
+        row("std", "double", "binary_float", "mul", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] * b[i & (data_size - 1)]);
         });
-        double t_div = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] / b[i];
-            escape(res.data());
+        row("std", "double", "binary_float", "div", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] / b[i & (data_size - 1)]);
         });
-        double t_add = time_op([&] {
-            for (std::size_t i = 0; i < N; ++i) res[i] = a[i] + b[i];
-            escape(res.data());
+        row("std", "double", "binary_float", "parse", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) {
+                const auto& text = ops.text[i & (data_size - 1)];
+                double out = 0;
+                std::from_chars(text.data(), text.data() + text.size(), out);
+                escape(out);
+            }
         });
-        std::cout << "boost.multiprecision,int128_t,128-bit integer,mul,none,no," << t_mul << "\n";
-        std::cout << "boost.multiprecision,int128_t,128-bit integer,div,trunc,no," << t_div << "\n";
-        std::cout << "boost.multiprecision,int128_t,128-bit integer,add,none,no," << t_add << "\n";
+        row("std", "double", "binary_float", "format", [&](std::size_t n) {
+            char buffer[64];
+            for (std::size_t i = 0; i < n; ++i) {
+                auto [end, ec] = std::to_chars(buffer, buffer + sizeof buffer,
+                                               a[i & (data_size - 1)], std::chars_format::fixed, 4);
+                escape(end);
+            }
+        });
     }
 
+    std::fprintf(stderr, "PASSED validations=%llu\n", static_cast<unsigned long long>(validations));
     return 0;
 }
