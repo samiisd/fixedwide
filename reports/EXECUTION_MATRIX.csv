@@ -1,0 +1,26 @@
+configuration,status,detail
+Linux x86-64 22.1.8 Release,executed-pass,"23/23 tests"
+Linux x86-64 GCC 16 Release,executed-pass,"23/23 tests"
+Linux x86-64 Clang forced portable,executed-pass,"23/23 tests"
+"Linux x86-64 Clang portable, __SIZEOF_INT128__ undefined",executed-pass,"23/23 tests"
+Linux x86-64 Clang ASan+UBSan native,executed-pass,"23/23 tests"
+Linux x86-64 Clang ASan+UBSan forced portable,executed-pass,"23/23 tests"
+Linux x86-64 Clang shared library,executed-pass,"23/23 tests"
+Linux x86-64 Clang no-exceptions / no-RTTI library,executed-pass,"library builds; no test binaries in this configuration"
+CMake install + external find_package consumer,executed-pass,"consumer printed 124.980946885266"
+Linux x86-64 Clang 17 (ubuntu:24.04 container) Release,executed-pass,23/23 tests; scripts/docker_bench.sh image
+Linux x86-64 Clang 17 paired performance vs 0.4,executed-pass,"100 rows measured; 27 of 100 exceed the gate, reported per row"
+Linux x86-64 Clang 18 paired performance vs 0.4,executed-pass,"100 rows measured; 30 of 100 exceed the gate, reported per row"
+Linux x86-64 Clang 22 paired performance vs 0.4,executed-pass,"100 rows measured; 46 of 100 exceed the gate, reported per row"
+Linux x86-64 GCC paired performance vs 0.4,not-applicable,0.4 requires C++ _BitInt(256) and will not configure under GCC; no paired GCC row can exist without modifying the baseline
+"Linux AArch64 (Pixel 6, real hardware, static GCC 16.1 cross build)",executed-pass,"17/17 test binaries; correctness only, no timings from a phone"
+Linux AArch64 CI (ubuntu-24.04-arm),configured-not-executed,job present in .github/workflows/ci.yml; runs on push
+macOS arm64 (macos-14),configured-not-executed,job present in .github/workflows/ci.yml; runs on push
+macOS x86-64 (macos-13),configured-not-executed,job present in .github/workflows/ci.yml; runs on push
+Windows x64 MSVC,configured-not-executed,"job present in .github/workflows/ci.yml; the header-level blockers (inline asm, GNU overflow builtins) are removed but no MSVC build has been executed"
+Windows x64 clang-cl,configured-not-executed,job present in .github/workflows/ci.yml; not executed
+Windows ARM64,not-configured,no runner configured; not claimed as supported
+Big-endian hardware,not-configured,no host available; binary.hpp defines both byte orders but only little-endian has been executed
+Clang libFuzzer under ASan+UBSan,executed-pass,"50,000,000 executions in 153 s, no crash and no sanitizer diagnostic; reports/fuzz_execution.log"
+Competitor benchmark from a clean checkout,executed-pass,"CNL 1.1.7 and fpm 1.1.0 fetched at pinned tags; 28,672 output validations passed"
+Compile-time measurement versus 0.4,executed-pass,"fixed.hpp +28.6%, arithmetic.hpp +37.5%, chars.hpp +14.5% on Clang 22"

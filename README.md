@@ -2,7 +2,9 @@
 
 A modern C++23 library for **checked fixed-point decimal arithmetic** and **portable fixed-width wide integers** (128/256-bit).
 
-`fixedwide` provides distinct compile-time types for different bit-widths and decimal scales. It guarantees zero heap allocation, zero virtual dispatch, no runtime scale overhead, and no compiler `_BitInt` ABI leak in public types.
+`fixedwide` provides distinct compile-time types for different bit-widths and decimal scales. It guarantees zero heap allocation, zero virtual dispatch, no runtime scale overhead, and no compiler `_BitInt` in the public storage types. (Two Clang-only inline fast
+paths use `_BitInt(256)` as a local computation type, where it has no ABI
+surface.)
 
 | Type Alias | Storage Type | Width | Fractional Digits | In-Memory Size | Alignment |
 | :--- | :--- | :---: | :---: | :---: | :---: |
@@ -39,8 +41,14 @@ Backward compatibility aliases `FP64` (alias for `Fixed64<12>`) and `FP128` (ali
   - `<fixedwide/floating.hpp>`: Explicit conversions to/from `float`, `double`
   - `<fixedwide/wide.hpp>`: Minimal public wide integers (`wide::int128`, `wide::uint128`, `wide::int256`, `wide::uint256`)
   - `<fixedwide/all.hpp>`: Convenience umbrella header
-- **Strict Portability**:
-  - Linux x86-64, Linux AArch64, macOS, Windows MSVC / clang-cl
+- **Portability**: every platform below is listed with what has actually been
+  executed, in [`reports/EXECUTION_MATRIX.csv`](reports/EXECUTION_MATRIX.csv).
+  A platform is not described as supported until a row there says
+  `executed-pass`.
+  - **Executed**: Linux x86-64 (Clang 17/18/22, GCC 16), Linux AArch64 on real
+    hardware, forced-portable and no-`__int128` builds, both sanitizer backends
+  - **Configured in CI, not yet executed**: macOS arm64 and x86-64,
+    Windows MSVC and clang-cl
   - `FIXEDWIDE_FORCE_PORTABLE` build mode for standard-compliant multi-limb integer fallbacks without hardware assembly or compiler `__int128` extensions.
   - Zero heap allocation across all arithmetic and parsing functions.
   - Full support for `-fno-exceptions` and `-fno-rtti`.
@@ -88,7 +96,9 @@ int main() {
 ## Building and Testing
 
 ### Prerequisites
-- C++23 compiler (Clang 17+, GCC 13+, or MSVC 19.36+)
+- C++23 compiler with `std::expected`. Executed here: Clang 17, 18 and 22,
+  GCC 16, and GCC 16.1 cross-compiling for AArch64. MSVC is compiled-for but has
+  not been executed.
 - CMake 3.25+
 
 ### Build & Run Tests
@@ -113,14 +123,37 @@ ctest --test-dir build --output-on-failure
 
 ## Benchmarks and Performance
 
-Microbenchmarking against the untouched 0.4.0 baseline confirms that the generalized multi-scale architecture matches native inline performance:
-- Common operations (`Fixed64<12>` and `Fixed128<12>` multiplication and division): **~2.3 – 2.7 ns**
-- Exact dependent arithmetic chains: **Within ±2% of baseline 0.4**
-- Competitor comparisons:
-  - Checked `Fixed64` addition: **0.20 ns** (matching native integer and double)
-  - Checked `Fixed64` division: **~3x faster** than Boost.Decimal `decimal64_t`
+Measured against the **untouched 0.4.0 release**, building a byte-identical
+benchmark source with the same compiler and flags, core-pinned and interleaved,
+medians of 27 samples per row.
 
-See [`reports/benchmark_summary.md`](reports/benchmark_summary.md) and [`reports/competitors.csv`](reports/competitors.csv) for full raw tables.
+**The generalized version is not yet at parity with 0.4, and this README will
+say so until it is.** On Clang 17, 27 of 100 rows are more than 5% slower and the
+worst is +67%; the previous release's worst was +161%. The gap is concentrated in
+wide `Fixed128` multiply, divide and `mul_div`, and its cause is structural: 0.4
+was a single-scale library whose kernels saw the decimal scale as a compile-time
+constant.
+
+Where this version is ahead of 0.4:
+
+- reduced-digit formatting: **10-30% faster**
+- toward-zero `quantize`: **36% faster**
+- 43 of 100 benchmark rows are at or faster than 0.4
+
+Against other libraries, by semantic class and with every timed result validated
+outside the timed region ([full table](reports/BENCHMARK_COMPETITORS.md)):
+
+- versus **Boost.Decimal** `decimal64_t`, the closest comparable contract:
+  multiply 2.6 ns vs 3.6 ns, divide 2.2 ns vs 8.7 ns
+- **formatting** is about twice as fast as `std::to_chars` on a `double`
+- **CNL's unchecked decimal multiply is about 8x faster** than the checked one
+  here. That is the cost of returning `std::expected` on overflow instead of
+  silently producing a wrong answer, and it is stated rather than omitted.
+- **parsing is about 4x slower** than `std::from_chars` on a `double`
+
+Per-row results, raw samples, the measured noise floor and the environment for
+every compiler are in [`reports/BENCHMARK_VS_0_4.md`](reports/BENCHMARK_VS_0_4.md)
+and `reports/raw/`.
 
 ---
 
