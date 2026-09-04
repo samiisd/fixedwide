@@ -240,6 +240,37 @@ jobs:
           cmake --build build-consumer
           ./build-consumer/consumer
 
+  fetchcontent:
+    name: FetchContent consumer
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 cmake ninja-build
+      # The README tells people to consume this with FetchContent. That
+      # instruction was never tested, and an untested install instruction is how
+      # a project ends up with a README that does not work. Fetches from the
+      # checkout itself, so it needs no network and no credentials.
+      - name: Consume via FetchContent
+        run: |
+          mkdir -p /tmp/fc
+          cat > /tmp/fc/CMakeLists.txt <<EOF
+          cmake_minimum_required(VERSION 3.25)
+          project(fetchcontent_consumer LANGUAGES CXX)
+          include(FetchContent)
+          FetchContent_Declare(fixedwide
+              GIT_REPOSITORY file://$GITHUB_WORKSPACE
+              GIT_TAG        $GITHUB_SHA)
+          FetchContent_MakeAvailable(fixedwide)
+          add_executable(app main.cpp)
+          target_link_libraries(app PRIVATE fixedwide::fixedwide)
+          EOF
+          cp examples/consumer/consumer.cpp /tmp/fc/main.cpp
+          cmake -S /tmp/fc -B /tmp/fc/build -G Ninja -DCMAKE_CXX_COMPILER=g++-14
+          cmake --build /tmp/fc/build
+          /tmp/fc/build/app
+
   conan:
     name: conan create
     runs-on: ubuntu-24.04

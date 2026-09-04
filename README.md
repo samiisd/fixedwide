@@ -63,7 +63,8 @@ find_package(fixedwide REQUIRED)
 target_link_libraries(app PRIVATE fixedwide::fixedwide)
 ```
 
-**CMake FetchContent / CPM**
+**CMake FetchContent / CPM** — note this repository is currently **private**, so
+a fetch over HTTPS needs credentials until it is published.
 
 ```cmake
 include(FetchContent)

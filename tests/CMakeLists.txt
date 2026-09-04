@@ -75,7 +75,11 @@ if(FIXEDWIDE_BUILD_TESTS)
     # the output matches, which asserts both that it failed and why. A build that
     # unexpectedly SUCCEEDS produces no such message and therefore fails.
     set(NEGATIVE_TESTS
-        ambiguous_mixed_mul "call to deleted function 'mul'|use of deleted function"
+        # Three compilers, three phrasings for the same diagnostic:
+        #   clang: call to deleted function 'mul'
+        #   gcc:   use of deleted function
+        #   msvc:  attempting to reference a deleted function
+        ambiguous_mixed_mul "deleted function"
         invalid_bits        "Bits must be one of"
         invalid_scale       "Decimals exceeds maximum capacity"
         runtime_scale       "scale_member"

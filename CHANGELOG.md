@@ -62,6 +62,41 @@ nothing in this tree had ever built. Two of its own rows could not have compiled
   perturbation to the platform and still checks the 18th decimal moves.
 - `enable_testing()` was called inside the tests block, so examples could not
   register ctest tests without tests also being enabled.
+- **The coverage job reported success while producing no coverage.** `llvm-cov`
+  failed on every run — source directories were passed where object files
+  belong — and the pipe through `tee` discarded its exit status. It now runs
+  under `set -euo pipefail`, with one positional binary and the rest as
+  `-object`, sources selected by `-ignore-filename-regex`, and enforced
+  thresholds taken from a CI measurement rather than a workstation one.
+- **The release archive contained the previous release's evidence.**
+  `SHA256SUMS` and the extraction log were tracked files, so `git archive HEAD`
+  embedded a checksum and a verification log describing a *different* archive.
+  A manifest mismatch inside the archive was also swallowed by `|| true` and
+  merely counted. `scripts/release.sh` now stages, generates the manifest from
+  what is staged, and fails hard on any mismatch — verified by tampering with an
+  extracted file. Those three generated files are no longer tracked, which also
+  removes the staleness that two unrelated Dependabot merges had already caused.
+- **The CNL benchmark was not timing a decimal multiply.**
+  `cnl::scaled_integer::operator*` returns a type whose exponent is the *sum* of
+  the operands', so the timed expression was a bare 64-bit multiply with the
+  result left at the wrong scale. That is where "CNL is about 8x faster" came
+  from; forcing the result back to the declared type, the gap at a matched scale
+  is 2.8x. The comparison was also at mismatched scales (`Fixed64<12>` against a
+  scale-6 CNL type) and validated against a 0.01 floating tolerance that cannot
+  distinguish a correct decimal result from a wrong one.
+- 85 compiler warnings in library code, mostly one Knuth division loop indexing
+  an `int` into a `std::size_t`. Zero now across native, portable, no-`__int128`
+  and GCC, with `-Wsign-conversion` and `-Wold-style-cast` added permanently.
+  The loop rewrite also removed a sign-extension: `mul.Fixed256` is 5
+  instructions cheaper.
+- Both differential audits accepted `ArithmeticError::overflow` and `inexact`
+  interchangeably, so the precedence between them was never tested. It is now
+  stated in `<fixedwide/error.hpp>` — a result that does not fit is `overflow`,
+  even under `Rounding::exact` — and asserted exactly over 5.1 million checks
+  across both backends.
+- Negative compile tests used `WILL_FAIL`, which accepts *any* compile error, so
+  a typo or a renamed header would have passed while the rule under test had
+  stopped being enforced. Each now asserts the diagnostic it expects.
 
 ### Added
 
@@ -87,6 +122,21 @@ nothing in this tree had ever built. Two of its own rows could not have compiled
   tests the extraction and publishes it; and Dependabot for action versions.
 - `docs/ci.md`, recording which compiler and standard-library combinations
   actually work, measured rather than assumed.
+- `.clang-format`, `scripts/format.sh` and a `lint` CI job that also compiles
+  with `-Werror` over three toolchains and both backends. clang-format is pinned
+  to an exact version from PyPI because majors format the same file differently,
+  and `StatementMacros` was needed to make the check converge at all — without
+  it clang-format re-indented the explicit-instantiation macros differently on
+  every run. `benchmarks/rounding_bench.cpp` is excluded and must stay so: the
+  paired 0.4 comparison requires it to be byte-identical to 0.4's copy.
+- A CI job that consumes the library through `FetchContent`, because the
+  README's install instructions were never tested.
+- A `decimal fixed, matched scale` benchmark class that pairs each scale with
+  its own counterpart, seeds both libraries from identical raw integers,
+  includes negative operands, and checks an exact integer oracle. It surfaced
+  that **CNL cannot do 12 decimals at all**: it forms the product in `int64_t`,
+  so `123.456789012345 * 2` gives `-0.000002` where fixedwide returns
+  `246.913578024690`. The benchmark asserts this on every run.
 
 ### Changed
 

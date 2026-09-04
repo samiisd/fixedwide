@@ -42,7 +42,7 @@ index mask and the sink, which every other row also pays.
 | Workload | Fixed64 | Fixed128 | Fixed256 |
 |---|---:|---:|---:|
 | `add` | 9 | 22 | — |
-| `mul` | 37 | 52 | 701 |
+| `mul` | 37 | 52 | 697 |
 | `div` | 50 | 131 | 523 |
 | `mul_div` | 27 | 47 | — |
 | `quantize` | 72 | 155 | 557 |
