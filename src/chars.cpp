@@ -361,31 +361,38 @@ format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw, unsign
     unsigned reduce = decimals - options.digits;
     auto divisor128 = (reduce < 19) ? wide::uint128(pow10(reduce), 0ULL)
                                     : pow10_wide<wide::uint128>(reduce);
-    wide::uint128 q, r;
-    if (divisor128.high == 0) {
-        std::uint64_t d = divisor128.low;
-        if (d == 1) {
-            q = mag128;
-            r = wide::uint128(0ULL, 0ULL);
-        } else if (mag128.high == 0) {
-            q = wide::uint128(mag128.low / d, 0);
-            r = wide::uint128(mag128.low % d, 0);
-        } else {
+    // When quotient, remainder and divisor all fit 64 bits -- which is every
+    // value a Fixed128 shares with a Fixed64 -- round there. round_magnitude on
+    // wide::uint128 runs each compare, shift and subtract as a member function
+    // on two limbs; Clang 17 and 18 do not undo that, and it was 40% of a
+    // reduced-digit format. The quotient can only reach UINT64_MAX when the
+    // divisor is one, and then the remainder is zero and nothing is added.
+    std::expected<wide::uint128, ArithmeticError> rounded;
+    if (divisor128.high == 0 && mag128.high == 0) {
+        const std::uint64_t d = divisor128.low;
+        const auto narrow = round_magnitude(mag128.low / d, mag128.low % d, d, negative,
+                                            options.rounding, UINT64_MAX);
+        if (!narrow) return std::unexpected(FormatError::inexact);
+        rounded = wide::uint128(*narrow, 0);
+    } else {
+        wide::uint128 q, r;
+        if (divisor128.high == 0) {
+            std::uint64_t d = divisor128.low;
             std::uint64_t qhi = mag128.high / d;
             std::uint64_t rem_hi = mag128.high % d;
             std::uint64_t rem;
             std::uint64_t qlo = detail::div128by64(rem_hi, mag128.low, d, rem);
             q = wide::uint128(qlo, qhi);
             r = wide::uint128(rem, 0);
+        } else {
+            auto divres = divide128(mag128, divisor128, false);
+            q = divres.quotient;
+            r = divres.remainder;
         }
-    } else {
-        auto divres = divide128(mag128, divisor128, false);
-        q = divres.quotient;
-        r = divres.remainder;
+        rounded = round_magnitude(q, r, divisor128, negative, options.rounding,
+                                  wide::uint128::max());
+        if (!rounded) return std::unexpected(FormatError::inexact);
     }
-    wide::uint128 limit = wide::uint128::max();
-    auto rounded = round_magnitude(q, r, divisor128, negative, options.rounding, limit);
-    if (!rounded) return std::unexpected(FormatError::inexact);
 
     char digits_buf[80];
     char* const end = digits_buf + sizeof(digits_buf);

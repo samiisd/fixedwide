@@ -27,11 +27,11 @@ inline constexpr unsigned max_scaled_decimals_64 = 18;
 inline constexpr unsigned max_scaled_decimals_128 = 19;
 
 template<unsigned D>
-std::expected<wide::int128, ArithmeticError>
+std::expected<basic_fixed<128, D>, ArithmeticError>
 mul128_scaled(wide::int128 a, wide::int128 b, Rounding rounding) noexcept;
 
 template<unsigned D>
-std::expected<wide::int128, ArithmeticError>
+std::expected<basic_fixed<128, D>, ArithmeticError>
 div128_scaled(wide::int128 a, wide::int128 b, Rounding rounding) noexcept;
 
 template<unsigned D>
@@ -48,29 +48,36 @@ mul128_impl(wide::int128 a, wide::int128 b, unsigned decimals, Rounding rounding
 std::expected<wide::int128, ArithmeticError>
 div128_impl(wide::int128 a, wide::int128 b, unsigned decimals, Rounding rounding) noexcept;
 
+// The divisor arrives as its two limbs, not as a wide::int128. Three 16-byte
+// operands plus the returned std::expected do not fit the argument registers,
+// so the third one is passed in memory -- and Clang materialises a struct
+// argument in a temporary, then copies it to the outgoing slot with a 16-byte
+// move over two 8-byte stores. That copy does not forward, and the stall cost
+// more than the division. Scalar limbs are stored straight into the slot.
 std::expected<wide::int128, ArithmeticError>
-mul_div128_impl(wide::int128 a, wide::int128 b, wide::int128 c, Rounding rounding) noexcept;
+mul_div128_impl(wide::int128 a, wide::int128 b, std::uint64_t c_low, std::uint64_t c_high,
+                Rounding rounding) noexcept;
 
 std::expected<wide::int256, ArithmeticError>
-mul256_impl(wide::int256 a, wide::int256 b, unsigned decimals, Rounding rounding) noexcept;
+mul256_impl(const wide::int256& a, const wide::int256& b, unsigned decimals, Rounding rounding) noexcept;
 
 std::expected<wide::int256, ArithmeticError>
-div256_impl(wide::int256 a, wide::int256 b, unsigned decimals, Rounding rounding) noexcept;
+div256_impl(const wide::int256& a, const wide::int256& b, unsigned decimals, Rounding rounding) noexcept;
 
 std::expected<wide::int256, ArithmeticError>
-mul_div256_impl(wide::int256 a, wide::int256 b, wide::int256 c, Rounding rounding) noexcept;
+mul_div256_impl(const wide::int256& a, const wide::int256& b, const wide::int256& c, Rounding rounding) noexcept;
 
 std::expected<wide::int128, ArithmeticError>
 quantize128_impl(wide::int128 a, unsigned current_dec, unsigned target_dec, Rounding rounding) noexcept;
 
 std::expected<wide::int256, ArithmeticError>
-quantize256_impl(wide::int256 a, unsigned current_dec, unsigned target_dec, Rounding rounding) noexcept;
+quantize256_impl(const wide::int256& a, unsigned current_dec, unsigned target_dec, Rounding rounding) noexcept;
 
 std::expected<wide::int128, ArithmeticError>
 remainder128_impl(wide::int128 a, wide::int128 b) noexcept;
 
 std::expected<wide::int256, ArithmeticError>
-remainder256_impl(wide::int256 a, wide::int256 b) noexcept;
+remainder256_impl(const wide::int256& a, const wide::int256& b) noexcept;
 
 std::expected<std::int64_t, ArithmeticError>
 mul64_impl(std::int64_t a, std::int64_t b, std::int64_t scale, Rounding rounding) noexcept;
@@ -236,6 +243,13 @@ template<class UQ, class UR, class UD>
 [[nodiscard]] constexpr bool nearest_even_inc(UQ q, UR r, UD d) noexcept {
     const auto tie = q & ~d & 1;
     return r > d / 2 - tie;
+}
+// A 128-bit value is representable in signed 64 bits exactly when its high limb
+// is the sign extension of the low one. Written as a sum rather than the two
+// paired equality tests it replaces: those cost a branch each, on the fast path
+// of every wide multiply.
+[[nodiscard]] constexpr bool fits64(wide::int128 v) noexcept {
+    return v.high + (v.low >> 63) == 0;
 }
 [[nodiscard]] inline std::int64_t nearest_adj(std::int64_t q, std::int64_t rem, std::int64_t div, bool neg) noexcept {
     const auto rbits = static_cast<std::uint64_t>(rem);
@@ -439,11 +453,8 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
         if (rounding == Rounding::toward_zero || rounding == Rounding::nearest_even) {
             auto alow = static_cast<std::int64_t>(a.raw().low);
             auto blow = static_cast<std::int64_t>(b.raw().low);
-            bool a_fits = (a.raw().high == 0 && (a.raw().low >> 63) == 0) ||
-                          (a.raw().high == ~0ULL && (a.raw().low >> 63) == 1);
-            bool b_fits = (b.raw().high == 0 && (b.raw().low >> 63) == 0) ||
-                          (b.raw().high == ~0ULL && (b.raw().low >> 63) == 1);
-            if (a_fits && b_fits && Fixed::scale().high == 0) {
+            if (detail_arith::fits64(a.raw()) && detail_arith::fits64(b.raw()) &&
+                Fixed::scale().high == 0) {
                 std::int64_t scale_val = static_cast<std::int64_t>(Fixed::scale().low);
                 std::uint64_t lo;
                 std::int64_t hi;
@@ -453,13 +464,11 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
                 if (uhi + half < 2 * half) {
                     std::int64_t q, r;
                     __asm__("idivq %[div]" : "=a"(q), "=d"(r) : "a"(lo), "d"(hi), [div] "r"(scale_val) : "cc");
+                    // Branchless, like the 64-bit and mul_div paths: the
+                    // increment is a coin flip on real data, and a mispredict on
+                    // a dependent chain costs more than the whole division.
                     if (rounding == Rounding::nearest_even && r != 0) {
-                        std::uint64_t ur = r < 0 ? 0ULL - static_cast<std::uint64_t>(r) : static_cast<std::uint64_t>(r);
-                        std::uint64_t ud = static_cast<std::uint64_t>(scale_val);
-                        bool is_odd = (q & 1) != 0;
-                        if ((ur * 2 > ud) || (ur * 2 == ud && is_odd)) {
-                            q += ((hi < 0) ? -1 : 1);
-                        }
+                        q += detail_arith::nearest_adj(q, r, scale_val, hi < 0);
                     }
                     return Fixed::from_raw(wide::int128(q));
                 } else {
@@ -487,14 +496,17 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
             }
         }
 #endif
-        auto res = [&] {
-            if constexpr (D <= detail::max_scaled_decimals_128)
-                return detail::mul128_scaled<D>(a.raw(), b.raw(), rounding);
-            else
-                return detail::mul128_impl(a.raw(), b.raw(), D, rounding);
-        }();
-        if (!res) return std::unexpected(res.error());
-        return Fixed::from_raw(*res);
+        if constexpr (D <= detail::max_scaled_decimals_128) {
+            // Returned straight through: an identical return type lets the
+            // kernel write the caller's sret buffer directly. Re-wrapping it
+            // costs a 16-byte reload of two 8-byte stores, which does not
+            // forward.
+            return detail::mul128_scaled<D>(a.raw(), b.raw(), rounding);
+        } else {
+            auto res = detail::mul128_impl(a.raw(), b.raw(), D, rounding);
+            if (!res) return std::unexpected(res.error());
+            return Fixed::from_raw(*res);
+        }
     } else if constexpr (Bits == 256) {
         auto res = detail::mul256_impl(a.raw(), b.raw(), D, rounding);
         if (!res) return std::unexpected(res.error());
@@ -559,14 +571,13 @@ div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
         // because div's inline test rejects most operands and its code sits on
         // the path of the ones it rejects. Which operations earn an inline copy
         // is decided per operation by measurement, not by symmetry.
-        auto res = [&] {
-            if constexpr (D <= detail::max_scaled_decimals_128)
-                return detail::div128_scaled<D>(a.raw(), b.raw(), rounding);
-            else
-                return detail::div128_impl(a.raw(), b.raw(), D, rounding);
-        }();
-        if (!res) return std::unexpected(res.error());
-        return Fixed::from_raw(*res);
+        if constexpr (D <= detail::max_scaled_decimals_128) {
+            return detail::div128_scaled<D>(a.raw(), b.raw(), rounding);
+        } else {
+            auto res = detail::div128_impl(a.raw(), b.raw(), D, rounding);
+            if (!res) return std::unexpected(res.error());
+            return Fixed::from_raw(*res);
+        }
     } else if constexpr (Bits == 256) {
         if (b.raw().is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
         auto res = detail::div256_impl(a.raw(), b.raw(), D, rounding);
@@ -631,13 +642,8 @@ mul_div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, basic_fixed<Bits, D> c, 
             auto alow = static_cast<std::int64_t>(a.raw().low);
             auto blow = static_cast<std::int64_t>(b.raw().low);
             auto clow = static_cast<std::int64_t>(c.raw().low);
-            bool a_fits = (a.raw().high == 0 && (a.raw().low >> 63) == 0) ||
-                          (a.raw().high == ~0ULL && (a.raw().low >> 63) == 1);
-            bool b_fits = (b.raw().high == 0 && (b.raw().low >> 63) == 0) ||
-                          (b.raw().high == ~0ULL && (b.raw().low >> 63) == 1);
-            bool c_fits = (c.raw().high == 0 && (c.raw().low >> 63) == 0) ||
-                          (c.raw().high == ~0ULL && (c.raw().low >> 63) == 1);
-            if (a_fits && b_fits && c_fits) {
+            if (detail_arith::fits64(a.raw()) && detail_arith::fits64(b.raw()) &&
+                detail_arith::fits64(c.raw())) {
                 std::uint64_t lo;
                 std::int64_t hi;
                 __asm__("imulq %[rhs]" : "=a"(lo), "=d"(hi) : "a"(alow), [rhs] "r"(blow) : "cc");
@@ -655,7 +661,7 @@ mul_div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, basic_fixed<Bits, D> c, 
             }
         }
 #endif
-        auto res = detail::mul_div128_impl(a.raw(), b.raw(), c.raw(), rounding);
+        auto res = detail::mul_div128_impl(a.raw(), b.raw(), c.raw().low, c.raw().high, rounding);
         if (!res) return std::unexpected(res.error());
         return Fixed::from_raw(*res);
     } else if constexpr (Bits == 256) {
