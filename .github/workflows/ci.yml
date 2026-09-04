@@ -364,6 +364,9 @@ jobs:
   coverage:
     name: coverage
     runs-on: ubuntu-24.04
+    # Only this job writes, and only to refresh the badge below.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
       # Clang 20 with libstdc++, for the same reason as the fuzz job: one
@@ -447,6 +450,25 @@ jobs:
           awk -v v="$lines"    'BEGIN { exit (v+0 >= 70) ? 0 : 1 }' || { echo "line coverage below 70%" >&2; fail=1; }
           awk -v v="$branches" 'BEGIN { exit (v+0 >= 76) ? 0 : 1 }' || { echo "branch coverage below 76%" >&2; fail=1; }
           exit $fail
+      # shields.io cannot fetch a number out of a private repository, so the
+      # badge is generated from the same report the gate just enforced and
+      # committed. It therefore cannot drift from the number CI actually
+      # measured, which a hand-maintained badge always eventually does.
+      - name: Refresh the coverage badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          python3 scripts/coverage_badge.py coverage.txt docs/assets/coverage.svg
+          if ! git diff --quiet docs/assets/coverage.svg; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/assets/coverage.svg
+            # [skip ci] so refreshing the badge does not start another run that
+            # refreshes the badge.
+            git commit -m "ci: refresh the coverage badge [skip ci]"
+            git push
+          else
+            echo "badge unchanged"
+          fi
       - uses: actions/upload-artifact@v7
         if: always()
         with:

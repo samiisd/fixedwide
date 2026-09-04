@@ -5,6 +5,94 @@ All notable changes to the `fixedwide` library are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-09-04
+
+Everything here was found by measuring rather than by guessing, and two of the
+items are the measurement pointing somewhere other than where the previous
+release was looking.
+
+Two changes are not patch-level, which is why this is 0.6.0 and not 0.5.1:
+`all.hpp` no longer includes three headers, and `std::format` with a precision
+now produces a different string. Both are described under **Changed**.
+
+### Fixed
+
+- **`std::format("{:.2}", value)` printed the first two characters, not two
+  decimals.** The formatter inherited `std::formatter<std::string_view>`, so
+  precision meant "truncate the string": `123.4567` formatted as `12`. For a
+  decimal type that is a silently wrong number, which is the one failure mode
+  this library exists to prevent, and `{:.2}` is what anyone formatting money
+  types first. The formatter now parses its own spec --
+  `[[fill]align][width][.precision][f]` -- where precision means decimals and
+  rounds nearest-even, matching `to_chars`. A precision wider than the type
+  carries is a `std::format_error` rather than a padded lie, and numbers
+  right-align by default as every arithmetic type does.
+
+### Performance
+
+- **`#include <fixedwide/all.hpp>` costs 187 ms instead of 558 ms.** It pulled
+  in `format.hpp`, `iostream.hpp` and `hash.hpp` unconditionally, and those drag
+  `<format>` (435 ms), `<iostream>` (450 ms) and `<functional>` (103 ms) behind
+  them -- each more expensive than the whole of the rest of this library. They
+  are adapters to standard facilities, not part of the numeric API, so they are
+  now opt-in and `all.hpp` says so where a reader will find it.
+
+  This also corrects where previous releases were looking. The headline
+  compile-time item was `arithmetic.hpp` being 41% more expensive than 0.4's,
+  which is 8 ms of a 558 ms umbrella header: the wrong target by a factor of
+  thirty.
+
+  **Migration**: a file that included `all.hpp` and then used `std::format`,
+  `operator<<` or `std::hash` on a `basic_fixed` now needs the matching header
+  next to it. It is a compile error with an obvious fix, never a silent change
+  in behaviour. Nothing in this repository needed one.
+
+- **The general cross-scale kernel sizes itself to its operands.** Every mixed
+  operation that missed the narrow `mixed_native` path did all of its arithmetic
+  in sixteen 64-bit limbs, regardless of the values: a `Fixed64` x `Fixed64`
+  multiply into a `Fixed128` needs about eighty bits and was running a 16x16
+  schoolbook multiply, 256 partial products of which four were not multiplying
+  by zero. `src/mixed.cpp` now computes an upper bound on the bits the numerator
+  and denominator need and dispatches to the smallest of four tiers — 128, 256,
+  512 or 1024 bits.
+
+  | | before | after |
+  |---|---:|---:|
+  | `mul_to`, 64-bit operands | 8561 | **416** |
+  | `div_to`, 64-bit operands | 8377 | **729** |
+  | `mul_to`, 256-bit operands | 8561 | **1764** |
+
+  In wall-clock, on the same machine, timing the identical operation against the
+  old kernel and the new one: `mul_to` 332.67 ns -> 19.69 ns and `div_to`
+  590.95 ns -> 35.36 ns, with the native path unchanged at 1.45 ns as a control.
+
+  Instructions per operation, measured deterministically. Same results: 1,017,500
+  differential checks against Boost.Multiprecision, unchanged, over the native
+  and portable backends, clean under ASan and UBSan. Every other workload in the
+  baseline is byte-identical, which is the evidence the change is confined to
+  this kernel. The remaining gap to the native path is the exact-rational
+  division the general path has to do and the native one does not.
+
+### Added
+- **A big-endian job**, under s390x emulation. `binary.hpp` has always
+  implemented both byte orders and only little-endian had ever been executed --
+  every host, CI runner and phone this library had run on was little-endian, so
+  `to_bytes<endian::big>` was shipped, documented and untested. It passes 32/32
+  including the examples. `scripts/test_big_endian.sh` proves the target really
+  is big-endian before reporting anything, so the job cannot pass by silently
+  running on the wrong architecture.
+
+### Changed
+
+- **`#include <fixedwide/all.hpp>` no longer pulls in `format.hpp`,
+  `iostream.hpp` or `hash.hpp`.** Source-breaking: a file that used
+  `std::format`, `operator<<` or `std::hash` on a `basic_fixed` through the
+  umbrella header now needs the matching header beside it. It is a compile error
+  with an obvious fix, never a silent change in behaviour.
+- **`std::format("{:.2}", value)` produces a different string.** It used to
+  print the first two characters; it now prints two decimals. Any caller relying
+  on the old output was relying on a bug.
+
 ## [0.5.0] - 2026-09-04
 
 The release that makes the repository publishable: continuous integration that
@@ -99,7 +187,6 @@ nothing in this tree had ever built. Two of its own rows could not have compiled
   stopped being enforced. Each now asserts the diagnostic it expects.
 
 ### Added
-
 - **Conan package.** `conanfile.py` with a `force_portable` option mirroring the
   CMake one, a version read from `version.hpp` so it cannot drift, and a
   `validate()` that refuses Clang < 19 with libstdc++ up front with the reason.
@@ -135,13 +222,6 @@ nothing in this tree had ever built. Two of its own rows could not have compiled
   paired 0.4 comparison requires it to be byte-identical to 0.4's copy.
 - A CI job that consumes the library through `FetchContent`, because the
   README's install instructions were never tested.
-- **A big-endian job**, under s390x emulation. `binary.hpp` has always
-  implemented both byte orders and only little-endian had ever been executed --
-  every host, CI runner and phone this library had run on was little-endian, so
-  `to_bytes<endian::big>` was shipped, documented and untested. It passes 32/32
-  including the examples. `scripts/test_big_endian.sh` proves the target really
-  is big-endian before reporting anything, so the job cannot pass by silently
-  running on the wrong architecture.
 - A `decimal fixed, matched scale` benchmark class that pairs each scale with
   its own counterpart, seeds both libraries from identical raw integers,
   includes negative operands, and checks an exact integer oracle. It surfaced
@@ -149,66 +229,7 @@ nothing in this tree had ever built. Two of its own rows could not have compiled
   so `123.456789012345 * 2` gives `-0.000002` where fixedwide returns
   `246.913578024690`. The benchmark asserts this on every run.
 
-### Fixed (continued)
-
-- **`std::format("{:.2}", value)` printed the first two characters, not two
-  decimals.** The formatter inherited `std::formatter<std::string_view>`, so
-  precision meant "truncate the string": `123.4567` formatted as `12`. For a
-  decimal type that is a silently wrong number, which is the one failure mode
-  this library exists to prevent, and `{:.2}` is what anyone formatting money
-  types first. The formatter now parses its own spec --
-  `[[fill]align][width][.precision][f]` -- where precision means decimals and
-  rounds nearest-even, matching `to_chars`. A precision wider than the type
-  carries is a `std::format_error` rather than a padded lie, and numbers
-  right-align by default as every arithmetic type does.
-
-### Performance
-
-- **`#include <fixedwide/all.hpp>` costs 187 ms instead of 558 ms.** It pulled
-  in `format.hpp`, `iostream.hpp` and `hash.hpp` unconditionally, and those drag
-  `<format>` (435 ms), `<iostream>` (450 ms) and `<functional>` (103 ms) behind
-  them -- each more expensive than the whole of the rest of this library. They
-  are adapters to standard facilities, not part of the numeric API, so they are
-  now opt-in and `all.hpp` says so where a reader will find it.
-
-  This also corrects where previous releases were looking. The headline
-  compile-time item was `arithmetic.hpp` being 41% more expensive than 0.4's,
-  which is 8 ms of a 558 ms umbrella header: the wrong target by a factor of
-  thirty.
-
-  **Migration**: a file that included `all.hpp` and then used `std::format`,
-  `operator<<` or `std::hash` on a `basic_fixed` now needs the matching header
-  next to it. It is a compile error with an obvious fix, never a silent change
-  in behaviour. Nothing in this repository needed one.
-
-- **The general cross-scale kernel sizes itself to its operands.** Every mixed
-  operation that missed the narrow `mixed_native` path did all of its arithmetic
-  in sixteen 64-bit limbs, regardless of the values: a `Fixed64` x `Fixed64`
-  multiply into a `Fixed128` needs about eighty bits and was running a 16x16
-  schoolbook multiply, 256 partial products of which four were not multiplying
-  by zero. `src/mixed.cpp` now computes an upper bound on the bits the numerator
-  and denominator need and dispatches to the smallest of four tiers — 128, 256,
-  512 or 1024 bits.
-
-  | | before | after |
-  |---|---:|---:|
-  | `mul_to`, 64-bit operands | 8561 | **416** |
-  | `div_to`, 64-bit operands | 8377 | **729** |
-  | `mul_to`, 256-bit operands | 8561 | **1764** |
-
-  In wall-clock, on the same machine, timing the identical operation against the
-  old kernel and the new one: `mul_to` 332.67 ns -> 19.69 ns and `div_to`
-  590.95 ns -> 35.36 ns, with the native path unchanged at 1.45 ns as a control.
-
-  Instructions per operation, measured deterministically. Same results: 1,017,500
-  differential checks against Boost.Multiprecision, unchanged, over the native
-  and portable backends, clean under ASan and UBSan. Every other workload in the
-  baseline is byte-identical, which is the evidence the change is confined to
-  this kernel. The remaining gap to the native path is the exact-rational
-  division the general path has to do and the native one does not.
-
 ### Changed
-
 - **The release gate is now no regression against this library's own committed
   baseline**, which passes, rather than parity with the 0.4 release, which never
   did and was never the right criterion — 0.4 is a fixed-scale library with a

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(fixedwide VERSION 0.5.0 LANGUAGES CXX)
+project(fixedwide VERSION 0.6.0 LANGUAGES CXX)
 
 # clangd -- and every editor built on it -- needs a compile database to know the
 # include paths and the standard, without which hover, go-to-definition and the
