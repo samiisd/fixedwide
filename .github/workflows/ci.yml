@@ -3,6 +3,15 @@ name: CI
 on:
   push:
     branches: [ main ]
+    # The coverage job commits a regenerated badge. Ignoring that one path is
+    # how it avoids starting a run that would regenerate the badge again.
+    #
+    # It used to put a skip marker in the commit message instead, and that was
+    # wrong twice over: GitHub reads the marker anywhere in a message, so a
+    # commit merely describing the mechanism skipped its own run, and tagging a
+    # badge-refresh commit skipped the RELEASE workflow -- v0.6.0 was tagged and
+    # never published because of it. A path filter cannot leak into a tag push.
+    paths-ignore: [ 'docs/assets/coverage.svg' ]
   pull_request:
     branches: [ main ]
 
@@ -462,11 +471,10 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add docs/assets/coverage.svg
-            # The marker below stops this commit from starting another run
-            # that would refresh the badge again. Note that GitHub reads it
-            # anywhere in a message, so do not repeat the literal token in
-            # ordinary commit prose -- see CONTRIBUTING.md.
-            git commit -m "ci: refresh the coverage badge [skip ci]"
+            # No skip marker in the message: `paths-ignore` at the top of this
+            # workflow is what stops this commit from starting another run, and
+            # unlike a message marker it cannot affect a tag push.
+            git commit -m "ci: refresh the coverage badge"
             git push
           else
             echo "badge unchanged"

@@ -25,8 +25,12 @@ silent -- no run appears, nothing is red, and it looks like CI simply has not
 started yet.
 
 If you need to mention it in prose, break the token or say "the skip-ci marker".
-The one place the real token belongs is the badge-refresh commit the coverage
-job makes, where skipping is the point.
+
+Nothing in this repository uses it any more. The coverage job used to, for its
+badge-refresh commit, and that turned out to be the wrong tool: tagging a
+badge-refresh commit skipped the **release** workflow too, so v0.6.0 was tagged
+and never published. The job now relies on `paths-ignore` in `ci.yml`, which
+cannot leak into a tag push.
 
 ## Formatting
 
