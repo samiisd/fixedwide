@@ -11,6 +11,7 @@ endif()
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+include(CheckCXXSourceCompiles)
 
 option(FIXEDWIDE_BUILD_TESTS "Build deterministic unit tests" ${PROJECT_IS_TOP_LEVEL})
 option(FIXEDWIDE_BUILD_ORACLE_TESTS "Build Boost.Multiprecision differential oracle tests" OFF)
@@ -78,7 +79,6 @@ set_target_properties(fixedwide PROPERTIES
 # multi-limb backend, which is differentially tested against the native one on
 # every CI run.
 if(NOT FIXEDWIDE_FORCE_PORTABLE)
-    include(CheckCXXSourceCompiles)
     set(CMAKE_REQUIRED_QUIET ON)
     check_cxx_source_compiles("
         #if !defined(__SIZEOF_INT128__)

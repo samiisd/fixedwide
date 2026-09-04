@@ -90,7 +90,7 @@ jobs:
               -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++
         build_type: [ Debug, Release ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install toolchain
         run: |
           sudo apt-get update
@@ -117,7 +117,7 @@ jobs:
       matrix:
         cxx: [ g++-14 ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build
       - run: |
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
@@ -135,7 +135,7 @@ jobs:
       matrix:
         runner: [ macos-14, macos-15 ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: brew install ninja boost
       - run: |
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
@@ -152,11 +152,13 @@ jobs:
       matrix:
         toolset: [ msvc, clang-cl ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ilammy/msvc-dev-cmd@v1
       # MSVC has no __int128 and no GNU inline asm, so it takes the portable
-      # multi-limb backend automatically. Boost is not installed: the two
-      # Boost-backed audit suites skip themselves and the rest still run.
+      # multi-limb backend automatically. clang-cl is selected explicitly and
+      # CMake probes whether native 128-bit division links; when it does not, the
+      # build auto-selects the same portable backend. Boost is not installed: the
+      # two Boost-backed audit suites skip themselves and the rest still run.
       - name: Configure
         run: >
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -177,7 +179,7 @@ jobs:
           - name: no-int128
             flags: -DFIXEDWIDE_FORCE_PORTABLE=ON "-DCMAKE_CXX_FLAGS=-U__SIZEOF_INT128__"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build
       - run: |
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
@@ -195,7 +197,7 @@ jobs:
       matrix:
         backend: [ native, portable ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-18 libc++-18-dev libc++abi-18-dev libboost-dev cmake ninja-build
       - run: |
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
@@ -210,7 +212,7 @@ jobs:
     name: shared library
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build
       - run: |
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
@@ -222,7 +224,7 @@ jobs:
     name: install + find_package consumer
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 cmake ninja-build
       - name: Build and install
         run: |
@@ -275,7 +277,7 @@ jobs:
     name: conan create
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
@@ -299,7 +301,7 @@ jobs:
     name: instruction-count regression gate
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 cmake ninja-build valgrind
       # Deterministic: the gate counts retired instructions under Valgrind, not
       # wall-clock, because a shared runner's timing noise is larger than the
@@ -325,7 +327,7 @@ jobs:
     name: fuzz smoke
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Clang 20 with libstdc++, not Clang 18 with libc++: the libFuzzer runtime
       # Ubuntu ships is built against libstdc++, so linking it into a libc++
       # binary leaves std::thread and std::string undefined. Clang 20 reports
@@ -349,7 +351,7 @@ jobs:
     name: coverage
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Clang 20 with libstdc++, for the same reason as the fuzz job: one
       # standard library, and llvm-cov from the matching release.
       - name: Install clang 20
