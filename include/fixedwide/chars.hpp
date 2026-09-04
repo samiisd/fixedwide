@@ -9,6 +9,10 @@
 namespace fixedwide {
 
 struct FormatOptions {
+    // `digits` is the number of DECIMALS to print, the same quantity the rest of
+    // the library calls `decimals`. The name is 0.4's and is kept because a
+    // designated initialiser -- `{.digits = 2}` -- is written by callers, and
+    // the paired benchmark writes one in source that must stay byte-identical.
     unsigned digits{0};
     bool trim_trailing_zeros{false};
     Rounding rounding{Rounding::nearest_even};
@@ -103,18 +107,18 @@ to_chars(char* first, char* last, basic_fixed<Bits, D> value, FormatOptions opti
 [[nodiscard]] std::expected<wide::int256, ParseError> parse_i256(std::string_view text) noexcept;
 [[nodiscard]] std::expected<wide::uint256, ParseError> parse_u256(std::string_view text) noexcept;
 
-[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* output, std::size_t capacity, wide::int128 value) noexcept;
-[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* output, std::size_t capacity, wide::uint128 value) noexcept;
-[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* output, std::size_t capacity, wide::int256 value) noexcept;
-[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* output, std::size_t capacity, wide::uint256 value) noexcept;
+[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity, wide::int128 value) noexcept;
+[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity, wide::uint128 value) noexcept;
+[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity, wide::int256 value) noexcept;
+[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity, wide::uint256 value) noexcept;
 
 
 // 0.4 compatibility surface: fixed at 12 digits. Generic replacement:
 // parse<T>(text, rounding). See fixed.hpp.
-[[nodiscard]] inline std::expected<Fixed64<12>, ParseError> parse64(std::string_view s, Rounding r = Rounding::exact) noexcept {
-    return parse<Fixed64<12>>(s, r);
+[[nodiscard]] inline std::expected<Fixed64<12>, ParseError> parse64(std::string_view text, Rounding rounding = Rounding::exact) noexcept {
+    return parse<Fixed64<12>>(text, rounding);
 }
-[[nodiscard]] inline std::expected<Fixed128<12>, ParseError> parse128(std::string_view s, Rounding r = Rounding::exact) noexcept {
-    return parse<Fixed128<12>>(s, r);
+[[nodiscard]] inline std::expected<Fixed128<12>, ParseError> parse128(std::string_view text, Rounding rounding = Rounding::exact) noexcept {
+    return parse<Fixed128<12>>(text, rounding);
 }
 } // namespace fixedwide

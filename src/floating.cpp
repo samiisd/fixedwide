@@ -9,7 +9,7 @@ namespace {
 
 template<typename Float>
 std::expected<wide::int256, ArithmeticError>
-from_float_impl(Float value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
+float_to_raw(Float value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
     if (std::isnan(value) || std::isinf(value)) {
         return std::unexpected(ArithmeticError::invalid_value);
     }
@@ -56,7 +56,7 @@ from_float_impl(Float value, unsigned decimals, Rounding rounding, std::size_t b
     }
 
     auto divres = divmod_knuth(num, den);
-    auto lim256 = detail::limit_for_bits(bits, negative);
+    auto lim256 = detail::limit_magnitude_u256(bits, negative);
     u1024_limbs limit{};
     for (int i = 0; i < 4; ++i) limit.limbs[i] = lim256.limbs[i];
 
@@ -76,7 +76,7 @@ from_float_impl(Float value, unsigned decimals, Rounding rounding, std::size_t b
 }
 
 template<typename Float>
-Float to_float_impl(wide::int256 raw, unsigned decimals) noexcept {
+Float raw_to_float(wide::int256 raw, unsigned decimals) noexcept {
     bool neg = raw.is_negative();
     auto mag = magnitude(raw);
     Float d = static_cast<Float>(mag.limbs[0]) +
@@ -92,29 +92,29 @@ Float to_float_impl(wide::int256 raw, unsigned decimals) noexcept {
 
 std::expected<wide::int256, ArithmeticError>
 from_float_kernel(float value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
-    return from_float_impl(value, decimals, rounding, bits);
+    return float_to_raw(value, decimals, rounding, bits);
 }
 
 std::expected<wide::int256, ArithmeticError>
 from_float_kernel(double value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
-    return from_float_impl(value, decimals, rounding, bits);
+    return float_to_raw(value, decimals, rounding, bits);
 }
 
 std::expected<wide::int256, ArithmeticError>
 from_float_kernel(long double value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
-    return from_float_impl(value, decimals, rounding, bits);
+    return float_to_raw(value, decimals, rounding, bits);
 }
 
 float to_float_kernel(wide::int256 raw, unsigned decimals, float) noexcept {
-    return to_float_impl<float>(raw, decimals);
+    return raw_to_float<float>(raw, decimals);
 }
 
 double to_float_kernel(wide::int256 raw, unsigned decimals, double) noexcept {
-    return to_float_impl<double>(raw, decimals);
+    return raw_to_float<double>(raw, decimals);
 }
 
 long double to_float_kernel(wide::int256 raw, unsigned decimals, long double) noexcept {
-    return to_float_impl<long double>(raw, decimals);
+    return raw_to_float<long double>(raw, decimals);
 }
 
 } // namespace fixedwide::detail

@@ -15,9 +15,9 @@ region (20,480 checks). Raw samples in `reports/raw/mixed.csv`.
 
 | operation | ns |
 |---|---:|
-| `Money.add` on `Fixed128<12>` | 0.53 |
+| `Money.add` on `Fixed128<12>` | 0.55 |
 | `Money.mul` on `Fixed128<12>` | 1.90 |
-| `Money.div` on `Fixed128<12>` | 2.91 |
+| `Money.div` on `Fixed128<12>` | 2.95 |
 
 `Money.div` was 4.94 ns in alpha.4. The alpha.5 divide work moved the floor
 itself, which is why the mixed rows measured against it are compared to the
@@ -33,9 +33,9 @@ types; its public API is parameterised on width and scale throughout.
 | operation | before | now | speedup | floor |
 |---|---:|---:|---:|---:|
 | `mul_to.Money.from.Price.Rate` | 338.79 | 2.48 | 137x | 1.90 |
-| `div_to.Rate.from.Price.Small` | 369.88 | 4.12 | 90x | 2.91 |
+| `div_to.Rate.from.Price.Small` | 369.88 | 4.11 | 90x | 2.95 |
 | `add_to.Money.from.Price.Rate` | 418.22 | 0.56 | 747x | 0.55 |
-| `mul_div_to.Money.from.Price.Rate.Small` | 309.40 | 4.37 | 71x | 2.91 |
+| `mul_div_to.Money.from.Price.Rate.Small` | 309.40 | 4.32 | 72x | 2.95 |
 | `fixed_cast.Money.from.Price` | 215.34 | 0.35 | 612x | - |
 | `compare.Price.vs.Rate` | 268.79 | 0.47 | 569x | - |
 | `mul_to.Rate.from.Small.Small` | 232.74 | 0.30 | 762x | 1.90 |
@@ -71,9 +71,9 @@ combinations the bounds must reject.
 | operation | before | after | speedup |
 |---|---:|---:|---:|
 | `Fixed256.add` | 1.49 | 1.51 | 1.0x |
-| `Fixed256.mul` | 38.13 | 28.34 | 1.3x |
-| `Fixed256.div` | 35.28 | 28.28 | 1.2x |
-| `Fixed256.mul_div` | 24.90 | 19.01 | 1.3x |
+| `Fixed256.mul` | 38.13 | 28.19 | 1.4x |
+| `Fixed256.div` | 35.28 | 28.18 | 1.3x |
+| `Fixed256.mul_div` | 24.90 | 19.35 | 1.3x |
 | `Fixed256.quantize` | 27.65 | 26.69 | 1.0x |
 
 `quantize` is effectively unchanged and is still the slowest `Fixed256`

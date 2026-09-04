@@ -12,34 +12,34 @@ namespace detail {
 
 // Forward declarations for mixed arithmetic kernel functions
 std::expected<wide::int256, ArithmeticError>
-mixed_cast_kernel(wide::int256 src_raw, unsigned src_dec, unsigned dest_dec,
+mixed_cast_kernel(wide::int256 src_raw, unsigned src_decimals, unsigned dest_decimals,
                   Rounding rounding, std::size_t dest_bits) noexcept;
 
 std::expected<wide::int256, ArithmeticError>
-mixed_add_sub_kernel(wide::int256 a_raw, unsigned a_dec,
-                     wide::int256 b_raw, unsigned b_dec,
-                     bool is_sub, unsigned dest_dec,
+mixed_add_sub_kernel(wide::int256 a_raw, unsigned a_decimals,
+                     wide::int256 b_raw, unsigned b_decimals,
+                     bool subtract, unsigned dest_decimals,
                      Rounding rounding, std::size_t dest_bits) noexcept;
 
 std::expected<wide::int256, ArithmeticError>
-mixed_mul_kernel(wide::int256 a_raw, unsigned a_dec,
-                 wide::int256 b_raw, unsigned b_dec,
-                 unsigned dest_dec, Rounding rounding, std::size_t dest_bits) noexcept;
+mixed_mul_kernel(wide::int256 a_raw, unsigned a_decimals,
+                 wide::int256 b_raw, unsigned b_decimals,
+                 unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept;
 
 std::expected<wide::int256, ArithmeticError>
-mixed_div_kernel(wide::int256 a_raw, unsigned a_dec,
-                 wide::int256 b_raw, unsigned b_dec,
-                 unsigned dest_dec, Rounding rounding, std::size_t dest_bits) noexcept;
+mixed_div_kernel(wide::int256 a_raw, unsigned a_decimals,
+                 wide::int256 b_raw, unsigned b_decimals,
+                 unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept;
 
 std::expected<wide::int256, ArithmeticError>
-mixed_mul_div_kernel(wide::int256 a_raw, unsigned a_dec,
-                     wide::int256 b_raw, unsigned b_dec,
-                     wide::int256 c_raw, unsigned c_dec,
-                     unsigned dest_dec, Rounding rounding, std::size_t dest_bits) noexcept;
+mixed_mul_div_kernel(wide::int256 a_raw, unsigned a_decimals,
+                     wide::int256 b_raw, unsigned b_decimals,
+                     wide::int256 c_raw, unsigned c_decimals,
+                     unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept;
 
 std::strong_ordering
-mixed_compare_kernel(wide::int256 a_raw, unsigned a_dec,
-                     wide::int256 b_raw, unsigned b_dec) noexcept;
+mixed_compare_kernel(wide::int256 a_raw, unsigned a_decimals,
+                     wide::int256 b_raw, unsigned b_decimals) noexcept;
 
 
 

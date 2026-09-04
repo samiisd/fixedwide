@@ -67,7 +67,9 @@ template<std::size_t Bits>
     return lim;
 }
 
-[[nodiscard]] constexpr wide::uint256 limit_for_bits(std::size_t bits, bool negative) noexcept {
+// The runtime-width overload of the template above: same family, same name, and
+// the argument list says which one you get.
+[[nodiscard]] constexpr wide::uint256 limit_magnitude_u256(std::size_t bits, bool negative) noexcept {
     switch (bits) {
     case 8: return limit_magnitude_u256<8>(negative);
     case 16: return limit_magnitude_u256<16>(negative);
@@ -113,7 +115,12 @@ struct basic_fixed {
                   "Decimals exceeds maximum capacity for given bit width");
 
     using raw_type = raw_type_t<Bits>;
+    // Each mirrors the type of its template parameter, so `T::bits` and
+    // `basic_fixed<Bits, D>` agree without a cast.
     static constexpr std::size_t bits = Bits;
+    // The same quantity the rest of the library calls `decimals`, spelled out
+    // here because a member is read far more often than it is written. There is
+    // one word for it everywhere else: `decimals`.
     static constexpr unsigned fractional_digits = Decimals;
 
     static constexpr raw_type scale() noexcept {

@@ -31,9 +31,10 @@ namespace fixedwide::detail::mixed_native {
 
 using i128 = __int128;
 
-// 10^k < 16^k, so 4k bits always suffice. Deliberately loose: it only decides
-// whether the fast path is taken, and being conservative can never be wrong.
-[[nodiscard]] constexpr unsigned pow10_bits(unsigned k) noexcept { return 4 * k; }
+// Bits needed to hold 10^k, not a power of ten: 10^k < 16^k, so 4k always
+// suffices. Deliberately loose -- it only decides whether the fast path is
+// taken, and being conservative can never be wrong.
+[[nodiscard]] constexpr unsigned bits_for_pow10(unsigned k) noexcept { return 4 * k; }
 
 template<unsigned K>
 inline constexpr i128 pow10_v = [] {
@@ -48,8 +49,8 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
 [[nodiscard]] constexpr bool alignment_fits() noexcept {
     constexpr unsigned common = Da < Db ? Da : Db;
     return BitsA <= 64 && BitsB <= 64
-        && BitsA + pow10_bits(Db - common) <= 126
-        && BitsB + pow10_bits(Da - common) <= 126;
+        && BitsA + bits_for_pow10(Db - common) <= 126
+        && BitsB + bits_for_pow10(Da - common) <= 126;
 }
 
 // Exact comparison with no division at all: scale both sides to a common
@@ -68,7 +69,7 @@ using u128 = unsigned __int128;
 
 // Largest representable magnitude for a destination width and result sign.
 template<std::size_t Bits>
-[[nodiscard]] constexpr u128 limit_magnitude(bool negative) noexcept {
+[[nodiscard]] constexpr u128 limit_magnitude_u128(bool negative) noexcept {
     const u128 positive = Bits >= 128 ? (~u128{0} >> 1) : ((u128{1} << (Bits - 1)) - 1);
     return positive + static_cast<u128>(negative);
 }
@@ -169,7 +170,7 @@ template<std::size_t Bits>
 template<std::size_t BitsSrc, unsigned Ds, std::size_t BitsDest, unsigned Dd>
 [[nodiscard]] constexpr bool cast_fits() noexcept {
     if constexpr (BitsSrc > 64 || BitsDest > 128) return false;
-    else if constexpr (Dd >= Ds) return BitsSrc + pow10_bits(Dd - Ds) <= 126;
+    else if constexpr (Dd >= Ds) return BitsSrc + bits_for_pow10(Dd - Ds) <= 126;
     else return true;   // narrowing only shrinks the magnitude
 }
 
@@ -180,7 +181,7 @@ cast(RawSrc a, Rounding rounding) noexcept {
         return check_range<BitsDest>(static_cast<i128>(a) * pow10_v<Dd - Ds>);
     } else {
         return divide_rounded(static_cast<i128>(a), pow10_v<Ds - Dd>, rounding,
-                              limit_magnitude<BitsDest>(a < RawSrc{0}));
+                              limit_magnitude_u128<BitsDest>(a < RawSrc{0}));
     }
 }
 
@@ -195,8 +196,8 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
     if constexpr (!alignment_fits<BitsA, Da, BitsB, Db>() || BitsDest > 128) return false;
     // One extra bit for the sum, then the widening to the destination scale.
     else if constexpr (Dd >= sum_scale) {
-        constexpr unsigned aligned = (BitsA > BitsB ? BitsA : BitsB) + pow10_bits(sum_scale - common) + 1;
-        return aligned + pow10_bits(Dd - sum_scale) <= 126;
+        constexpr unsigned aligned = (BitsA > BitsB ? BitsA : BitsB) + bits_for_pow10(sum_scale - common) + 1;
+        return aligned + bits_for_pow10(Dd - sum_scale) <= 126;
     } else return true;
 }
 
@@ -213,7 +214,7 @@ add_sub(RawA a, RawB b, bool subtract, Rounding rounding) noexcept {
         return check_range<BitsDest>(sum * pow10_v<Dd - sum_scale>);
     } else {
         return divide_rounded(sum, pow10_v<sum_scale - Dd>, rounding,
-                              limit_magnitude<BitsDest>(sum < 0));
+                              limit_magnitude_u128<BitsDest>(sum < 0));
     }
 }
 
@@ -224,7 +225,7 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
          std::size_t BitsDest, unsigned Dd>
 [[nodiscard]] constexpr bool mul_fits() noexcept {
     if constexpr (BitsA > 64 || BitsB > 64 || BitsDest > 128) return false;
-    else if constexpr (Dd >= Da + Db) return product_bits(BitsA, BitsB) + pow10_bits(Dd - Da - Db) <= 127;
+    else if constexpr (Dd >= Da + Db) return product_bits(BitsA, BitsB) + bits_for_pow10(Dd - Da - Db) <= 127;
     else return true;
 }
 
@@ -237,7 +238,7 @@ mul(RawA a, RawB b, Rounding rounding) noexcept {
         return check_range<BitsDest>(product * pow10_v<Dd - Da - Db>);
     } else {
         return divide_rounded(product, pow10_v<Da + Db - Dd>, rounding,
-                              limit_magnitude<BitsDest>(product < 0));
+                              limit_magnitude_u128<BitsDest>(product < 0));
     }
 }
 
@@ -249,8 +250,8 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
          std::size_t BitsDest, unsigned Dd>
 [[nodiscard]] constexpr bool div_fits() noexcept {
     if constexpr (BitsA > 64 || BitsB > 64 || BitsDest > 128) return false;
-    else if constexpr (Dd + Db >= Da) return BitsA + pow10_bits(Dd + Db - Da) <= 126;
-    else return BitsB + pow10_bits(Da - Db - Dd) <= 126;
+    else if constexpr (Dd + Db >= Da) return BitsA + bits_for_pow10(Dd + Db - Da) <= 126;
+    else return BitsB + bits_for_pow10(Da - Db - Dd) <= 126;
 }
 
 template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
@@ -265,7 +266,7 @@ div(RawA a, RawB b, Rounding rounding) noexcept {
     // divide_rounded needs a positive divisor; move the sign to the numerator.
     if (denominator < 0) { denominator = -denominator; numerator = -numerator; }
     return divide_rounded(numerator, denominator, rounding,
-                          limit_magnitude<BitsDest>(numerator < 0));
+                          limit_magnitude_u128<BitsDest>(numerator < 0));
 }
 
 // --- mul_div_to ----------------------------------------------------------
@@ -277,10 +278,10 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
 [[nodiscard]] constexpr bool mul_div_fits() noexcept {
     if constexpr (BitsA > 64 || BitsB > 64 || BitsC > 64 || BitsDest > 128) return false;
     else if constexpr (Dc + Dd >= Da + Db) {
-        return product_bits(BitsA, BitsB) + pow10_bits(Dc + Dd - Da - Db) <= 127;
+        return product_bits(BitsA, BitsB) + bits_for_pow10(Dc + Dd - Da - Db) <= 127;
     } else {
         return product_bits(BitsA, BitsB) <= 127
-            && BitsC + pow10_bits(Da + Db - Dc - Dd) <= 126;
+            && BitsC + bits_for_pow10(Da + Db - Dc - Dd) <= 126;
     }
 }
 
@@ -296,7 +297,7 @@ mul_div(RawA a, RawB b, RawC c, Rounding rounding) noexcept {
     else denominator *= pow10_v<Da + Db - Dc - Dd>;
     if (denominator < 0) { denominator = -denominator; numerator = -numerator; }
     return divide_rounded(numerator, denominator, rounding,
-                          limit_magnitude<BitsDest>(numerator < 0));
+                          limit_magnitude_u128<BitsDest>(numerator < 0));
 }
 
 } // namespace fixedwide::detail::mixed_native

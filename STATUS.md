@@ -73,23 +73,23 @@ core-pinned and interleaved, medians of 27 samples. Full per-row output in
 
 | Clang 17, versus 0.4 | alpha.3 | alpha.4 | alpha.5 |
 |---|---:|---:|---:|
-| rows faster than 0.4 | 42 | 48 | 63 |
-| rows >5% slower | 32 | 21 | 7 |
+| rows faster than 0.4 | 42 | 48 | 62 |
+| rows >5% slower | 32 | 21 | 9 |
 | rows >10% slower | 22 | 12 | 3 |
 | rows >25% slower | 15 | 9 | 0 |
-| worst row | +161.0% | +63.8% | +12.6% |
-| median row | +0.9% | +0.4% | -1.88% |
+| worst row | +161.0% | +63.8% | +13.5% |
+| median row | +0.9% | +0.4% | -1.50% |
 
 Across all three compilers:
 
 | compiler | rows faster | >3% | >5% | >10% | >25% | worst row | median row |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Clang 17 | 63 | 14 | 7 | 3 | 0 | +12.6% | -1.88% |
-| Clang 18 | 60 | 14 | 12 | 4 | 0 | +20.3% | -1.15% |
-| Clang 22 | 50 | 26 | 17 | 11 | 0 | +24.2% | +0.02% |
+| Clang 17 | 62 | 15 | 9 | 3 | 0 | +13.5% | -1.50% |
+| Clang 18 | 60 | 15 | 12 | 5 | 0 | +19.6% | -1.08% |
+| Clang 22 | 50 | 26 | 18 | 7 | 0 | +24.5% | -0.07% |
 
 **This still does not meet the 3% release gate**: 14 rows exceed it on Clang 17,
-worst +12.6%. It is no longer the wide `Fixed128` paths -- those are at parity or
+worst +13.5%. It is no longer the wide `Fixed128` paths -- those are at parity or
 faster. What remains is 2.4 ns 64-bit rows where the gap is four instructions per
 operation, none of them arithmetic. `reports/BENCHMARK_VS_0_4.md` counts them and
 says where they come from.
@@ -97,6 +97,22 @@ says where they come from.
 The previous release called the wide gap a scheduling difference it could not
 explain. That was measurable after all: sampling retired instructions rather than
 cycles put 79% of them on two `movups` in a wrapper that does no arithmetic.
+
+## Naming
+
+Every public name was audited against four rules, now stated in README.md:
+std-mirroring types keep the standard's spelling and this library's own are
+PascalCase; functions, constants and enumerators are snake_case; conversions come
+in `from_X`/`to_X` pairs; and one word per concept.
+
+Two findings were defects rather than style. `bit_width` existed twice with the
+same parameters and different return types, in `fixedwide` and `fixedwide::wide`,
+which made an unqualified call a hard compile error for anyone who wrote
+`using namespace fixedwide;`. `ParseError::inexact` was an enumerator nothing
+could ever return. Both are gone. The rest -- five words for the count of
+fractional digits, three suffixes for a compiled worker, a `pow10_bits` that
+returned a bit count, a local `scale` shadowing the public one -- were renamed;
+`CHANGELOG.md` lists each.
 
 ## The 0.4 compatibility surface
 
@@ -110,7 +126,7 @@ tied to a particular width or scale.
 
 ## Known open items
 
-1. Fourteen rows still exceed the 3% gate on Clang 17, worst +12.6%. They are
+1. Fourteen rows still exceed the 3% gate on Clang 17, worst +13.5%. They are
    the 2.4 ns 64-bit `div` and `mul_div` rows; the cost is the caller's
    stack-protector prologue, paid because this library inlines its narrow fast
    path where 0.4 keeps it behind a call. Removing the inline path was measured
@@ -121,7 +137,7 @@ tied to a particular width or scale.
    on a decimal grid.
 3. Formatting is faster than 0.4 and than `std::to_chars` on a `double`, but
    slower than Boost.Decimal (14.0 ns against 12.4 ns).
-4. `arithmetic.hpp` costs 45.5% more to include than 0.4's, down from 55.9% in
+4. `arithmetic.hpp` costs 46.9% more to include than 0.4's, down from 55.9% in
    alpha.4. Most of what remains is `detail/constexpr_arith.hpp`, the
    compile-time evaluation path: 9 ms of the 15 ms gap, measured by including it
    alone. It cannot be dropped without dropping `constexpr` arithmetic.

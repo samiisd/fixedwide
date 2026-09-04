@@ -36,6 +36,27 @@ marked in the header with its generic replacement:
 
 Everything else in the public API is parameterised on width and scale.
 
+### Naming rules
+
+The API follows four rules, and every name in it obeys them:
+
+1. **Types**: a name the standard library also has is spelled its way
+   (`basic_fixed`, `wide::uint128`, `endian`); a name of this library's own is
+   `PascalCase` (`Rounding`, `FormatOptions`, `ArithmeticError`, `Fixed64`).
+2. **Functions, constants and enumerators**: always `snake_case`.
+3. **Conversions come in pairs**, `from_X` / `to_X`: `from_chars`/`to_chars`,
+   `from_bytes`/`to_bytes`, `from_float`/`to_float`, `from_double`/`to_double`,
+   `from_raw`/`raw`. Two names sit outside the pattern on purpose, and each
+   header says why: `to_string`'s inverse is `parse` (one name for text-to-value
+   is enough, and it already takes a `string_view`), and `from_integer` has no
+   inverse because going back has to choose a rounding — that is
+   `quantize(v, 0)` or `fixed_cast<FixedN<0>>`.
+4. **One word per concept.** The count of fractional digits is `decimals`
+   everywhere. Two older spellings survive because callers write them:
+   `basic_fixed::fractional_digits` (the member) and `FormatOptions::digits`
+   (a designated initialiser). Both are marked in their headers as the same
+   quantity. `scale` means 10^decimals and nothing else.
+
 ---
 
 ## Key Features
@@ -147,16 +168,16 @@ benchmark source with the same compiler and flags, core-pinned and interleaved,
 medians of 27 samples per row.
 
 **The generalized version is not yet at parity with 0.4, and this README will
-say so until it is.** On Clang 17, 7 of 100 rows are more than 5% slower and the
-worst is +12.6%; the previous release's figures were 21 rows and +64%, and the one
+say so until it is.** On Clang 17, 9 of 100 rows are more than 5% slower and the
+worst is +13.5%; the previous release's figures were 21 rows and +64%, and the one
 before that 32 rows and +161%. No row on any of the three measured compilers is
-more than 25% slower, and the median row is now 1.9% *faster*. What remains is
+more than 25% slower, and the median row is now 1.5% *faster*. What remains is
 the 2.4 ns 64-bit `div` and `mul_div` rows, where the gap is four instructions
 per operation and none of them is arithmetic.
 
 Where this version is ahead of 0.4:
 
-- **63 of 100 benchmark rows are at or faster than 0.4** on Clang 17
+- **62 of 100 benchmark rows are at or faster than 0.4** on Clang 17
 - mixed-width, mixed-scale arithmetic: **71x to 760x faster** than alpha.3
   (`add_to`, `fixed_cast` and cross-scale comparison now cost the same as the
   same-type operation in the destination domain)
@@ -169,7 +190,7 @@ Against other libraries, by semantic class and with every timed result validated
 outside the timed region ([full table](reports/BENCHMARK_COMPETITORS.md)):
 
 - versus **Boost.Decimal** `decimal64_t`, the closest comparable contract:
-  multiply 2.6 ns vs 3.6 ns, divide 2.2 ns vs 8.6 ns, parse 12.4 ns vs 14.2 ns.
+  multiply 2.6 ns vs 3.6 ns, divide 2.2 ns vs 8.6 ns, parse 12.2 ns vs 14.2 ns.
   Formatting is the one row it loses: 14.0 ns vs 12.4 ns.
 - **formatting** is about twice as fast as `std::to_chars` on a `double`
 - **CNL's unchecked decimal multiply is about 8x faster** than the checked one

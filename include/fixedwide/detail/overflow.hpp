@@ -14,11 +14,11 @@
 namespace fixedwide::detail {
 
 // std::make_unsigned_t is equally unreliable for extension types in strict mode.
-template<typename T> struct unsigned_for_impl { using type = std::make_unsigned_t<T>; };
+template<typename T> struct unsigned_for { using type = std::make_unsigned_t<T>; };
 #if defined(__SIZEOF_INT128__)
-template<> struct unsigned_for_impl<__int128> { using type = unsigned __int128; };
+template<> struct unsigned_for<__int128> { using type = unsigned __int128; };
 #endif
-template<typename T> using unsigned_for = typename unsigned_for_impl<T>::type;
+template<typename T> using unsigned_for_t = typename unsigned_for<T>::type;
 
 // std::is_signed_v<__int128> is false in strict -std=c++23 on Clang 17 (an
 // extension type is not a standard integral type), and true on some newer
@@ -32,7 +32,7 @@ template<signed_arithmetic T>
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(FIXEDWIDE_FORCE_PORTABLE)
     return __builtin_add_overflow(a, b, out);
 #else
-    using U = unsigned_for<T>;
+    using U = unsigned_for_t<T>;
     const U sum = static_cast<U>(static_cast<U>(a) + static_cast<U>(b));
     *out = static_cast<T>(sum);
     // Overflow exactly when both addends share a sign that the result does not.
@@ -45,7 +45,7 @@ template<signed_arithmetic T>
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(FIXEDWIDE_FORCE_PORTABLE)
     return __builtin_sub_overflow(a, b, out);
 #else
-    using U = unsigned_for<T>;
+    using U = unsigned_for_t<T>;
     const U diff = static_cast<U>(static_cast<U>(a) - static_cast<U>(b));
     *out = static_cast<T>(diff);
     // Overflow exactly when the operands differ in sign and the result takes

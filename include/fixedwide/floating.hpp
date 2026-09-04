@@ -50,6 +50,15 @@ to_float(basic_fixed<Bits, D> value) noexcept {
     return from_float<FP128>(value, rounding);
 }
 
+// The pair of to_double below. Both are conveniences for the Float-generic
+// from_float / to_float above; `double` is spelled out because it is the one
+// callers ask for by name.
+template<typename Target>
+[[nodiscard]] inline std::expected<Target, ArithmeticError>
+from_double(double value, Rounding rounding = Rounding::nearest_even) noexcept {
+    return from_float<Target>(value, rounding);
+}
+
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] inline double to_double(basic_fixed<Bits, D> value) noexcept {
     return to_float<double>(value);

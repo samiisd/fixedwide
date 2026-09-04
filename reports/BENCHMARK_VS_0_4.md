@@ -32,20 +32,20 @@ sides are measured in the same session. Every before/after in this report is.
 
 | compiler | rows faster | >3% | >5% | >10% | >25% | worst row | median row |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Clang 17 | 63 | 14 | 7 | 3 | 0 | +12.6% | -1.88% |
-| Clang 18 | 60 | 14 | 12 | 4 | 0 | +20.3% | -1.15% |
-| Clang 22 | 50 | 26 | 17 | 11 | 0 | +24.2% | +0.02% |
+| Clang 17 | 62 | 15 | 9 | 3 | 0 | +13.5% | -1.50% |
+| Clang 18 | 60 | 15 | 12 | 5 | 0 | +19.6% | -1.08% |
+| Clang 22 | 50 | 26 | 18 | 7 | 0 | +24.5% | -0.07% |
 
 ## Progress on the audit's compiler
 
 | Clang 17, versus 0.4 | alpha.3 | alpha.4 | alpha.5 |
 |---|---:|---:|---:|
-| rows faster than 0.4 | 42 | 48 | 63 |
-| rows >5% slower | 32 | 21 | 7 |
+| rows faster than 0.4 | 42 | 48 | 62 |
+| rows >5% slower | 32 | 21 | 9 |
 | rows >10% slower | 22 | 12 | 3 |
 | rows >25% slower | 15 | 9 | 0 |
-| worst row | +161.0% | +63.8% | +12.6% |
-| median row | +0.9% | +0.4% | -1.88% |
+| worst row | +161.0% | +63.8% | +13.5% |
+| median row | +0.9% | +0.4% | -1.50% |
 
 No row on any of the three compilers is more than 25% slower than 0.4, and the
 median row is now faster on two of them. The wide `Fixed128` paths that dominated
@@ -104,24 +104,27 @@ Three smaller root causes were found the same way:
 
 ## Largest remaining regressions
 
-Every row on Clang 17 that exceeds the 3% gate:
+Every Clang 17 row more than 3% slower than 0.4. Fourteen of the fifteen fail
+the gate; `wide_product.FP128.mul_div` is a wide row and is judged against a
+wider limit, which it passes.
 
 | workload | rounding | 0.4 (ns) | now (ns) | delta |
 |---|---|---:|---:|---:|
-| `throughput256.FP64.mul_div` | nearest_even | 2.4030 | 2.7054 | +12.6% |
-| `throughput4096.FP64.mul_div` | nearest_even | 2.4117 | 2.7147 | +12.6% |
-| `halfway_ties.FP64.mul_div` | nearest_even | 2.4171 | 2.6720 | +10.5% |
-| `throughput4096.FP64.mul_wide` | nearest_even | 2.3855 | 2.5517 | +7.0% |
-| `fullrange.FP64.mul_wide` | toward_zero | 2.5243 | 2.6856 | +6.4% |
-| `throughput256.FP64.div` | nearest_even | 2.3761 | 2.5273 | +6.4% |
-| `throughput4096.FP64.div` | nearest_even | 2.3866 | 2.5262 | +5.8% |
-| `exact_chain.FP64.div` | toward_zero | 3.6973 | 3.8664 | +4.6% |
-| `throughput256.FP128.div` | nearest_even | 3.2808 | 3.4240 | +4.4% |
-| `inexact_chain.FP64.div` | toward_zero | 3.6959 | 3.8515 | +4.2% |
-| `halfway_ties.FP128.div` | nearest_even | 3.2904 | 3.4258 | +4.1% |
-| `halfway_ties.FP64.div` | nearest_even | 2.4244 | 2.5238 | +4.1% |
-| `throughput4096.FP128.div` | nearest_even | 3.2927 | 3.4162 | +3.8% |
-| `inexact_chain.FP64.mul_div` | nearest_even | 4.8035 | 4.9504 | +3.1% |
+| `throughput256.FP64.mul_div` | nearest_even | 2.3888 | 2.7103 | +13.5% |
+| `throughput4096.FP64.mul_div` | nearest_even | 2.3958 | 2.7155 | +13.3% |
+| `halfway_ties.FP64.mul_div` | nearest_even | 2.4143 | 2.7242 | +12.8% |
+| `throughput4096.FP64.mul_wide` | nearest_even | 2.3740 | 2.5496 | +7.4% |
+| `fullrange.FP64.mul_wide` | toward_zero | 2.5123 | 2.6711 | +6.3% |
+| `throughput256.FP64.div` | nearest_even | 2.3734 | 2.5192 | +6.1% |
+| `throughput4096.FP64.div` | nearest_even | 2.3840 | 2.5186 | +5.7% |
+| `exact_chain.FP64.div` | toward_zero | 3.6928 | 3.8981 | +5.6% |
+| `throughput4096.FP128.div` | nearest_even | 3.2587 | 3.4347 | +5.4% |
+| `halfway_ties.FP128.div` | nearest_even | 3.2741 | 3.4222 | +4.5% |
+| `throughput256.FP128.div` | nearest_even | 3.2827 | 3.4257 | +4.4% |
+| `halfway_ties.FP64.div` | nearest_even | 2.4203 | 2.5186 | +4.1% |
+| `inexact_chain.FP64.div` | toward_zero | 3.6843 | 3.8182 | +3.6% |
+| `wide_product.FP128.mul_div` | toward_zero | 12.5991 | 13.0137 | +3.3% |
+| `halfway_ties.FP64.mul` | nearest_even | 2.5633 | 2.6407 | +3.0% |
 
 Clang 18 additionally has `throughput{256,4096}.FP128.div` and
 `halfway_ties.FP128.div` at +15% to +20% on toward-zero, where Clang 17 and
@@ -157,18 +160,18 @@ Clang 17, the audit's compiler:
 
 | workload | rounding | 0.4 (ns) | now (ns) | delta |
 |---|---|---:|---:|---:|
-| `throughput4096.FP64.quantize4` | toward_zero | 3.7503 | 1.8929 | -49.5% |
-| `throughput4096.FP64.quantize4` | nearest_even | 4.7143 | 2.6880 | -43.0% |
-| `throughput4096.FP128.quantize4` | toward_zero | 6.2334 | 3.5713 | -42.7% |
-| `throughput4096.FP128.quantize4` | nearest_even | 7.1316 | 4.4827 | -37.1% |
-| `format_2digits.FP64` | nearest_even | 15.8634 | 11.3227 | -28.6% |
-| `format_2digits.FP128` | nearest_even | 15.8650 | 11.6656 | -26.5% |
-| `format_2digits.FP64` | toward_zero | 14.4741 | 10.8184 | -25.3% |
-| `parse_extra_digit.FP64` | nearest_even | 33.1419 | 25.3033 | -23.6% |
-| `parse_extra_digit.FP64` | toward_zero | 32.6493 | 25.1401 | -23.0% |
-| `format_2digits.FP128` | toward_zero | 14.5180 | 11.1817 | -23.0% |
-| `parse_extra_digit.FP128` | toward_zero | 32.7693 | 25.5012 | -22.2% |
-| `parse_extra_digit.FP128` | nearest_even | 33.2237 | 26.8849 | -19.1% |
+| `throughput4096.FP64.quantize4` | toward_zero | 3.7521 | 1.8905 | -49.6% |
+| `throughput4096.FP64.quantize4` | nearest_even | 4.6979 | 2.6846 | -42.9% |
+| `throughput4096.FP128.quantize4` | toward_zero | 6.1673 | 3.5666 | -42.2% |
+| `throughput4096.FP128.quantize4` | nearest_even | 7.5985 | 4.4789 | -41.1% |
+| `format_2digits.FP64` | nearest_even | 15.8714 | 11.4078 | -28.1% |
+| `parse_extra_digit.FP64` | nearest_even | 32.8216 | 24.5660 | -25.1% |
+| `format_2digits.FP64` | toward_zero | 14.5310 | 10.9116 | -24.9% |
+| `parse_extra_digit.FP64` | toward_zero | 32.2938 | 24.3602 | -24.6% |
+| `format_2digits.FP128` | nearest_even | 15.8389 | 12.0682 | -23.8% |
+| `parse_extra_digit.FP128` | toward_zero | 32.7280 | 25.0955 | -23.3% |
+| `format_2digits.FP128` | toward_zero | 14.4670 | 11.5597 | -20.1% |
+| `parse_extra_digit.FP128` | nearest_even | 33.1516 | 26.5338 | -20.0% |
 
 ## What this benchmark cannot cover
 

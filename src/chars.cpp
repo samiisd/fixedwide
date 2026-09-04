@@ -26,8 +26,8 @@ std::int64_t max_digits_for_bits(std::size_t bits) noexcept {
     return 78; // 256
 }
 
-u256_limbs limit_for_bits_u256(std::size_t bits, bool negative) noexcept {
-    auto lim256 = detail::limit_for_bits(bits, negative);
+u256_limbs limit_magnitude_limbs(std::size_t bits, bool negative) noexcept {
+    auto lim256 = detail::limit_magnitude_u256(bits, negative);
     u256_limbs lim{};
     for (int i = 0; i < 4; ++i) lim.limbs[i] = lim256.limbs[i];
     return lim;
@@ -37,7 +37,7 @@ u256_limbs limit_for_bits_u256(std::size_t bits, bool negative) noexcept {
 
 // Templated on the destination width for the same reason the arithmetic kernels
 // are templated on the scale: Bits is a compile-time constant at every call
-// site. As a runtime argument it forced limit_for_bits into an out-of-line call
+// site. As a runtime argument it forced limit_magnitude_u256 into an out-of-line call
 // building a 32-byte value on every parse, and kept every width test live.
 template<std::size_t Bits>
 std::expected<wide::int256, ParseError>
@@ -104,7 +104,7 @@ parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) 
     // the general path ends with. This is the shape essentially all real input
     // has, and it is where the gap against std::from_chars was.
     if (bits <= 128 && mantissa_end == text.size() && keep >= 0 && keep <= 19) {
-        const auto lim256 = detail::limit_for_bits(bits, negative);
+        const auto lim256 = detail::limit_magnitude_u256(bits, negative);
         const wide::uint128 limit(lim256.limbs[0], lim256.limbs[1]);
 
         std::uint64_t value = 0;
@@ -170,7 +170,7 @@ parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) 
     }
 
     if (bits <= 128) {
-        auto lim256 = detail::limit_for_bits(bits, negative);
+        auto lim256 = detail::limit_magnitude_u256(bits, negative);
         std::uint64_t lim_lo = lim256.limbs[0];
         std::uint64_t lim_hi = lim256.limbs[1];
 #if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
@@ -223,7 +223,7 @@ parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) 
 #endif
     }
 
-    auto limit = limit_for_bits_u256(bits, negative);
+    auto limit = limit_magnitude_limbs(bits, negative);
     auto cutoff = divmod64(limit, 10).quotient;
     unsigned last_digit = static_cast<unsigned>(divmod64(limit, 10).remainder);
 

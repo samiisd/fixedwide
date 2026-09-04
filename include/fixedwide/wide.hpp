@@ -694,27 +694,29 @@ constexpr uint256 operator%(uint256 a, uint256 b) noexcept {
 } // namespace fixedwide::wide
 
 namespace fixedwide {
-using u128 = wide::uint128;
-using i128 = wide::int128;
-using u256 = wide::uint256;
-using i256 = wide::int256;
 
-[[nodiscard]] constexpr unsigned bit_width(wide::uint128 v) noexcept {
-    if (v.high != 0) return 128 - wide::countl_zero64(v.high);
-    if (v.low != 0) return 64 - wide::countl_zero64(v.low);
-    return 0;
-}
-[[nodiscard]] constexpr unsigned bit_width(wide::uint256 v) noexcept {
-    for (int i = 3; i >= 0; --i) {
-        if (v.limbs[i] != 0) return (i + 1) * 64 - wide::countl_zero64(v.limbs[i]);
-    }
-    return 0;
-}
+// --- 0.4 compatibility surface -------------------------------------------
+// 0.4 spelled the wide integers i128/u128/i256/u256 and published their bounds
+// as free constants. Both are kept so the paired benchmark can compile 0.4's
+// byte-identical source against this library. The canonical spellings are
+// wide::int128 and friends, and wide::int128::min() / ::max(). See fixed.hpp
+// for the rest of this surface.
+using u128 = wide::uint128;                                   // wide::uint128
+using i128 = wide::int128;                                    // wide::int128
+using u256 = wide::uint256;                                   // wide::uint256
+using i256 = wide::int256;                                    // wide::int256
+inline constexpr i128 i128_min = wide::int128::min();         // wide::int128::min()
+inline constexpr i128 i128_max = wide::int128::max();         // wide::int128::max()
+inline constexpr u128 u128_max = wide::uint128::max();        // wide::uint128::max()
+inline constexpr i256 i256_min = wide::int256::min();         // wide::int256::min()
+inline constexpr i256 i256_max = wide::int256::max();         // wide::int256::max()
+inline constexpr u256 u256_max = wide::uint256::max();        // wide::uint256::max()
+// --- end of the 0.4 compatibility surface --------------------------------
 
-inline constexpr i128 i128_min = wide::int128::min();
-inline constexpr i128 i128_max = wide::int128::max();
-inline constexpr u128 u128_max = wide::uint128::max();
-inline constexpr i256 i256_min = wide::int256::min();
-inline constexpr i256 i256_max = wide::int256::max();
-inline constexpr u256 u256_max = wide::uint256::max();
+// There is deliberately no fixedwide::bit_width. It used to exist here as a
+// second copy of wide::bit_width with `unsigned` in place of `int`, and the two
+// were an ambiguous overload pair for any caller that said
+// `using namespace fixedwide;` and called it unqualified: ordinary lookup found
+// this one, argument-dependent lookup added the other, and they differed only
+// in return type. ADL reaches wide::bit_width from here without help.
 }

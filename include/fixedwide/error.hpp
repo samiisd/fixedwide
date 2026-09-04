@@ -11,12 +11,20 @@ enum class ArithmeticError : std::uint8_t {
     invalid_value,
 };
 
+// `inexact` and `too_precise` are not two names for one thing, and neither is
+// `too_precise` a spelling of `invalid_precision` below:
+//
+//   invalid_precision  the CALLER asked for more decimals than the type has
+//   too_precise        the DATA carries more decimals than the type can hold
+//   inexact            an exact operation had a remainder
+//
+// ParseError has no `inexact`: text that does not land on the type's decimal
+// grid is `too_precise`, and there is no other way for a parse to be inexact.
 enum class ParseError : std::uint8_t {
     empty,
     invalid,
     too_precise,
     overflow,
-    inexact,
 };
 
 enum class FormatError : std::uint8_t {

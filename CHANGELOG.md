@@ -78,6 +78,49 @@ above 25%. Full per-row output in `reports/BENCHMARK_VS_0_4.md`.
   performance work above costs no build time, and dropping two standard headers
   bought some back.
 
+### Naming
+An audit of every public name, and the fixes.
+
+- **`bit_width` was an ambiguous overload pair.** `fixedwide::wide::bit_width`
+  returned `int` and `fixedwide::bit_width` returned `unsigned` from an identical
+  body. For any caller that wrote `using namespace fixedwide;` and called it
+  unqualified, ordinary lookup found one and argument-dependent lookup added the
+  other: a hard compile error, and neither copy was used anywhere in the library.
+  The duplicate is gone and the header says why it must not come back.
+- **`ParseError::inexact` could never be returned.** Nothing produced it: text
+  off the type's decimal grid is `too_precise`, and there is no other way for a
+  parse to be inexact. Removed, and `error.hpp` now states the difference between
+  `invalid_precision` (the caller asked for more decimals than the type has),
+  `too_precise` (the data carries more than it can hold) and `inexact`.
+- **One word for the count of fractional digits: `decimals`.** It was five --
+  `Decimals`, `fractional_digits`, `digits`, `decimals`, `dec` -- with
+  `current_dec` and `current_decimals` in adjacent declarations of the same
+  parameter. Two spellings survive because callers write them, and both are
+  marked in their headers as the same quantity: `basic_fixed::fractional_digits`
+  and `FormatOptions::digits`, the latter written as a designated initialiser in
+  source that must stay byte-identical to 0.4's. `scale` now means 10^decimals
+  and nothing else.
+- **One suffix for a compiled worker: `_kernel`.** `_impl` is gone from the
+  library; the D-templated specialisations keep `_scaled`, which says what makes
+  them different.
+- `pow10_bits` returned a bit count, not a power of ten: `bits_for_pow10`.
+- `limit_for_bits` was the runtime-width sibling of `limit_magnitude_u256`;
+  it is now an overload of that name, and the mixed path's 128-bit version is
+  `limit_magnitude_u128`.
+- `unsigned_for_impl` / `unsigned_for` follow the standard trait idiom:
+  `unsigned_for` / `unsigned_for_t`.
+- `to_chars` named its output `buffer` in one overload and `output` in four.
+  `parse64` and `parse128` named their parameters `s` and `r` where the rest of
+  the API spells words. `string.hpp` hard-coded `char buf[128]` beside a
+  `text_capacity` that says 128. `from_float_impl` and `to_float_impl` are
+  `float_to_raw` and `raw_to_float`, which is what they do. A local named `scale`
+  shadowed the public `fixedwide::scale` in every consumer.
+- `from_double<Target>` added, so `to_double` has the pair the other four
+  conversions have. `from_integer` and `to_string` stay unpaired on purpose and
+  their headers say why.
+- README.md states the four rules the API follows, so the next name has
+  somewhere to be checked against.
+
 ### Known open
 - Fourteen rows still exceed the 3% gate on Clang 17, worst +13.1%. They are the
   2.4 ns 64-bit `div` and `mul_div` rows, and the gap is four instructions per

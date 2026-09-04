@@ -13,8 +13,8 @@ u1024_limbs make_u1024(wide::uint256 val) noexcept {
     return res;
 }
 
-u1024_limbs limit_for_bits(std::size_t bits, bool negative) noexcept {
-    auto lim256 = detail::limit_for_bits(bits, negative);
+u1024_limbs limit_magnitude_u256(std::size_t bits, bool negative) noexcept {
+    auto lim256 = detail::limit_magnitude_u256(bits, negative);
     u1024_limbs lim{};
     for (int i = 0; i < 4; ++i) lim.limbs[i] = lim256.limbs[i];
     return lim;
@@ -25,7 +25,7 @@ evaluate_rational(bool negative, const u1024_limbs& num, const u1024_limbs& den,
                   Rounding rounding, std::size_t dest_bits) noexcept {
     if (den.is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
     auto divres = divmod_knuth(num, den);
-    auto limit = limit_for_bits(dest_bits, negative);
+    auto limit = limit_magnitude_u256(dest_bits, negative);
 
     if (divres.quotient > limit) return std::unexpected(ArithmeticError::overflow);
 
@@ -43,8 +43,8 @@ evaluate_rational(bool negative, const u1024_limbs& num, const u1024_limbs& den,
 } // namespace
 
 std::strong_ordering
-mixed_compare_kernel(wide::int256 a_raw, unsigned a_dec,
-                     wide::int256 b_raw, unsigned b_dec) noexcept {
+mixed_compare_kernel(wide::int256 a_raw, unsigned a_decimals,
+                     wide::int256 b_raw, unsigned b_decimals) noexcept {
     bool a_neg = a_raw.is_negative();
     bool b_neg = b_raw.is_negative();
     if (a_neg != b_neg) {
@@ -52,9 +52,9 @@ mixed_compare_kernel(wide::int256 a_raw, unsigned a_dec,
     }
     if (a_raw.is_zero() && b_raw.is_zero()) return std::strong_ordering::equal;
 
-    unsigned m = std::min(a_dec, b_dec);
-    unsigned expA = b_dec - m;
-    unsigned expB = a_dec - m;
+    unsigned m = std::min(a_decimals, b_decimals);
+    unsigned expA = b_decimals - m;
+    unsigned expB = a_decimals - m;
 
     u1024_limbs ma = make_u1024(magnitude(a_raw));
     u1024_limbs mb = make_u1024(magnitude(b_raw));
@@ -82,31 +82,31 @@ mixed_compare_kernel(wide::int256 a_raw, unsigned a_dec,
 }
 
 std::expected<wide::int256, ArithmeticError>
-mixed_cast_kernel(wide::int256 src_raw, unsigned src_dec, unsigned dest_dec,
+mixed_cast_kernel(wide::int256 src_raw, unsigned src_decimals, unsigned dest_decimals,
                   Rounding rounding, std::size_t dest_bits) noexcept {
     bool neg = src_raw.is_negative();
     u1024_limbs num = make_u1024(magnitude(src_raw));
     u1024_limbs den(1ULL);
 
-    if (dest_dec > src_dec) {
-        auto s = pow10_limbs(dest_dec - src_dec);
+    if (dest_decimals > src_decimals) {
+        auto s = pow10_limbs(dest_decimals - src_decimals);
         auto p = mul_full(num, s);
         for (int i = 0; i < 16; ++i) num.limbs[i] = p.limbs[i];
-    } else if (dest_dec < src_dec) {
-        den = pow10_limbs(src_dec - dest_dec);
+    } else if (dest_decimals < src_decimals) {
+        den = pow10_limbs(src_decimals - dest_decimals);
     }
     return evaluate_rational(neg, num, den, rounding, dest_bits);
 }
 
 std::expected<wide::int256, ArithmeticError>
-mixed_add_sub_kernel(wide::int256 a_raw, unsigned a_dec,
-                     wide::int256 b_raw, unsigned b_dec,
-                     bool is_sub, unsigned dest_dec,
+mixed_add_sub_kernel(wide::int256 a_raw, unsigned a_decimals,
+                     wide::int256 b_raw, unsigned b_decimals,
+                     bool subtract, unsigned dest_decimals,
                      Rounding rounding, std::size_t dest_bits) noexcept {
-    unsigned m = std::min(a_dec, b_dec);
-    unsigned expA = b_dec - m;
-    unsigned expB = a_dec - m;
-    unsigned base_scale = std::max(a_dec, b_dec);
+    unsigned m = std::min(a_decimals, b_decimals);
+    unsigned expA = b_decimals - m;
+    unsigned expB = a_decimals - m;
+    unsigned base_scale = std::max(a_decimals, b_decimals);
 
     u1024_limbs ma = make_u1024(magnitude(a_raw));
     u1024_limbs mb = make_u1024(magnitude(b_raw));
@@ -124,7 +124,7 @@ mixed_add_sub_kernel(wide::int256 a_raw, unsigned a_dec,
     }
 
     bool a_neg = a_raw.is_negative();
-    bool b_neg = is_sub ? !b_raw.is_negative() : b_raw.is_negative();
+    bool b_neg = subtract ? !b_raw.is_negative() : b_raw.is_negative();
 
     u1024_limbs sum_mag{};
     bool sum_neg = false;
@@ -145,21 +145,21 @@ mixed_add_sub_kernel(wide::int256 a_raw, unsigned a_dec,
     u1024_limbs num = sum_mag;
     u1024_limbs den(1ULL);
 
-    if (dest_dec >= base_scale) {
-        auto s = pow10_limbs(dest_dec - base_scale);
+    if (dest_decimals >= base_scale) {
+        auto s = pow10_limbs(dest_decimals - base_scale);
         auto p = mul_full(num, s);
         for (int i = 0; i < 16; ++i) num.limbs[i] = p.limbs[i];
     } else {
-        den = pow10_limbs(base_scale - dest_dec);
+        den = pow10_limbs(base_scale - dest_decimals);
     }
 
     return evaluate_rational(sum_neg, num, den, rounding, dest_bits);
 }
 
 std::expected<wide::int256, ArithmeticError>
-mixed_mul_kernel(wide::int256 a_raw, unsigned a_dec,
-                 wide::int256 b_raw, unsigned b_dec,
-                 unsigned dest_dec, Rounding rounding, std::size_t dest_bits) noexcept {
+mixed_mul_kernel(wide::int256 a_raw, unsigned a_decimals,
+                 wide::int256 b_raw, unsigned b_decimals,
+                 unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept {
     bool neg = a_raw.is_negative() != b_raw.is_negative();
     u1024_limbs ma = make_u1024(magnitude(a_raw));
     u1024_limbs mb = make_u1024(magnitude(b_raw));
@@ -169,7 +169,7 @@ mixed_mul_kernel(wide::int256 a_raw, unsigned a_dec,
     for (int i = 0; i < 16; ++i) num.limbs[i] = prod_full.limbs[i];
 
     u1024_limbs den(1ULL);
-    int exp = static_cast<int>(dest_dec) - static_cast<int>(a_dec + b_dec);
+    int exp = static_cast<int>(dest_decimals) - static_cast<int>(a_decimals + b_decimals);
 
     if (exp >= 0) {
         auto s = pow10_limbs(static_cast<unsigned>(exp));
@@ -183,16 +183,16 @@ mixed_mul_kernel(wide::int256 a_raw, unsigned a_dec,
 }
 
 std::expected<wide::int256, ArithmeticError>
-mixed_div_kernel(wide::int256 a_raw, unsigned a_dec,
-                 wide::int256 b_raw, unsigned b_dec,
-                 unsigned dest_dec, Rounding rounding, std::size_t dest_bits) noexcept {
+mixed_div_kernel(wide::int256 a_raw, unsigned a_decimals,
+                 wide::int256 b_raw, unsigned b_decimals,
+                 unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept {
     if (b_raw.is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
     bool neg = a_raw.is_negative() != b_raw.is_negative();
 
     u1024_limbs ma = make_u1024(magnitude(a_raw));
     u1024_limbs mb = make_u1024(magnitude(b_raw));
 
-    int exp = static_cast<int>(b_dec) + static_cast<int>(dest_dec) - static_cast<int>(a_dec);
+    int exp = static_cast<int>(b_decimals) + static_cast<int>(dest_decimals) - static_cast<int>(a_decimals);
     u1024_limbs num = ma;
     u1024_limbs den = mb;
 
@@ -210,10 +210,10 @@ mixed_div_kernel(wide::int256 a_raw, unsigned a_dec,
 }
 
 std::expected<wide::int256, ArithmeticError>
-mixed_mul_div_kernel(wide::int256 a_raw, unsigned a_dec,
-                     wide::int256 b_raw, unsigned b_dec,
-                     wide::int256 c_raw, unsigned c_dec,
-                     unsigned dest_dec, Rounding rounding, std::size_t dest_bits) noexcept {
+mixed_mul_div_kernel(wide::int256 a_raw, unsigned a_decimals,
+                     wide::int256 b_raw, unsigned b_decimals,
+                     wide::int256 c_raw, unsigned c_decimals,
+                     unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept {
     if (c_raw.is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
     bool neg = a_raw.is_negative() != (b_raw.is_negative() != c_raw.is_negative());
 
@@ -226,7 +226,7 @@ mixed_mul_div_kernel(wide::int256 a_raw, unsigned a_dec,
     for (int i = 0; i < 16; ++i) num.limbs[i] = prod_full.limbs[i];
 
     u1024_limbs den = mc;
-    int exp = static_cast<int>(c_dec) + static_cast<int>(dest_dec) - static_cast<int>(a_dec + b_dec);
+    int exp = static_cast<int>(c_decimals) + static_cast<int>(dest_decimals) - static_cast<int>(a_decimals + b_decimals);
 
     if (exp >= 0) {
         auto s = pow10_limbs(static_cast<unsigned>(exp));

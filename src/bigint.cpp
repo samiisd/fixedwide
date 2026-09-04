@@ -42,7 +42,7 @@ std::expected<i128, ArithmeticError> divide_to_i128(i256 numerator, i128 divisor
     detail::u128_limbs den(magnitude(divisor));
     auto divres = detail::divmod_knuth(num, den);
 
-    auto lim256 = detail::limit_for_bits(128, negative);
+    auto lim256 = detail::limit_magnitude_u256(128, negative);
     detail::u256_limbs limit(wide::uint256(lim256.limbs[0], lim256.limbs[1], 0, 0));
     if (divres.quotient > limit) return std::unexpected(ArithmeticError::overflow);
 
@@ -68,7 +68,7 @@ std::expected<i128, ArithmeticError> mul_div(i128 a, i128 b, i128 divisor, Round
     detail::u256_limbs num = detail::mul_full(ua, ub);
     auto divres = detail::divmod_knuth(num, udiv);
 
-    auto lim256 = detail::limit_for_bits(128, negative);
+    auto lim256 = detail::limit_magnitude_u256(128, negative);
     detail::u256_limbs limit(wide::uint256(lim256.limbs[0], lim256.limbs[1], 0, 0));
     if (divres.quotient > limit) return std::unexpected(ArithmeticError::overflow);
 
