@@ -43,7 +43,17 @@ if [[ ${MPDECIMAL_CHECK:-0} == 1 ]]; then
 fi
 make install
 
-# Make discovery failures obvious before CMake is involved.
+# Make discovery failures obvious before CMake is involved. Only inspect
+# directories that actually exist: under `pipefail`, passing a missing lib64
+# directory to find would turn a successful install into a false failure.
 test -f "$PREFIX/include/decimal.hh"
-find "$PREFIX/lib" "$PREFIX/lib64" -maxdepth 1 -type f \
-    \( -name 'libmpdec.*' -o -name 'libmpdec++.*' \) -print 2>/dev/null | sort
+found=0
+for libdir in "$PREFIX/lib" "$PREFIX/lib64"; do
+    [[ -d "$libdir" ]] || continue
+    while IFS= read -r library; do
+        printf '%s\n' "$library"
+        found=1
+    done < <(find "$libdir" -maxdepth 1 -type f \
+        \( -name 'libmpdec.*' -o -name 'libmpdec++.*' \) -print | sort)
+done
+[[ $found -eq 1 ]]
