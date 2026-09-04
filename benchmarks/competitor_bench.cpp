@@ -32,6 +32,7 @@
 // libraries this executable does not run.
 #include <fixedwide/arithmetic.hpp>
 #include <fixedwide/chars.hpp>
+#include <fixedwide/binary.hpp>
 #include "measurement.hpp"
 
 #include <fpm/fixed.hpp>
@@ -42,7 +43,9 @@
 #  define FIXEDWIDE_HAVE_BOOST_DECIMAL 1
 #endif
 
+#include <array>
 #include <charconv>
+#include <cstring>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -303,6 +306,109 @@ int main(int argc, char** argv) {
                                                a[i & (data_size - 1)], std::chars_format::fixed, 4);
                 escape(end);
             }
+        });
+    }
+
+    // ---- fixedwide against the raw-type floor ----------------------------
+    //
+    // In their own scope on purpose. These rows were first written inside the
+    // decimal_fixed block above, and merely adding them there moved that
+    // block's div_nearest_even from 2.2 ns to 5.1 ns with the library
+    // untouched -- code layout, not arithmetic. Keeping each group of rows in
+    // its own scope keeps one group from silently retuning another.
+    {
+        using T = fixedwide::Fixed64<12>;
+        std::vector<T> a(data_size), b(data_size);
+        for (std::size_t i = 0; i < data_size; ++i) {
+            a[i] = *fixedwide::parse<T>(ops.text[i]);
+            b[i] = *fixedwide::parse<T>(format_fixed4(ops.b[i]));
+        }
+        for (std::size_t i = 0; i < data_size; ++i) {
+            const auto sum = fixedwide::add(a[i], b[i]);
+            expect(sum.has_value() && sum->raw() == a[i].raw() + b[i].raw(),
+                   "fixedwide add disagrees with the exact integer sum");
+        }
+        row("fixedwide", "Fixed64<12>", "raw_baseline", "add_checked", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(*fixedwide::add(a[i & (data_size - 1)], b[i & (data_size - 1)]));
+        });
+
+        // Serialization against the memcpy floor. to_bytes fixes the byte order,
+        // so unlike a raw copy it produces the same bytes on any machine.
+        {
+            const auto bytes = fixedwide::to_bytes<fixedwide::endian::little>(a[0]);
+            const auto back = fixedwide::from_bytes<T, fixedwide::endian::little>(bytes);
+            expect(back && *back == a[0], "fixedwide byte round-trip");
+        }
+        row("fixedwide", "Fixed64<12>", "raw_baseline", "to_bytes_little", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i)
+                escape(fixedwide::to_bytes<fixedwide::endian::little>(a[i & (data_size - 1)]));
+        });
+        row("fixedwide", "Fixed64<12>", "raw_baseline", "from_bytes_little", [&](std::size_t n) {
+            const auto bytes = fixedwide::to_bytes<fixedwide::endian::little>(a[0]);
+            for (std::size_t i = 0; i < n; ++i)
+                escape(*fixedwide::from_bytes<T, fixedwide::endian::little>(bytes));
+        });
+    }
+
+    // ---- raw machine types ----------------------------------------------
+    //
+    // Not competitors: a floor. These are what the hardware costs with no scale,
+    // no rounding mode, no overflow check and no decimal guarantee, so they say
+    // how much of a fixedwide row is the operation and how much is the contract.
+    // int64_t here carries no scale at all -- keeping a decimal point in it is
+    // work the caller would have to do on top.
+    {
+        std::vector<std::int64_t> a(data_size), b(data_size);
+        for (std::size_t i = 0; i < data_size; ++i) {
+            a[i] = static_cast<std::int64_t>(ops.a[i] * 10'000);
+            b[i] = static_cast<std::int64_t>(ops.b[i] * 10'000);
+            expect(b[i] != 0, "int64 divisor must be nonzero");
+        }
+        row("std", "int64_t", "raw_baseline", "add_unchecked", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] + b[i & (data_size - 1)]);
+        });
+        row("std", "int64_t", "raw_baseline", "mul_unchecked", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] * b[i & (data_size - 1)]);
+        });
+        row("std", "int64_t", "raw_baseline", "div_unchecked", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] / b[i & (data_size - 1)]);
+        });
+
+        // The serialization floor: a raw copy of the object representation. It
+        // is the fastest possible answer and it is endian-dependent, which is
+        // exactly the guarantee to_bytes adds on top.
+        row("std", "int64_t", "raw_baseline", "memcpy_store", [&](std::size_t n) {
+            std::array<std::uint8_t, sizeof(std::int64_t)> buffer{};
+            for (std::size_t i = 0; i < n; ++i) {
+                std::memcpy(buffer.data(), &a[i & (data_size - 1)], sizeof buffer);
+                escape(buffer);
+            }
+        });
+        row("std", "int64_t", "raw_baseline", "memcpy_load", [&](std::size_t n) {
+            std::array<std::uint8_t, sizeof(std::int64_t)> buffer{};
+            std::memcpy(buffer.data(), &a[0], sizeof buffer);
+            for (std::size_t i = 0; i < n; ++i) {
+                std::int64_t out = 0;
+                std::memcpy(&out, buffer.data(), sizeof out);
+                escape(out);
+            }
+        });
+    }
+    {
+        std::vector<double> a = ops.a, b = ops.b;
+        row("std", "double", "raw_baseline", "add", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] + b[i & (data_size - 1)]);
+        });
+        std::vector<float> fa(data_size), fb(data_size);
+        for (std::size_t i = 0; i < data_size; ++i) {
+            fa[i] = static_cast<float>(ops.a[i]);
+            fb[i] = static_cast<float>(ops.b[i]);
+        }
+        row("std", "float", "raw_baseline", "add", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(fa[i & (data_size - 1)] + fb[i & (data_size - 1)]);
+        });
+        row("std", "float", "raw_baseline", "mul", [&](std::size_t n) {
+            for (std::size_t i = 0; i < n; ++i) escape(fa[i & (data_size - 1)] * fb[i & (data_size - 1)]);
         });
     }
 

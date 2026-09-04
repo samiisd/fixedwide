@@ -126,21 +126,46 @@ Median ns/op, Clang 22, `-O3`, pinned to one core, every timed result validated
 against an independent oracle outside the timed region. Full table, method and
 raw samples: [`reports/BENCHMARK_COMPETITORS.md`](reports/BENCHMARK_COMPETITORS.md).
 
+### Against other decimal libraries
+
 | | **fixedwide**<br>`Fixed64<12>` | Boost.Decimal<br>`decimal64_t` | CNL<br>`scaled_integer` | `double` |
 |---|---:|---:|---:|---:|
-| multiply | **2.61** | 3.53 | 0.35 | 0.23 |
-| divide | **2.17** | 8.53 | 1.09 | 0.74 |
-| parse | **12.17** | 14.17 | — | 5.18 |
-| format | 13.97 | **12.36** | — | 28.30 |
+| multiply | **2.62** | 3.54 | 0.35 | 0.22 |
+| divide | **2.18** | 8.64 | 1.10 | 0.74 |
+| parse | **11.42** | 13.77 | — | 5.28 |
+| format | 13.97 | **12.42** | — | 28.95 |
 | exact in decimal | yes | yes | yes | **no** |
 | overflow detected | **yes** | no | no | no |
 
-Read honestly:
+### Against the raw machine types
+
+"Fast for a checked decimal library" is not a claim you can act on. These are
+what the hardware costs with no scale, no rounding mode and no overflow check,
+so the price of the contract is visible instead of argued:
+
+| | **fixedwide**<br>`Fixed64<12>` | raw `int64_t` | `double` |
+|---|---:|---:|---:|
+| add | **0.39** | 0.27 | 0.22 |
+| store 8 bytes | **0.19** `to_bytes` | 0.19 `memcpy` | — |
+| load 8 bytes | **0.18** `from_bytes` | 0.18 `memcpy` | — |
+
+**Serialization runs at the `memcpy` floor** while doing strictly more: the byte
+order is named, so what one machine writes another reads, and `from_bytes`
+rejects a span of the wrong length. **A checked decimal add is within about
+0.12 ns of a raw `int64_t` add** — exactly two extra instructions, counted
+deterministically rather than timed.
+
+These rows are all a fraction of a nanosecond and throughput-bound. Read the
+ordering, not the ratio; and read
+[the honest version](reports/BENCHMARK_COMPETITORS.md#the-raw-type-floor),
+which says where the instruction counts and the timings disagree.
+
+### Reading the first table honestly
 
 - Against **Boost.Decimal**, the closest comparable contract here, multiply is
   faster, divide is about **four times** faster, and parsing is faster.
   Formatting is the row it loses, and that is an open item.
-- **CNL's decimal multiply is about 8x quicker**, because it is a raw `int64`
+- **CNL's decimal multiply is about 7x quicker**, because it is a raw `int64`
   multiply and a rescale with no overflow detection: on overflow it silently
   produces a wrong answer. Returning `std::expected` is what that row costs, and
   it is the trade this library exists to make.

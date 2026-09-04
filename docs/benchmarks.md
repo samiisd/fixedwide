@@ -57,6 +57,25 @@ index mask and the sink, which every other row also pays.
 | `fixed_cast.Price.MixedFast` | 8 |
 | `baseline.empty` | 5 |
 
+### The raw-type floor
+
+The same harness measures plain `std::int64_t`, so the price of the contract is
+a number rather than an argument. Subtract `baseline.empty` (5) from each to get
+the marginal cost of one operation:
+
+| Operation | fixedwide `Fixed64<12>` | raw `int64_t` | the difference is |
+|---|---:|---:|---|
+| add | 9 (4 marginal) | 7 (2 marginal) | the overflow check: two instructions |
+| multiply | 37 (32) | 7 (2) | widening to 128 bits and dividing by the scale |
+| divide | 50 (45) | 8 (3) | the same, plus the rounding mode |
+| store 8 bytes | 115 (110) | 59 (54) | pinning the byte order |
+
+Wall-clock cannot separate these — they are all a fraction of a nanosecond — and
+in a timed loop `to_bytes` and `memcpy` measure the same 0.19 ns, because the
+extra work is cheap ALU that pipelines away at this size. That is a real
+disagreement between the two measurements, and both are reported:
+`reports/BENCHMARK_COMPETITORS.md` has the timings, this table has the work.
+
 ## The mixed path cliff
 
 The one performance surprise in this API, stated rather than hidden.

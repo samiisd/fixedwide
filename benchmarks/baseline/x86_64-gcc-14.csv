@@ -12,7 +12,7 @@ mul.Fixed128,52.000
 div.Fixed128,131.419
 mul_div.Fixed128,47.000
 quantize.Fixed128,155.000
-mul.Fixed256,701.000
+mul.Fixed256,702.000
 div.Fixed256,523.024
 quantize.Fixed256,557.000
 mul_to.native,52.617
@@ -22,6 +22,11 @@ mul_to.general,8561.000
 div_to.general,8377.167
 compare.Price.Rate,15.000
 fixed_cast.Price.MixedFast,8.000
-parse.Fixed64,510.898
+parse.Fixed64,510.906
 to_chars.Fixed64,413.270
 to_chars.Fixed128,562.093
+add.int64_raw,7.000
+mul.int64_raw,7.000
+div.int64_raw,8.000
+to_bytes.Fixed64,115.001
+memcpy.int64_raw,59.000
