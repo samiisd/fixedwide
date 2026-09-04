@@ -18,8 +18,11 @@ quantize.Fixed256,557.000
 mul_to.native,52.617
 div_to.native,67.188
 add_to.native,57.352
-mul_to.general,8561.000
-div_to.general,8377.167
+mul_to.general,416.000
+div_to.general,728.733
+mul_to.wide,1764.014
+div_to.wide,2570.047
+add_to.wide,1228.000
 compare.Price.Rate,15.000
 fixed_cast.Price.MixedFast,8.000
 parse.Fixed64,510.906

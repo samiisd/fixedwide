@@ -264,6 +264,22 @@ bool dispatch(std::string_view name, std::uint64_t n) {
         run(n, price, rate, [](auto x, auto y) { return fw::div_to<Money128>(x, y, nearest); });
         return true;
     }
+    // The widest tier: 256-bit operands across scales, which is what actually
+    // needs the multi-limb path. Without these rows the 8- and 16-limb tiers of
+    // the mixed kernel would not be gated at all, and the width dispatch could
+    // regress there unnoticed.
+    if (name == "mul_to.wide") {
+        run(n, a256, b256, [](auto x, auto y) { return fw::mul_to<fw::Fixed256<50>>(x, y, nearest); });
+        return true;
+    }
+    if (name == "div_to.wide") {
+        run(n, a256, b256, [](auto x, auto y) { return fw::div_to<fw::Fixed256<50>>(x, y, nearest); });
+        return true;
+    }
+    if (name == "add_to.wide") {
+        run(n, a256, b256, [](auto x, auto y) { return fw::add_to<fw::Fixed256<50>>(x, y, nearest); });
+        return true;
+    }
     if (name == "compare.Price.Rate") {
         run(n, price, rate, [](auto x, auto y) -> std::int64_t { return (x <=> y) == std::strong_ordering::less; });
         return true;
@@ -364,37 +380,23 @@ bool dispatch(std::string_view name, std::uint64_t n) {
 }
 
 constexpr const char* workloads[] = {
-    "baseline.empty",
-    "add.Fixed64",
-    "sub.Fixed64",
-    "mul.Fixed64",
-    "div.Fixed64",
-    "mul_div.Fixed64",
-    "quantize.Fixed64",
-    "remainder.Fixed64",
-    "add.Fixed128",
-    "mul.Fixed128",
-    "div.Fixed128",
-    "mul_div.Fixed128",
-    "quantize.Fixed128",
-    "mul.Fixed256",
-    "div.Fixed256",
-    "quantize.Fixed256",
-    "mul_to.native",
-    "div_to.native",
-    "add_to.native",
-    "mul_to.general",
-    "div_to.general",
-    "compare.Price.Rate",
-    "fixed_cast.Price.MixedFast",
-    "parse.Fixed64",
-    "to_chars.Fixed64",
-    "to_chars.Fixed128",
-    "add.int64_raw",
-    "mul.int64_raw",
-    "div.int64_raw",
-    "to_bytes.Fixed64",
-    "memcpy.int64_raw",
+    "baseline.empty",     "add.Fixed64",
+    "sub.Fixed64",        "mul.Fixed64",
+    "div.Fixed64",        "mul_div.Fixed64",
+    "quantize.Fixed64",   "remainder.Fixed64",
+    "add.Fixed128",       "mul.Fixed128",
+    "div.Fixed128",       "mul_div.Fixed128",
+    "quantize.Fixed128",  "mul.Fixed256",
+    "div.Fixed256",       "quantize.Fixed256",
+    "mul_to.native",      "div_to.native",
+    "add_to.native",      "mul_to.general",
+    "div_to.general",     "mul_to.wide",
+    "div_to.wide",        "add_to.wide",
+    "compare.Price.Rate", "fixed_cast.Price.MixedFast",
+    "parse.Fixed64",      "to_chars.Fixed64",
+    "to_chars.Fixed128",  "add.int64_raw",
+    "mul.int64_raw",      "div.int64_raw",
+    "to_bytes.Fixed64",   "memcpy.int64_raw",
 };
 
 } // namespace

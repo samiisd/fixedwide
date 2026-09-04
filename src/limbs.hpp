@@ -54,7 +54,8 @@ struct uint_limbs {
     [[nodiscard]] constexpr unsigned bit_width() const noexcept {
         for (std::size_t i = L; i > 0; --i) {
             if (limbs[i - 1] != 0) {
-                return static_cast<unsigned>(i * 64 - std::countl_zero(limbs[i - 1]));
+                // countl_zero returns int; do the subtraction in one signedness.
+                return static_cast<unsigned>(i * 64) - static_cast<unsigned>(std::countl_zero(limbs[i - 1]));
             }
         }
         return 0;

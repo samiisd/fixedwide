@@ -53,6 +53,8 @@ the tree had ever built.
 | The CNL benchmark was not measuring a decimal multiply | `scaled_integer::operator*` returns a wider scale rather than rescaling, so the timed expression was a bare 64-bit multiply. The reported 8x gap is 2.8x at a matched scale. |
 | Overflow and inexact were interchangeable in the audits | The precedence is now stated in `error.hpp` and asserted exactly, over 5.1 million checks and both backends. |
 | Negative compile tests accepted any error | Each now asserts the diagnostic it expects, so a typo or a renamed header cannot pass as success. |
+| The general mixed kernel used 1024-bit limbs for every operation | It now sizes itself to its operands across four tiers. `mul_to` 8561 -> 416 instructions, `div_to` 8377 -> 729, with 1,017,500 differential checks unchanged. |
+| Coverage measured one backend and understated | Native and portable profiles are merged; `src/division.hpp` went from 10.32% to 98.67%. |
 | 85 warnings in library code | Zero, across four configurations, with `-Wsign-conversion` and `-Wold-style-cast` added and `-Werror` enforced in CI. |
 
 ## What alpha.5 changed
@@ -184,11 +186,12 @@ that work, measured. Eight examples in `examples/` are ctest tests.
 
 ## Known open items
 
-1. **The mixed-path cliff.** Cross-scale `mul_to` and `div_to` are about 160x
-   cheaper when the aligned intermediate fits 126 bits than when it does not
-   (53 instructions against 8561). Both paths are in the regression baseline so
-   neither can move unnoticed, and `docs/benchmarks.md` says where the edge is,
-   but the general kernel working in 1024-bit limbs is more than the job needs.
+1. Cross-scale `mul_to` and `div_to` still cost more off the native path than
+   on it — 53 instructions against 416 for a multiply — because the general
+   path evaluates an exact rational and performs a division the native path
+   avoids. That is inherent to the operation. What was *not* inherent has been
+   removed: the kernel used 1024-bit limbs for everything, so the same multiply
+   cost 8561. All three tiers are in the regression baseline.
 2. Fourteen rows still exceed the old 3% 0.4-parity threshold on Clang 17,
    worst +13.5%. They are the 2.4 ns 64-bit `div` and `mul_div` rows; the cost
    is the caller's stack-protector prologue, paid because this library inlines
@@ -214,11 +217,12 @@ that work, measured. Eight examples in `examples/` are ctest tests.
 9. On a platform whose `long double` is IEEE binary128, `from_float` keeps 64
    significand bits rather than 113. The cap is explicit in `src/floating.cpp`
    and is what the `std::uint64_t` accumulator can hold.
-10. **Coverage is 67.4% of lines and 78.3% of branches** on the CI
-    configuration, and the gate is set just under that as a ratchet. It is one
-    native build, so code only the portable backend reaches reads as uncovered
-    -- `src/division.hpp` shows 10% for that reason. Merging profiles from both
-    backends, and then raising the threshold, is the next step.
+10. Coverage now merges the native and portable backends, which was the right
+    fix rather than a threshold change: `src/division.hpp` read 10.32% covered
+    from a native-only run and reads 98.67% merged, because the portable jobs
+    were exercising it all along. Merged totals are 75.1% of lines and 77.9% of
+    branches locally. The gate is a ratchet set below the first merged CI
+    measurement; raise it, never lower it.
 11. `arithmetic.hpp` still costs about 41% more to include than 0.4's. The
     absolute cost is 48 ms against 34 ms; most of the difference is
     `detail/constexpr_arith.hpp`, which cannot be dropped without dropping

@@ -213,9 +213,11 @@ are deterministic — two runs are byte-identical — which is what makes a 1% g
 possible on a shared CI runner, where wall-clock noise is far larger than that.
 Baselines are committed in [`benchmarks/baseline/`](benchmarks/baseline).
 
-There is one performance cliff in the API, and it is documented rather than
-hidden: cross-scale `mul_to` / `div_to` are about 160x cheaper when the aligned
-intermediate fits 126 bits. [Where the edge is](docs/benchmarks.md#the-mixed-path-cliff).
+Cross-scale `mul_to` / `div_to` take a single-instruction-width path when the
+aligned intermediate fits 126 bits, and a multi-limb one otherwise. The
+multi-limb path sizes itself to its operands rather than assuming the worst
+case, so the gap is about 8x rather than the 160x it was.
+[The numbers](docs/benchmarks.md#the-cost-of-a-mixed-operation).
 
 ---
 

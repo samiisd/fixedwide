@@ -123,8 +123,8 @@ integers compared. No division happens and nothing is rounded, so the answer is
 never a rounding artefact. Both are `constexpr` for every width.
 
 > See [`examples/04_mixed_scales.cpp`](../examples/04_mixed_scales.cpp), and
-> [benchmarks.md](benchmarks.md#the-mixed-path-cliff) for the one performance
-> cliff in this API.
+> [benchmarks.md](benchmarks.md#the-cost-of-a-mixed-operation) for what each of
+> these costs and when the narrow path applies.
 
 ---
 

@@ -122,6 +122,10 @@ nothing in this tree had ever built. Two of its own rows could not have compiled
   tests the extraction and publishes it; and Dependabot for action versions.
 - `docs/ci.md`, recording which compiler and standard-library combinations
   actually work, measured rather than assumed.
+- The coverage job merges profiles from the native and portable backends
+  instead of measuring one. This was a measurement bug, not a testing gap:
+  `src/division.hpp` read 10.32% line coverage from a native-only run and reads
+  98.67% merged, because the portable jobs had been exercising it all along.
 - `.clang-format`, `scripts/format.sh` and a `lint` CI job that also compiles
   with `-Werror` over three toolchains and both backends. clang-format is pinned
   to an exact version from PyPI because majors format the same file differently,
@@ -137,6 +141,30 @@ nothing in this tree had ever built. Two of its own rows could not have compiled
   that **CNL cannot do 12 decimals at all**: it forms the product in `int64_t`,
   so `123.456789012345 * 2` gives `-0.000002` where fixedwide returns
   `246.913578024690`. The benchmark asserts this on every run.
+
+### Performance
+
+- **The general cross-scale kernel sizes itself to its operands.** Every mixed
+  operation that missed the narrow `mixed_native` path did all of its arithmetic
+  in sixteen 64-bit limbs, regardless of the values: a `Fixed64` x `Fixed64`
+  multiply into a `Fixed128` needs about eighty bits and was running a 16x16
+  schoolbook multiply, 256 partial products of which four were not multiplying
+  by zero. `src/mixed.cpp` now computes an upper bound on the bits the numerator
+  and denominator need and dispatches to the smallest of four tiers — 128, 256,
+  512 or 1024 bits.
+
+  | | before | after |
+  |---|---:|---:|
+  | `mul_to`, 64-bit operands | 8561 | **416** |
+  | `div_to`, 64-bit operands | 8377 | **729** |
+  | `mul_to`, 256-bit operands | 8561 | **1764** |
+
+  Instructions per operation, measured deterministically. Same results: 1,017,500
+  differential checks against Boost.Multiprecision, unchanged, over the native
+  and portable backends, clean under ASan and UBSan. Every other workload in the
+  baseline is byte-identical, which is the evidence the change is confined to
+  this kernel. The remaining gap to the native path is the exact-rational
+  division the general path has to do and the native one does not.
 
 ### Changed
 

@@ -76,35 +76,41 @@ extra work is cheap ALU that pipelines away at this size. That is a real
 disagreement between the two measurements, and both are reported:
 `reports/BENCHMARK_COMPETITORS.md` has the timings, this table has the work.
 
-## The mixed path cliff
-
-The one performance surprise in this API, stated rather than hidden.
+## The cost of a mixed operation
 
 `mul_to`, `div_to` and `add_to` have two implementations. When the aligned
-intermediate fits 126 bits, `detail::mixed_native` does the whole thing in
-`__int128`. When it does not, a general kernel works in 1024-bit limbs. The two
-differ by about **160x**:
+intermediate fits 126 bits, `detail::mixed_native` does the whole thing in one
+`__int128`. Otherwise a multi-limb kernel in `src/mixed.cpp` evaluates the exact
+rational and rounds once.
 
-| | native | general |
-|---|---:|---:|
-| `mul_to` | 53 | 8561 |
-| `div_to` | 67 | 8377 |
-| `add_to` | 57 | — |
+Instructions per operation:
 
-Which one you get is decided at compile time by the widths and the scales, in
-`include/fixedwide/detail/mixed_native.hpp`:
+| | native | general, 64-bit operands | general, 256-bit operands |
+|---|---:|---:|---:|
+| `mul_to` | 53 | 416 | 1764 |
+| `div_to` | 67 | 729 | 2570 |
+| `add_to` | 57 | — | 1228 |
 
-- `mul_to<Dest>`: native when both operands are ≤ 64 bits, `Dest` ≤ 128 bits,
-  and either `Dest`'s scale is below the sum of the operands' scales, or the
-  128-bit product plus the widening still fits 127 bits.
-- `div_to<Dest>`: native when both operands are ≤ 64 bits, `Dest` ≤ 128 bits,
-  and the numerator plus `10^(Dd + Db − Da)` fits 126 bits.
+This used to be a cliff rather than a gradient: **every** operation that missed
+the native path cost about 8500 instructions, because the kernel did all of its
+arithmetic in sixteen 64-bit limbs regardless of the operands. A mixed multiply
+of two `Fixed64` values into a `Fixed128` needs roughly eighty bits and was
+running a 16x16 schoolbook multiply — 256 partial products, four of which were
+not multiplying by zero.
 
-In practice: `mul_to<Fixed128<6>>(Fixed64<4>, Fixed64<8>)` is native;
-`mul_to<Fixed128<18>>` of the same operands is not. If a mixed operation is on
-a hot path, keep the destination scale close to what the operands need. Both
-paths are in the baseline above, so neither can regress unnoticed and the cliff
-stays visible.
+The kernel now computes an upper bound on the bits it needs and dispatches to
+the smallest of four tiers (128 / 256 / 512 / 1024 bits). Same code, same
+results — 1,017,500 differential checks against Boost.Multiprecision, unchanged,
+across the native and portable backends — for 8561 → 416 instructions on the
+64-bit case and 8377 → 729 on the divide.
+
+What remains is real work: the general path evaluates an exact rational and
+performs a division that the native path avoids entirely. If a mixed operation
+is on a hot path, keeping the destination scale close to what the operands need
+still keeps you on the native side, and
+[api_reference.md](api_reference.md#mixed-scale-operations) says where that
+boundary is. All three tiers are in the baseline above, so none of them can
+regress unnoticed.
 
 ## Wall-clock, against the 0.4 release
 

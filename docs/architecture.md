@@ -63,16 +63,25 @@ same-type `add`/`sub`/`mul`/`div`/`mul_div` are *deleted* for mismatched
 operands, so a mix is a compile error naming the deleted overload rather than a
 silent conversion.
 
-There are two implementations, and the difference between them matters:
+There are two implementations:
 
 - **`detail::mixed_native`** does the whole operation in one `__int128` when the
-  aligned intermediate fits 126 bits.
-- **The general kernel** in `src/mixed.cpp` works in 1024-bit limbs and handles
-  everything else.
+  aligned intermediate fits 126 bits. Selected at compile time from the widths
+  and scales.
+- **The general kernel** in `src/mixed.cpp` evaluates the exact rational in
+  multi-limb arithmetic and rounds once.
 
-They differ by about 160x. Which one applies is decided at compile time by the
-widths and scales; [benchmarks.md](benchmarks.md#the-mixed-path-cliff) gives the
-rule and the numbers.
+The general kernel sizes itself to its operands. It computes an upper bound on
+the bits the numerator and denominator need — operand widths plus
+`ceil(e * log2 10)` for each power of ten — and dispatches to the smallest of
+four tiers: 128, 256, 512 or 1024 bits. It previously used 1024 bits for
+everything, which made every operation that missed the native path cost about
+8500 instructions no matter how small it was; the same operations now cost 416
+and 729. [benchmarks.md](benchmarks.md#the-cost-of-a-mixed-operation) has the
+table.
+
+The bound must never under-estimate, so `pow10_bits` uses `e * 10 / 3 + 1`,
+which is above `log2(10)` for every `e`.
 
 Comparison is the exception: `==` and `<=>` need no destination and cannot lose
 anything, because both sides are lifted to a common exponent and the integers
