@@ -51,8 +51,8 @@ index mask and the sink, which every other row also pays.
 | Text and cross-scale | |
 |---|---:|
 | `parse.Fixed64` | 511 |
-| `to_chars.Fixed64` | 476 |
-| `to_chars.Fixed128` | 568 |
+| `to_chars.Fixed64` | 413 |
+| `to_chars.Fixed128` | 562 |
 | `compare.Price.Rate` | 15 |
 | `fixed_cast.Price.MixedFast` | 8 |
 | `baseline.empty` | 5 |

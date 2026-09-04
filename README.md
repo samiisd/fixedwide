@@ -222,20 +222,31 @@ Anything else is marked `not-configured` in
 [`reports/EXECUTION_MATRIX.csv`](reports/EXECUTION_MATRIX.csv) and is not
 claimed.
 
-| Platform | Toolchain | Status |
-|---|---|---|
-| Linux x86-64 | GCC 14+ | Debug and Release, plus the Boost differential oracle |
-| Linux x86-64 | Clang 18 + libc++, Clang 20 + libstdc++ | Debug and Release |
-| Linux AArch64 | GCC 14 | Release |
-| macOS (Apple silicon) | AppleClang 15+ | Release |
-| Windows x64 | MSVC 19.3x, clang-cl | Release, portable backend |
-| Linux x86-64 | Forced-portable, and with `__SIZEOF_INT128__` undefined | Release |
-| Linux x86-64 | ASan + UBSan, both backends | Debug |
+Every row below is `executed-pass` in
+[the last CI run](https://github.com/Samiisd/fixedwide/actions/workflows/ci.yml).
 
-Also executed: shared library, `-fno-exceptions` / `-fno-rtti`, install plus an
-external `find_package` consumer, the Conan package, and AArch64 on real
-hardware (a Pixel 6, static cross build). Not configured, and so not claimed:
-Windows ARM64 and big-endian hardware.
+| Platform | Toolchain | Backend |
+|---|---|---|
+| Linux x86-64 | GCC 14, Debug and Release | native |
+| Linux x86-64 | Clang 18 + libc++, Debug and Release | native |
+| Linux x86-64 | Clang 20 + libstdc++ | native |
+| Linux AArch64 | GCC 14 | native |
+| macOS (Apple silicon) | AppleClang, macos-14 and macos-15 | native |
+| Windows x64 | MSVC | portable |
+| Windows x64 | clang-cl | portable |
+| Linux x86-64 | GCC 14, `FIXEDWIDE_FORCE_PORTABLE` | portable |
+| Linux x86-64 | GCC 14, `__SIZEOF_INT128__` undefined | portable |
+| Linux x86-64 | Clang 18, ASan + UBSan, both backends | both |
+
+Also executed on every push: the shared library, install plus an external
+`find_package` consumer, `conan create` with `test_package` in both backends,
+a libFuzzer smoke run, and the instruction-count gate. Executed on the
+maintainer's hardware and recorded in `reports/`: Clang 22 and GCC 16, a
+no-exceptions / no-RTTI build, and AArch64 on a real device.
+
+Not configured, and therefore not claimed: Windows ARM64, and big-endian
+hardware — `binary.hpp` implements both byte orders but only little-endian has
+ever been executed.
 
 Note on Clang: Clang 17 and 18 report `__cpp_concepts` as `201907`, and
 libstdc++ gates `<expected>` on `202002`, so **this library cannot compile with

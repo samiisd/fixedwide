@@ -113,6 +113,20 @@ void run_unary(std::uint64_t iterations, const Fixture& a, Op op) {
     sink = accumulator;
 }
 
+// Formatting writes into a caller's buffer, so it does not fit run()'s shape.
+template<typename Fixture>
+void run_format(std::uint64_t iterations, const Fixture& values) {
+    std::uint64_t accumulator = 0;
+    char buffer[fw::text_capacity];
+    for (std::uint64_t i = 0; i < iterations; ++i) {
+        const std::size_t index = static_cast<std::size_t>(i) & fixture_mask;
+        const auto written = fw::to_chars(buffer, sizeof buffer, values[index]);
+        accumulator ^= written ? *written : 0u;
+        accumulator ^= static_cast<unsigned char>(buffer[0]);
+    }
+    sink = accumulator;
+}
+
 using Money64  = fw::Fixed64<12>;
 using Money128 = fw::Fixed128<18>;
 using Money256 = fw::Fixed256<38>;
@@ -195,20 +209,11 @@ bool dispatch(std::string_view name, std::uint64_t n) {
         sink = accumulator;
         return true;
     }
-    if (name == "to_chars.Fixed64" || name == "to_chars.Fixed128") {
-        std::uint64_t accumulator = 0;
-        char buffer[fw::text_capacity];
-        for (std::uint64_t i = 0; i < n; ++i) {
-            const std::size_t index = static_cast<std::size_t>(i) & fixture_mask;
-            const auto written = (name == "to_chars.Fixed64")
-                ? fw::to_chars(buffer, sizeof buffer, a64[index])
-                : fw::to_chars(buffer, sizeof buffer, a128[index]);
-            accumulator ^= written ? *written : 0u;
-            accumulator ^= static_cast<unsigned char>(buffer[0]);
-        }
-        sink = accumulator;
-        return true;
-    }
+    // The which-type test is resolved before the loop, not inside it. A
+    // string_view comparison per iteration scales with n, so it survives the
+    // two-point subtraction and would be counted as part of to_chars.
+    if (name == "to_chars.Fixed64") { run_format(n, a64); return true; }
+    if (name == "to_chars.Fixed128") { run_format(n, a128); return true; }
 
     // The empty workload. Its count is the cost of the loop, the mask and the
     // sink -- the floor every other row sits on, recorded so a change in the

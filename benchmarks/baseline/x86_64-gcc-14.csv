@@ -23,5 +23,5 @@ div_to.general,8377.167
 compare.Price.Rate,15.000
 fixed_cast.Price.MixedFast,8.000
 parse.Fixed64,510.898
-to_chars.Fixed64,476.270
-to_chars.Fixed128,568.093
+to_chars.Fixed64,413.270
+to_chars.Fixed128,562.093

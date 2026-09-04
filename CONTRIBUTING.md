@@ -1,28 +1,75 @@
 # Contributing to fixedwide
 
-Thank you for your interest in contributing to `fixedwide`!
+## Principles
 
-## Code Quality and Design Principles
+1. **Correctness first.** Numerical routines must match exact integer rational
+   arithmetic. No silent overflow, no dropped remainder, no wrong answer
+   returned in place of an error.
+2. **Minimalism.** No speculative abstractions. Prefer the standard library and
+   standard C++23 to anything written here.
+3. **Nothing is claimed until it is executed.** A platform is described as
+   supported only when a CI job builds it *and runs its tests*. Everything else
+   is `not-configured` in `reports/EXECUTION_MATRIX.csv`. This applies to
+   performance numbers too: quote a row in `reports/`, or do not quote one.
+4. **Portable, and tested that way.** The library must build on GCC 14+,
+   Clang 18+ with libc++ (or Clang 19+ with either), AppleClang 15+ and MSVC
+   19.3x, on x86-64 and AArch64, with the native and the portable backend.
+   `docs/ci.md` records which combinations actually work and why some do not.
 
-1. **Correctness First**: Numerical routines must match mathematical integer rational arithmetic exactly. No silent overflows, no truncated remainders.
-2. **Minimalism**: Avoid speculative abstractions. Use standard C++23 features and standard library components wherever possible.
-3. **Deterministic & Portable**: Code must compile and pass all tests cleanly with both Clang (>= 17) and GCC (>= 14) on x86_64 and AArch64.
-4. **Performance Parity**: Hot paths must not regress against assembly baselines. Any changes to arithmetic cores must be benchmarked with `./build/benchmarks/fixedwide_bench` and `fixedwide_rounding_bench`.
-
-## Testing Workflow
-
-Before opening a pull request, ensure all tests pass:
-
-```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
-cmake --build build -j
-ctest --test-dir build --output-on-failure
-```
-
-Also run the sanitizers:
+## Before opening a pull request
 
 ```bash
-cmake -B build-asan -DCMAKE_BUILD_TYPE=Debug -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_TESTS=ON
-cmake --build build-asan -j
-ctest --test-dir build-asan --output-on-failure
+# tests and examples, both backends
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+      -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON \
+      -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
+cmake --build build && ctest --test-dir build --output-on-failure
+
+# sanitizers
+cmake --preset sanitize && ctest --preset sanitize
 ```
+
+CI runs the rest — every platform, both backends, Conan, packaging, the fuzzer
+and the regression gate. `./scripts/verify_all.sh` runs the local half of it in
+one go and rewrites `reports/EXECUTION_MATRIX.csv`.
+
+## Performance
+
+Hot paths must not regress. The gate is `benchmarks/baseline/*.csv`: CI counts
+retired instructions per operation under Valgrind and fails if any workload
+grows by more than 1%. It is deterministic, so a failure is a real change in the
+generated code and not noise.
+
+If a change is meant to move a number:
+
+```bash
+./scripts/icount.sh --update      # re-record the baseline
+```
+
+and say in the commit message why it moved. If you add an operation worth
+protecting, add a row to `benchmarks/icount.cpp` and re-record.
+
+Wall-clock work — the paired comparison against 0.4 and the competitor suite —
+is in `docs/benchmarks.md`. Neither can gate CI: the first needs a 0.4 source
+tree that is not in this repository, and the second is a comparison rather than
+a threshold.
+
+## Adding an example
+
+Examples are documentation that cannot go stale, because each one is a ctest
+test that checks its own output before printing `OK`. Add the file, add its name
+to `examples/CMakeLists.txt`, and add a row to `examples/README.md` and to the
+table in `README.md`. Keep it to one file and one idea.
+
+## Adding a test
+
+Anything with a branch, a loop, or a platform assumption needs one. Two things
+this repository has learned the hard way:
+
+- **Test the concept, not the call.** `std::format("{}", v)` compiling under
+  libstdc++ did not mean `std::formattable<T, char>` was satisfied under libc++.
+  Assert the concept.
+- **Do not encode your platform's numbers.** A test that perturbed a
+  `long double` by 2^-60 assumed 61 significand bits and failed on Apple
+  silicon, where `long double` is `double`. Ask `std::numeric_limits` what the
+  platform has.
