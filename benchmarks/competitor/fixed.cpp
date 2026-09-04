@@ -173,9 +173,8 @@ void benchmark_cnl_decimal(const Fixtures& fixtures) {
         const __int128 exact_numerator = static_cast<__int128>(fixtures.div[i].lhs_raw) * fixtures.scale;
         const __int128 residual = actual_raw * fixtures.div[i].rhs_raw - exact_numerator;
         const __int128 residual_magnitude = residual < 0 ? -residual : residual;
-        const __int128 divisor_magnitude = fixtures.div[i].rhs_raw < 0
-                                               ? -static_cast<__int128>(fixtures.div[i].rhs_raw)
-                                               : static_cast<__int128>(fixtures.div[i].rhs_raw);
+        const __int128 divisor_magnitude = fixtures.div[i].rhs_raw < 0 ? -static_cast<__int128>(fixtures.div[i].rhs_raw)
+                                                                       : static_cast<__int128>(fixtures.div[i].rhs_raw);
         expect(residual_magnitude < divisor_magnitude,
                "CNL radix-10 division differs from the exact quotient by at least one output unit");
     }
