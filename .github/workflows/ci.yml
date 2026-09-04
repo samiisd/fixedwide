@@ -107,12 +107,14 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ilammy/msvc-dev-cmd@v1
       # MSVC has no __int128 and no GNU inline asm, so it takes the portable
-      # multi-limb backend automatically. Boost is not installed: the two
-      # Boost-backed audit suites skip themselves and the rest still run.
+      # multi-limb backend automatically. clang-cl has __int128 but its Windows
+      # runtime does not provide the required 128-bit division builtins, so that
+      # row must also force the portable backend. Boost is not installed: the
+      # two Boost-backed audit suites skip themselves and the rest still run.
       - name: Configure
         run: >
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          ${{ matrix.toolset == 'clang-cl' && '-DCMAKE_CXX_COMPILER=clang-cl' || '' }}
+          ${{ matrix.toolset == 'clang-cl' && '-DCMAKE_CXX_COMPILER=clang-cl -DFIXEDWIDE_FORCE_PORTABLE=ON' || '' }}
           -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
       - run: cmake --build build
       - run: ctest --test-dir build --output-on-failure
