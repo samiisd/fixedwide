@@ -14,11 +14,18 @@
 namespace fixedwide::detail {
 
 // std::make_unsigned_t is equally unreliable for extension types in strict mode.
-template<typename T> struct unsigned_for { using type = std::make_unsigned_t<T>; };
+template<typename T>
+struct unsigned_for {
+    using type = std::make_unsigned_t<T>;
+};
 #if defined(__SIZEOF_INT128__)
-template<> struct unsigned_for<__int128> { using type = unsigned __int128; };
+template<>
+struct unsigned_for<__int128> {
+    using type = unsigned __int128;
+};
 #endif
-template<typename T> using unsigned_for_t = typename unsigned_for<T>::type;
+template<typename T>
+using unsigned_for_t = typename unsigned_for<T>::type;
 
 // std::is_signed_v<__int128> is false in strict -std=c++23 on Clang 17 (an
 // extension type is not a standard integral type), and true on some newer
@@ -61,7 +68,7 @@ template<signed_arithmetic T>
 // there is no type wider than 64 bits to widen into on a compiler without
 // __int128.
 template<typename T>
-    requires (!signed_arithmetic<T>)
+    requires(!signed_arithmetic<T>)
 [[nodiscard]] constexpr bool mul_overflow(T a, T b, T* out) noexcept {
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(FIXEDWIDE_FORCE_PORTABLE)
     return __builtin_mul_overflow(a, b, out);

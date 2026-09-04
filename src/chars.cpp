@@ -40,8 +40,8 @@ u256_limbs limit_magnitude_limbs(std::size_t bits, bool negative) noexcept {
 // site. As a runtime argument it forced limit_magnitude_u256 into an out-of-line call
 // building a 32-byte value on every parse, and kept every width test live.
 template<std::size_t Bits>
-std::expected<wide::int256, ParseError>
-parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) noexcept {
+std::expected<wide::int256, ParseError> parse_fixed_kernel(std::string_view text, unsigned decimals,
+                                                           Rounding rounding) noexcept {
     constexpr std::size_t bits = Bits;
     if (text.empty()) return std::unexpected(ParseError::empty);
     if (text.size() > 4096) return std::unexpected(ParseError::invalid);
@@ -122,8 +122,10 @@ parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) 
                 value = value * 10 + digit;
             } else {
                 discarded_nonzero |= (digit != 0);
-                if (index == keep) first_discarded = digit;
-                else tail_nonzero |= (digit != 0);
+                if (index == keep)
+                    first_discarded = digit;
+                else
+                    tail_nonzero |= (digit != 0);
             }
             ++index;
         }
@@ -147,19 +149,18 @@ parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) 
         // arithmetic for every comparison and shift in round_magnitude.
         wide::uint128 magnitude_out;
         if (limit.high == 0) {
-            auto rounded = round_magnitude(value, remainder, std::uint64_t{10},
-                                           negative, rounding, limit.low);
+            auto rounded = round_magnitude(value, remainder, std::uint64_t{10}, negative, rounding, limit.low);
             if (!rounded) {
-                return std::unexpected(rounded.error() == ArithmeticError::overflow
-                                           ? ParseError::overflow : ParseError::too_precise);
+                return std::unexpected(rounded.error() == ArithmeticError::overflow ? ParseError::overflow
+                                                                                    : ParseError::too_precise);
             }
             magnitude_out = wide::uint128(*rounded, 0ULL);
         } else {
             auto rounded = round_magnitude(wide::uint128(value, 0ULL), wide::uint128(remainder, 0ULL),
                                            wide::uint128(10, 0), negative, rounding, limit);
             if (!rounded) {
-                return std::unexpected(rounded.error() == ArithmeticError::overflow
-                                           ? ParseError::overflow : ParseError::too_precise);
+                return std::unexpected(rounded.error() == ArithmeticError::overflow ? ParseError::overflow
+                                                                                    : ParseError::too_precise);
             }
             magnitude_out = *rounded;
         }
@@ -171,8 +172,10 @@ parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) 
 
     if (bits <= 128) {
         auto lim256 = detail::limit_magnitude_u256(bits, negative);
-        std::uint64_t lim_lo = lim256.limbs[0];
-        std::uint64_t lim_hi = lim256.limbs[1];
+        // Read only by the __int128 branch; the portable branch below works
+        // from lim256 directly.
+        [[maybe_unused]] const std::uint64_t lim_lo = lim256.limbs[0];
+        [[maybe_unused]] const std::uint64_t lim_hi = lim256.limbs[1];
 #if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
         unsigned __int128 limit = (static_cast<unsigned __int128>(lim_hi) << 64) | lim_lo;
         unsigned __int128 cutoff = limit / 10;
@@ -196,8 +199,10 @@ parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) 
                 value = value * 10 + digit;
             } else {
                 discarded_nonzero |= (digit != 0);
-                if (index == keep) first_discarded = digit;
-                else tail_nonzero |= (digit != 0);
+                if (index == keep)
+                    first_discarded = digit;
+                else
+                    tail_nonzero |= (digit != 0);
             }
             ++index;
         }
@@ -212,11 +217,13 @@ parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) 
                 remainder = (first_discarded > 5 || tail_nonzero) ? 6 : 5;
             }
         }
-        auto rounded = round_magnitude(wide::uint128(static_cast<std::uint64_t>(value), static_cast<std::uint64_t>(value >> 64)),
-                                       wide::uint128(static_cast<std::uint64_t>(remainder), static_cast<std::uint64_t>(remainder >> 64)),
-                                       wide::uint128(10, 0), negative, rounding,
-                                       wide::uint128(lim_lo, lim_hi));
-        if (!rounded) return std::unexpected(rounded.error() == ArithmeticError::overflow ? ParseError::overflow : ParseError::too_precise);
+        auto rounded = round_magnitude(
+            wide::uint128(static_cast<std::uint64_t>(value), static_cast<std::uint64_t>(value >> 64)),
+            wide::uint128(static_cast<std::uint64_t>(remainder), static_cast<std::uint64_t>(remainder >> 64)),
+            wide::uint128(10, 0), negative, rounding, wide::uint128(lim_lo, lim_hi));
+        if (!rounded)
+            return std::unexpected(rounded.error() == ArithmeticError::overflow ? ParseError::overflow
+                                                                                : ParseError::too_precise);
         wide::int128 s(rounded->low, rounded->high);
         if (negative) s = -s;
         return wide::int256(s.low, s.high, (s.is_negative() ? ~0ULL : 0ULL), (s.is_negative() ? ~0ULL : 0ULL));
@@ -245,8 +252,10 @@ parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) 
             value = (value << 3) + (value << 1) + u256_limbs(static_cast<std::uint64_t>(digit));
         } else {
             discarded_nonzero |= (digit != 0);
-            if (index == keep) first_discarded = digit;
-            else tail_nonzero |= (digit != 0);
+            if (index == keep)
+                first_discarded = digit;
+            else
+                tail_nonzero |= (digit != 0);
         }
         ++index;
     }
@@ -267,7 +276,8 @@ parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) 
     u256_limbs u10(10ULL);
     auto rounded = round_magnitude(value, remainder, u10, negative, rounding, limit);
     if (!rounded) {
-        return std::unexpected(rounded.error() == ArithmeticError::overflow ? ParseError::overflow : ParseError::too_precise);
+        return std::unexpected(rounded.error() == ArithmeticError::overflow ? ParseError::overflow
+                                                                            : ParseError::too_precise);
     }
 
     wide::uint256 uq = rounded->to_uint256();
@@ -282,21 +292,20 @@ parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) 
 // taking wide::int256 by value, so formatting a Fixed64<12> widened its raw
 // value to 32 bytes and passed it through memory on every call. That alone was
 // most of the reduced-digit formatting regression against 0.4.
-#define FIXEDWIDE_INSTANTIATE_PARSE(B)                                     \
-    template std::expected<wide::int256, ParseError>                       \
-        parse_fixed_kernel<B>(std::string_view, unsigned, Rounding) noexcept;
-FIXEDWIDE_INSTANTIATE_PARSE(8)  FIXEDWIDE_INSTANTIATE_PARSE(16)
-FIXEDWIDE_INSTANTIATE_PARSE(32) FIXEDWIDE_INSTANTIATE_PARSE(64)
-FIXEDWIDE_INSTANTIATE_PARSE(128) FIXEDWIDE_INSTANTIATE_PARSE(256)
+#define FIXEDWIDE_INSTANTIATE_PARSE(B)                                                                                 \
+    template std::expected<wide::int256, ParseError> parse_fixed_kernel<B>(std::string_view, unsigned,                 \
+                                                                           Rounding) noexcept;
+FIXEDWIDE_INSTANTIATE_PARSE(8)
+FIXEDWIDE_INSTANTIATE_PARSE(16) FIXEDWIDE_INSTANTIATE_PARSE(32) FIXEDWIDE_INSTANTIATE_PARSE(64)
+    FIXEDWIDE_INSTANTIATE_PARSE(128) FIXEDWIDE_INSTANTIATE_PARSE(256)
 #undef FIXEDWIDE_INSTANTIATE_PARSE
 
-std::expected<std::size_t, FormatError>
-format_fixed_kernel(char* buffer, std::size_t capacity, std::int64_t raw, unsigned decimals,
-                    FormatOptions options) noexcept {
+        std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::size_t capacity,
+                                                                    std::int64_t raw, unsigned decimals,
+                                                                    FormatOptions options) noexcept {
     if (options.digits > decimals) return std::unexpected(FormatError::invalid_precision);
     const bool negative = raw < 0;
-    const std::uint64_t mag_u64 = negative ? 0ULL - static_cast<std::uint64_t>(raw)
-                                           : static_cast<std::uint64_t>(raw);
+    const std::uint64_t mag_u64 = negative ? 0ULL - static_cast<std::uint64_t>(raw) : static_cast<std::uint64_t>(raw);
     unsigned reduce = decimals - options.digits;
     std::uint64_t d = (reduce < 19) ? pow10(reduce) : 0ULL;
     std::uint64_t m = mag_u64;
@@ -352,15 +361,13 @@ format_fixed_kernel(char* buffer, std::size_t capacity, std::int64_t raw, unsign
     return size;
 }
 
-std::expected<std::size_t, FormatError>
-format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw, unsigned decimals,
-                    FormatOptions options) noexcept {
+std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw,
+                                                            unsigned decimals, FormatOptions options) noexcept {
     if (options.digits > decimals) return std::unexpected(FormatError::invalid_precision);
     const bool negative = raw.is_negative();
     const wide::uint128 mag128 = magnitude(raw);
     unsigned reduce = decimals - options.digits;
-    auto divisor128 = (reduce < 19) ? wide::uint128(pow10(reduce), 0ULL)
-                                    : pow10_wide<wide::uint128>(reduce);
+    auto divisor128 = (reduce < 19) ? wide::uint128(pow10(reduce), 0ULL) : pow10_wide<wide::uint128>(reduce);
     // When quotient, remainder and divisor all fit 64 bits -- which is every
     // value a Fixed128 shares with a Fixed64 -- round there. round_magnitude on
     // wide::uint128 runs each compare, shift and subtract as a member function
@@ -370,8 +377,7 @@ format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw, unsign
     std::expected<wide::uint128, ArithmeticError> rounded;
     if (divisor128.high == 0 && mag128.high == 0) {
         const std::uint64_t d = divisor128.low;
-        const auto narrow = round_magnitude(mag128.low / d, mag128.low % d, d, negative,
-                                            options.rounding, UINT64_MAX);
+        const auto narrow = round_magnitude(mag128.low / d, mag128.low % d, d, negative, options.rounding, UINT64_MAX);
         if (!narrow) return std::unexpected(FormatError::inexact);
         rounded = wide::uint128(*narrow, 0);
     } else {
@@ -389,8 +395,7 @@ format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw, unsign
             q = divres.quotient;
             r = divres.remainder;
         }
-        rounded = round_magnitude(q, r, divisor128, negative, options.rounding,
-                                  wide::uint128::max());
+        rounded = round_magnitude(q, r, divisor128, negative, options.rounding, wide::uint128::max());
         if (!rounded) return std::unexpected(FormatError::inexact);
     }
 
@@ -433,17 +438,14 @@ format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw, unsign
     return size;
 }
 
-std::expected<std::size_t, FormatError>
-format_fixed_kernel(char* buffer, std::size_t capacity,
-                    wide::int256 raw, unsigned decimals,
-                    FormatOptions options, std::size_t bits) noexcept {
+std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::size_t capacity, wide::int256 raw,
+                                                            unsigned decimals, FormatOptions options,
+                                                            std::size_t bits) noexcept {
     if (bits <= 64) {
-        return format_fixed_kernel(buffer, capacity, static_cast<std::int64_t>(raw.limbs[0]),
-                                   decimals, options);
+        return format_fixed_kernel(buffer, capacity, static_cast<std::int64_t>(raw.limbs[0]), decimals, options);
     }
     if (bits <= 128) {
-        return format_fixed_kernel(buffer, capacity, wide::int128(raw.limbs[0], raw.limbs[1]),
-                                   decimals, options);
+        return format_fixed_kernel(buffer, capacity, wide::int128(raw.limbs[0], raw.limbs[1]), decimals, options);
     }
     if (options.digits > decimals) return std::unexpected(FormatError::invalid_precision);
     auto mag = magnitude(raw);
@@ -456,8 +458,8 @@ format_fixed_kernel(char* buffer, std::size_t capacity,
     u256_limbs max_lim(~0ULL);
     for (int i = 0; i < 4; ++i) max_lim.limbs[i] = ~0ULL;
 
-    auto rounded = round_magnitude(divres.quotient, divres.remainder, divisor,
-                                   raw.is_negative(), options.rounding, max_lim);
+    auto rounded =
+        round_magnitude(divres.quotient, divres.remainder, divisor, raw.is_negative(), options.rounding, max_lim);
     if (!rounded) return std::unexpected(FormatError::inexact);
 
     char digits_buf[128];

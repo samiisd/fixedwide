@@ -26,7 +26,7 @@
 
 namespace fixedwide::detail::ce {
 
-inline constexpr std::size_t limb_count = 8;   // 512 bits
+inline constexpr std::size_t limb_count = 8; // 512 bits
 
 // A plain array rather than std::array: <array> costs about 27 ms of parse time
 // in every translation unit that includes arithmetic.hpp, which is more than
@@ -107,8 +107,7 @@ struct limbs {
 }
 
 // Schoolbook 64x64 -> 128 built from 32-bit halves, so it needs no wider type.
-constexpr void mul64(std::uint64_t a, std::uint64_t b,
-                                   std::uint64_t& high, std::uint64_t& low) noexcept {
+constexpr void mul64(std::uint64_t a, std::uint64_t b, std::uint64_t& high, std::uint64_t& low) noexcept {
     const std::uint64_t a0 = a & 0xFFFF'FFFFULL, a1 = a >> 32;
     const std::uint64_t b0 = b & 0xFFFF'FFFFULL, b1 = b >> 32;
     const std::uint64_t p00 = a0 * b0;
@@ -140,7 +139,10 @@ constexpr void mul64(std::uint64_t a, std::uint64_t b,
     return out;
 }
 
-struct division { limbs quotient; limbs remainder; };
+struct division {
+    limbs quotient;
+    limbs remainder;
+};
 
 // Binary long division. Slow by design: it runs only during constant
 // evaluation, and it is short enough to be read and trusted.
@@ -168,9 +170,8 @@ struct rounded {
 };
 
 // The same rounding contract as the runtime round_magnitude, on limbs.
-[[nodiscard]] constexpr rounded round_magnitude(
-    limbs quotient, const limbs& remainder, const limbs& divisor,
-    bool negative, Rounding rounding, const limbs& limit) noexcept {
+[[nodiscard]] constexpr rounded round_magnitude(limbs quotient, const limbs& remainder, const limbs& divisor,
+                                                bool negative, Rounding rounding, const limbs& limit) noexcept {
     if (compare(quotient, limit) > 0) return {{}, ArithmeticError::overflow, false};
     if (is_zero(remainder)) return {quotient, {}, true};
     if (rounding == Rounding::exact) return {{}, ArithmeticError::inexact, false};
@@ -217,8 +218,10 @@ struct rounded {
 
 template<typename Raw>
 [[nodiscard]] constexpr bool raw_is_negative(Raw value) noexcept {
-    if constexpr (requires { value.is_negative(); }) return value.is_negative();
-    else return value < Raw{0};
+    if constexpr (requires { value.is_negative(); })
+        return value.is_negative();
+    else
+        return value < Raw{0};
 }
 
 // Magnitude as limbs, correct for the signed minimum (whose negation does not
@@ -282,47 +285,43 @@ struct outcome {
     bool ok = false;
 };
 
-[[nodiscard]] constexpr outcome mul_limbs(const limbs& a, const limbs& b, bool negative,
-                                          std::size_t bits, unsigned decimals,
-                                          Rounding rounding) noexcept {
+[[nodiscard]] constexpr outcome mul_limbs(const limbs& a, const limbs& b, bool negative, std::size_t bits,
+                                          unsigned decimals, Rounding rounding) noexcept {
     const limbs product = multiply(a, b);
     const limbs scale = pow10(decimals);
     const auto split = divmod(product, scale);
-    const rounded r = round_magnitude(split.quotient, split.remainder, scale, negative,
-                                      rounding, magnitude_limit(bits, negative));
+    const rounded r =
+        round_magnitude(split.quotient, split.remainder, scale, negative, rounding, magnitude_limit(bits, negative));
     return {r.value, r.error, r.ok};
 }
 
-[[nodiscard]] constexpr outcome div_limbs(const limbs& a, const limbs& b, bool negative,
-                                          std::size_t bits, unsigned decimals,
-                                          Rounding rounding) noexcept {
+[[nodiscard]] constexpr outcome div_limbs(const limbs& a, const limbs& b, bool negative, std::size_t bits,
+                                          unsigned decimals, Rounding rounding) noexcept {
     if (is_zero(b)) return {{}, ArithmeticError::division_by_zero, false};
     const limbs numerator = multiply(a, pow10(decimals));
     const auto split = divmod(numerator, b);
-    const rounded r = round_magnitude(split.quotient, split.remainder, b, negative,
-                                      rounding, magnitude_limit(bits, negative));
+    const rounded r =
+        round_magnitude(split.quotient, split.remainder, b, negative, rounding, magnitude_limit(bits, negative));
     return {r.value, r.error, r.ok};
 }
 
-[[nodiscard]] constexpr outcome mul_div_limbs(const limbs& a, const limbs& b, const limbs& c,
-                                              bool negative, std::size_t bits,
-                                              Rounding rounding) noexcept {
+[[nodiscard]] constexpr outcome mul_div_limbs(const limbs& a, const limbs& b, const limbs& c, bool negative,
+                                              std::size_t bits, Rounding rounding) noexcept {
     if (is_zero(c)) return {{}, ArithmeticError::division_by_zero, false};
     const auto split = divmod(multiply(a, b), c);
-    const rounded r = round_magnitude(split.quotient, split.remainder, c, negative,
-                                      rounding, magnitude_limit(bits, negative));
+    const rounded r =
+        round_magnitude(split.quotient, split.remainder, c, negative, rounding, magnitude_limit(bits, negative));
     return {r.value, r.error, r.ok};
 }
 
-[[nodiscard]] constexpr outcome quantize_limbs(const limbs& a, bool negative, std::size_t bits,
-                                               unsigned decimals, unsigned digits,
-                                               Rounding rounding) noexcept {
+[[nodiscard]] constexpr outcome quantize_limbs(const limbs& a, bool negative, std::size_t bits, unsigned decimals,
+                                               unsigned digits, Rounding rounding) noexcept {
     if (digits > decimals) return {{}, ArithmeticError::invalid_precision, false};
     if (digits == decimals) return {a, {}, true};
     const limbs divisor = pow10(decimals - digits);
     const auto split = divmod(a, divisor);
-    const rounded r = round_magnitude(split.quotient, split.remainder, divisor, negative,
-                                      rounding, magnitude_limit(bits, negative));
+    const rounded r =
+        round_magnitude(split.quotient, split.remainder, divisor, negative, rounding, magnitude_limit(bits, negative));
     if (!r.ok) return {{}, r.error, false};
     // Rescaling back to the storage precision can overflow on its own.
     const limbs rescaled = multiply(r.value, divisor);
@@ -333,8 +332,7 @@ struct outcome {
 // --- typed adapters -------------------------------------------------------
 
 template<std::size_t Bits, unsigned D, typename Raw>
-[[nodiscard]] constexpr std::expected<Raw, ArithmeticError>
-mul(Raw a, Raw b, Rounding rounding) noexcept {
+[[nodiscard]] constexpr std::expected<Raw, ArithmeticError> mul(Raw a, Raw b, Rounding rounding) noexcept {
     const bool negative = raw_is_negative(a) != raw_is_negative(b);
     const outcome r = mul_limbs(to_limbs<Bits>(a), to_limbs<Bits>(b), negative, Bits, D, rounding);
     if (!r.ok) return std::unexpected(r.error);
@@ -342,8 +340,7 @@ mul(Raw a, Raw b, Rounding rounding) noexcept {
 }
 
 template<std::size_t Bits, unsigned D, typename Raw>
-[[nodiscard]] constexpr std::expected<Raw, ArithmeticError>
-div(Raw a, Raw b, Rounding rounding) noexcept {
+[[nodiscard]] constexpr std::expected<Raw, ArithmeticError> div(Raw a, Raw b, Rounding rounding) noexcept {
     const bool negative = raw_is_negative(a) != raw_is_negative(b);
     const outcome r = div_limbs(to_limbs<Bits>(a), to_limbs<Bits>(b), negative, Bits, D, rounding);
     if (!r.ok) return std::unexpected(r.error);
@@ -351,18 +348,16 @@ div(Raw a, Raw b, Rounding rounding) noexcept {
 }
 
 template<std::size_t Bits, unsigned D, typename Raw>
-[[nodiscard]] constexpr std::expected<Raw, ArithmeticError>
-mul_div(Raw a, Raw b, Raw c, Rounding rounding) noexcept {
+[[nodiscard]] constexpr std::expected<Raw, ArithmeticError> mul_div(Raw a, Raw b, Raw c, Rounding rounding) noexcept {
     const bool negative = raw_is_negative(a) != (raw_is_negative(b) != raw_is_negative(c));
-    const outcome r = mul_div_limbs(to_limbs<Bits>(a), to_limbs<Bits>(b), to_limbs<Bits>(c),
-                                    negative, Bits, rounding);
+    const outcome r = mul_div_limbs(to_limbs<Bits>(a), to_limbs<Bits>(b), to_limbs<Bits>(c), negative, Bits, rounding);
     if (!r.ok) return std::unexpected(r.error);
     return from_limbs<Bits, Raw>(r.value, negative);
 }
 
 template<std::size_t Bits, unsigned D, typename Raw>
-[[nodiscard]] constexpr std::expected<Raw, ArithmeticError>
-quantize(Raw a, unsigned digits, Rounding rounding) noexcept {
+[[nodiscard]] constexpr std::expected<Raw, ArithmeticError> quantize(Raw a, unsigned digits,
+                                                                     Rounding rounding) noexcept {
     const bool negative = raw_is_negative(a);
     const outcome r = quantize_limbs(to_limbs<Bits>(a), negative, Bits, D, digits, rounding);
     if (!r.ok) return std::unexpected(r.error);
@@ -370,8 +365,7 @@ quantize(Raw a, unsigned digits, Rounding rounding) noexcept {
 }
 
 template<std::size_t Bits, typename Raw>
-[[nodiscard]] constexpr std::expected<Raw, ArithmeticError>
-remainder(Raw a, Raw b) noexcept {
+[[nodiscard]] constexpr std::expected<Raw, ArithmeticError> remainder(Raw a, Raw b) noexcept {
     const limbs denominator = to_limbs<Bits>(b);
     if (is_zero(denominator)) return std::unexpected(ArithmeticError::division_by_zero);
     // The mathematical remainder takes the numerator's sign (truncation).

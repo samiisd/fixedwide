@@ -13,14 +13,8 @@ void test_signed_min_64() {
     constexpr auto neg_one = *from_integer<F>(-1);
     constexpr auto zero = F{};
 
-    constexpr Rounding modes[] = {
-        Rounding::toward_zero,
-        Rounding::floor,
-        Rounding::ceil,
-        Rounding::nearest_away,
-        Rounding::nearest_even,
-        Rounding::exact
-    };
+    constexpr Rounding modes[] = {Rounding::toward_zero,  Rounding::floor,        Rounding::ceil,
+                                  Rounding::nearest_away, Rounding::nearest_even, Rounding::exact};
 
     for (auto mode : modes) {
         // min / -1 must overflow
@@ -74,14 +68,8 @@ void test_signed_min_128() {
     constexpr auto neg_one = *from_integer<F>(-1);
     constexpr auto zero = F{};
 
-    constexpr Rounding modes[] = {
-        Rounding::toward_zero,
-        Rounding::floor,
-        Rounding::ceil,
-        Rounding::nearest_away,
-        Rounding::nearest_even,
-        Rounding::exact
-    };
+    constexpr Rounding modes[] = {Rounding::toward_zero,  Rounding::floor,        Rounding::ceil,
+                                  Rounding::nearest_away, Rounding::nearest_even, Rounding::exact};
 
     for (auto mode : modes) {
         // min / -1 must overflow
@@ -155,14 +143,8 @@ void test_signed_min_256() {
     constexpr auto neg_one = *from_integer<F>(-1);
     constexpr auto zero = F{};
 
-    constexpr Rounding modes[] = {
-        Rounding::toward_zero,
-        Rounding::floor,
-        Rounding::ceil,
-        Rounding::nearest_away,
-        Rounding::nearest_even,
-        Rounding::exact
-    };
+    constexpr Rounding modes[] = {Rounding::toward_zero,  Rounding::floor,        Rounding::ceil,
+                                  Rounding::nearest_away, Rounding::nearest_even, Rounding::exact};
 
     for (auto mode : modes) {
         // min / -1 must overflow
@@ -207,14 +189,8 @@ void test_signed_min_256() {
 }
 
 void test_bigint_primitives() {
-    constexpr Rounding modes[] = {
-        Rounding::toward_zero,
-        Rounding::floor,
-        Rounding::ceil,
-        Rounding::nearest_away,
-        Rounding::nearest_even,
-        Rounding::exact
-    };
+    constexpr Rounding modes[] = {Rounding::toward_zero,  Rounding::floor,        Rounding::ceil,
+                                  Rounding::nearest_away, Rounding::nearest_even, Rounding::exact};
 
     wide::int128 min128 = wide::int128::min();
     wide::int128 one128(1ULL);
@@ -224,7 +200,8 @@ void test_bigint_primitives() {
 
     for (auto mode : modes) {
         // bigint::divide_to_i128
-        wide::int256 n256(min128.low, min128.high, (min128.high >> 63) ? ~0ULL : 0ULL, (min128.high >> 63) ? ~0ULL : 0ULL);
+        wide::int256 n256(min128.low, min128.high, (min128.high >> 63) ? ~0ULL : 0ULL,
+                          (min128.high >> 63) ? ~0ULL : 0ULL);
         auto d_res = divide_to_i128(n256, min128, mode);
         CHECK(d_res.has_value() && *d_res == one128);
 

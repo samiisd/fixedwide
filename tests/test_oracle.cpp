@@ -8,21 +8,21 @@
 using namespace fixedwide;
 namespace mp = boost::multiprecision;
 
-#define ALWAYS_CHECK(cond) \
-    do { \
-        if (!(cond)) { \
-            std::cerr << "ORACLE CHECK FAILED: " #cond << " at " << __FILE__ << ":" << __LINE__ << "\n"; \
-            std::abort(); \
-        } \
+#define ALWAYS_CHECK(cond)                                                                                             \
+    do {                                                                                                               \
+        if (!(cond)) {                                                                                                 \
+            std::cerr << "ORACLE CHECK FAILED: " #cond << " at " << __FILE__ << ":" << __LINE__ << "\n";               \
+            std::abort();                                                                                              \
+        }                                                                                                              \
     } while (0)
 
-#define ALWAYS_CHECK_EQ(a, b) \
-    do { \
-        if (!((a) == (b))) { \
-            std::cerr << "ORACLE CHECK FAILED: " #a " == " #b \
-                      << " (" << (a) << " vs " << (b) << ") at " << __FILE__ << ":" << __LINE__ << "\n"; \
-            std::abort(); \
-        } \
+#define ALWAYS_CHECK_EQ(a, b)                                                                                          \
+    do {                                                                                                               \
+        if (!((a) == (b))) {                                                                                           \
+            std::cerr << "ORACLE CHECK FAILED: " #a " == " #b << " (" << (a) << " vs " << (b) << ") at " << __FILE__   \
+                      << ":" << __LINE__ << "\n";                                                                      \
+            std::abort();                                                                                              \
+        }                                                                                                              \
     } while (0)
 
 // Exact rational oracle with all 6 rounding modes
@@ -32,10 +32,12 @@ struct OracleResult {
     ArithmeticError error{ArithmeticError::overflow};
 };
 
-OracleResult round_rational(mp::cpp_int P, mp::cpp_int Q, Rounding rounding,
-                            mp::cpp_int min_val, mp::cpp_int max_val) {
+OracleResult round_rational(mp::cpp_int P, mp::cpp_int Q, Rounding rounding, mp::cpp_int min_val, mp::cpp_int max_val) {
     if (Q == 0) return {false, 0, ArithmeticError::division_by_zero};
-    if (Q < 0) { P = -P; Q = -Q; }
+    if (Q < 0) {
+        P = -P;
+        Q = -Q;
+    }
 
     mp::cpp_int q = P / Q;
     mp::cpp_int r = P % Q; // signed remainder, same sign as P
@@ -52,9 +54,7 @@ OracleResult round_rational(mp::cpp_int P, mp::cpp_int Q, Rounding rounding,
         case Rounding::toward_zero: break;
         case Rounding::floor: increment = negative; break;
         case Rounding::ceil: increment = !negative; break;
-        case Rounding::nearest_away:
-            increment = (abs_r * 2 >= Q);
-            break;
+        case Rounding::nearest_away: increment = (abs_r * 2 >= Q); break;
         case Rounding::nearest_even: {
             mp::cpp_int rem2 = abs_r * 2;
             if (rem2 > Q) {
@@ -70,8 +70,10 @@ OracleResult round_rational(mp::cpp_int P, mp::cpp_int Q, Rounding rounding,
         }
 
         if (increment) {
-            if (negative) q -= 1;
-            else q += 1;
+            if (negative)
+                q -= 1;
+            else
+                q += 1;
         }
     }
 
@@ -107,14 +109,8 @@ mp::cpp_int to_cpp_int(typename F::raw_type r) {
 
 template<class F>
 void run_oracle_pair(F a, F b, const mp::cpp_int& min_val, const mp::cpp_int& max_val, const mp::cpp_int& scale) {
-    const Rounding modes[] = {
-        Rounding::toward_zero,
-        Rounding::floor,
-        Rounding::ceil,
-        Rounding::nearest_even,
-        Rounding::nearest_away,
-        Rounding::exact
-    };
+    const Rounding modes[] = {Rounding::toward_zero,  Rounding::floor,        Rounding::ceil,
+                              Rounding::nearest_even, Rounding::nearest_away, Rounding::exact};
 
     mp::cpp_int raw_a = to_cpp_int<F>(a.raw());
     mp::cpp_int raw_b = to_cpp_int<F>(b.raw());
@@ -149,15 +145,23 @@ void test_same_domain_oracle(int iterations) {
     std::mt19937_64 rng(42);
 
     mp::cpp_int min_val, max_val;
-    if constexpr (F::bits == 8) { min_val = INT8_MIN; max_val = INT8_MAX; }
-    else if constexpr (F::bits == 16) { min_val = INT16_MIN; max_val = INT16_MAX; }
-    else if constexpr (F::bits == 32) { min_val = INT32_MIN; max_val = INT32_MAX; }
-    else if constexpr (F::bits == 64) { min_val = INT64_MIN; max_val = INT64_MAX; }
-    else if constexpr (F::bits == 128) {
-        min_val = - (mp::cpp_int(1) << 127);
+    if constexpr (F::bits == 8) {
+        min_val = INT8_MIN;
+        max_val = INT8_MAX;
+    } else if constexpr (F::bits == 16) {
+        min_val = INT16_MIN;
+        max_val = INT16_MAX;
+    } else if constexpr (F::bits == 32) {
+        min_val = INT32_MIN;
+        max_val = INT32_MAX;
+    } else if constexpr (F::bits == 64) {
+        min_val = INT64_MIN;
+        max_val = INT64_MAX;
+    } else if constexpr (F::bits == 128) {
+        min_val = -(mp::cpp_int(1) << 127);
         max_val = (mp::cpp_int(1) << 127) - 1;
     } else {
-        min_val = - (mp::cpp_int(1) << 255);
+        min_val = -(mp::cpp_int(1) << 255);
         max_val = (mp::cpp_int(1) << 255) - 1;
     }
 
@@ -230,7 +234,7 @@ void test_mixed_oracle(int iterations) {
     using A1 = Fixed32<4>;
     using B1 = Fixed64<8>;
     using Dest1 = Fixed128<12>;
-    mp::cpp_int min_val1 = - (mp::cpp_int(1) << 127);
+    mp::cpp_int min_val1 = -(mp::cpp_int(1) << 127);
     mp::cpp_int max_val1 = (mp::cpp_int(1) << 127) - 1;
 
     for (int i = 0; i < iterations; ++i) {
@@ -263,7 +267,7 @@ void test_mixed_oracle(int iterations) {
     using A2 = Fixed64<10>;
     using B2 = Fixed128<12>;
     using Dest2 = Fixed256<18>;
-    mp::cpp_int min_val2 = - (mp::cpp_int(1) << 255);
+    mp::cpp_int min_val2 = -(mp::cpp_int(1) << 255);
     mp::cpp_int max_val2 = (mp::cpp_int(1) << 255) - 1;
 
     for (int i = 0; i < iterations; ++i) {

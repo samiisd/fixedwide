@@ -88,10 +88,8 @@ void test_hash() {
 
     // The wide integers hash too, and hash consistently with their fixed-point
     // wrappers' raw values.
-    CHECK(std::hash<wide::uint128>{}(wide::uint128(5, 6))
-          == std::hash<wide::uint128>{}(wide::uint128(5, 6)));
-    CHECK(std::hash<wide::int256>{}(wide::int256(1, 2, 3, 4))
-          == std::hash<wide::int256>{}(wide::int256(1, 2, 3, 4)));
+    CHECK(std::hash<wide::uint128>{}(wide::uint128(5, 6)) == std::hash<wide::uint128>{}(wide::uint128(5, 6)));
+    CHECK(std::hash<wide::int256>{}(wide::int256(1, 2, 3, 4)) == std::hash<wide::int256>{}(wide::int256(1, 2, 3, 4)));
 }
 
 void test_to_string() {

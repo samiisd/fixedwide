@@ -58,8 +58,8 @@ void test_rounding_primitives() {
 }
 
 void test_fixed64_rounding() {
-    using F = Fixed64<1>; // scale 10
-    auto one = F::from_raw(10); // 1.0
+    using F = Fixed64<1>;        // scale 10
+    auto one = F::from_raw(10);  // 1.0
     auto four = F::from_raw(40); // 4.0
 
     // 1.0 / 4.0 = 0.25 -> 0.2 with scale 10 (even quotient: 2)

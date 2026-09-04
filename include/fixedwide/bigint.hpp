@@ -12,10 +12,16 @@
 
 namespace fixedwide {
 /// Quotient and remainder of an unsigned wide division, both exact.
-struct UnsignedDivision { u256 quotient; u128 remainder; };
+struct UnsignedDivision {
+    u256 quotient;
+    u128 remainder;
+};
 /// Quotient and remainder of a signed wide division. The remainder takes the
 /// sign of the numerator, as `%` does.
-struct SignedDivision { i256 quotient; i128 remainder; };
+struct SignedDivision {
+    i256 quotient;
+    i128 remainder;
+};
 
 /// Exact 256-by-128 division: quotient and remainder in one pass, no rounding.
 /// \return both halves, or `ArithmeticError::division_by_zero`.
@@ -29,7 +35,8 @@ struct SignedDivision { i256 quotient; i128 remainder; };
 /// 128 bits.
 /// \return the quotient, or `ArithmeticError::division_by_zero` / `overflow`
 ///         when it does not fit 128 bits / `inexact`.
-[[nodiscard]] std::expected<i128, ArithmeticError> divide_to_i128(i256 numerator, i128 divisor, Rounding rounding) noexcept;
+[[nodiscard]] std::expected<i128, ArithmeticError> divide_to_i128(i256 numerator, i128 divisor,
+                                                                  Rounding rounding) noexcept;
 /// `a * b / divisor` on raw wide integers with one rounding: the product is
 /// formed at 256 bits and divided once. The unscaled counterpart of
 /// `fixedwide::mul_div`.

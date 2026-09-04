@@ -20,7 +20,8 @@ inline old_i128_raw to_raw(fixedwide::i128 v) noexcept {
 }
 
 inline fixedwide::i128 from_raw(old_i128_raw v) noexcept {
-    return fixedwide::i128(static_cast<std::uint64_t>(v), static_cast<std::uint64_t>(static_cast<unsigned __int128>(v) >> 64));
+    return fixedwide::i128(static_cast<std::uint64_t>(v),
+                           static_cast<std::uint64_t>(static_cast<unsigned __int128>(v) >> 64));
 }
 
 inline bool old_fast_mul_div(old_i128_raw a, old_i128_raw b, old_i128_raw scale, old_i128_raw& out) noexcept {
@@ -67,10 +68,10 @@ bool legacy_mul_div(old_i128 a, old_i128 b, old_i128 d, old_i128& out) noexcept 
     return ok;
 }
 
-std::expected<fixedwide::UnsignedDivision, fixedwide::ArithmeticError>
-native_divmod(fixedwide::u256 n, fixedwide::u128 d) noexcept {
+std::expected<fixedwide::UnsignedDivision, fixedwide::ArithmeticError> native_divmod(fixedwide::u256 n,
+                                                                                     fixedwide::u128 d) noexcept {
     if (d == 0) return std::unexpected(fixedwide::ArithmeticError::division_by_zero);
     return fixedwide::UnsignedDivision{n / static_cast<fixedwide::u256>(d),
-                                     static_cast<fixedwide::u128>(n % static_cast<fixedwide::u256>(d))};
+                                       static_cast<fixedwide::u128>(n % static_cast<fixedwide::u256>(d))};
 }
 } // namespace baseline

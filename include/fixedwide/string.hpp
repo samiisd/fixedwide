@@ -19,7 +19,8 @@ namespace fixedwide {
 /// \param options digits, trailing zeros and rounding; see `FormatOptions`.
 /// \return the text, or a `FormatError`.
 template<std::size_t Bits, unsigned D>
-[[nodiscard]] inline std::expected<std::string, FormatError> to_string(basic_fixed<Bits, D> val, FormatOptions options = {}) {
+[[nodiscard]] inline std::expected<std::string, FormatError> to_string(basic_fixed<Bits, D> val,
+                                                                       FormatOptions options = {}) {
     char buf[text_capacity];
     auto res = to_chars(buf, sizeof(buf), val, options);
     if (!res) return std::unexpected(res.error());

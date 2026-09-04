@@ -126,7 +126,8 @@ std::expected<S, ParseError> parse_signed(std::string_view text, U positive_limi
 }
 
 template<class U>
-std::expected<std::size_t, FormatError> format_integer(char* output, std::size_t capacity, U value, bool negative) noexcept {
+std::expected<std::size_t, FormatError> format_integer(char* output, std::size_t capacity, U value,
+                                                       bool negative) noexcept {
     char buffer[128];
     char* const end = buffer + sizeof(buffer);
     char* begin = detail::integer_digits(end, value);

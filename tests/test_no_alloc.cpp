@@ -45,7 +45,10 @@ int main() {
     auto m = *mul(a, b);
     auto d = *div(m, a);
     auto md = *mul_div(a, b, d);
-    (void)s; (void)m; (void)d; (void)md;
+    (void)s;
+    (void)m;
+    (void)d;
+    (void)md;
 
     // 2. Wide arithmetic
     Fixed256<18> w1 = *from_integer<Fixed256<18>>(1234567);
@@ -53,13 +56,16 @@ int main() {
     auto ws = *add(w1, w2);
     auto wm = *mul(w1, w2);
     auto wd = *div(wm, w1);
-    (void)ws; (void)wm; (void)wd;
+    (void)ws;
+    (void)wm;
+    (void)wd;
 
     // 3. Mixed arithmetic and casting
     Fixed32<4> m1 = *from_integer<Fixed32<4>>(123);
     auto mc = *fixed_cast<Fixed128<12>>(m1);
     auto m_mul = *mul_to<Fixed128<12>>(m1, a);
-    (void)mc; (void)m_mul;
+    (void)mc;
+    (void)m_mul;
 
     // 4. Text parsing and formatting to stack buffer
     char buf[128];

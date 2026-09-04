@@ -23,37 +23,33 @@ namespace fixedwide {
 namespace detail {
 
 // Forward declarations for mixed arithmetic kernel functions
-std::expected<wide::int256, ArithmeticError>
-mixed_cast_kernel(wide::int256 src_raw, unsigned src_decimals, unsigned dest_decimals,
-                  Rounding rounding, std::size_t dest_bits) noexcept;
+std::expected<wide::int256, ArithmeticError> mixed_cast_kernel(wide::int256 src_raw, unsigned src_decimals,
+                                                               unsigned dest_decimals, Rounding rounding,
+                                                               std::size_t dest_bits) noexcept;
 
-std::expected<wide::int256, ArithmeticError>
-mixed_add_sub_kernel(wide::int256 a_raw, unsigned a_decimals,
-                     wide::int256 b_raw, unsigned b_decimals,
-                     bool subtract, unsigned dest_decimals,
-                     Rounding rounding, std::size_t dest_bits) noexcept;
+std::expected<wide::int256, ArithmeticError> mixed_add_sub_kernel(wide::int256 a_raw, unsigned a_decimals,
+                                                                  wide::int256 b_raw, unsigned b_decimals,
+                                                                  bool subtract, unsigned dest_decimals,
+                                                                  Rounding rounding, std::size_t dest_bits) noexcept;
 
-std::expected<wide::int256, ArithmeticError>
-mixed_mul_kernel(wide::int256 a_raw, unsigned a_decimals,
-                 wide::int256 b_raw, unsigned b_decimals,
-                 unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept;
+std::expected<wide::int256, ArithmeticError> mixed_mul_kernel(wide::int256 a_raw, unsigned a_decimals,
+                                                              wide::int256 b_raw, unsigned b_decimals,
+                                                              unsigned dest_decimals, Rounding rounding,
+                                                              std::size_t dest_bits) noexcept;
 
-std::expected<wide::int256, ArithmeticError>
-mixed_div_kernel(wide::int256 a_raw, unsigned a_decimals,
-                 wide::int256 b_raw, unsigned b_decimals,
-                 unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept;
+std::expected<wide::int256, ArithmeticError> mixed_div_kernel(wide::int256 a_raw, unsigned a_decimals,
+                                                              wide::int256 b_raw, unsigned b_decimals,
+                                                              unsigned dest_decimals, Rounding rounding,
+                                                              std::size_t dest_bits) noexcept;
 
-std::expected<wide::int256, ArithmeticError>
-mixed_mul_div_kernel(wide::int256 a_raw, unsigned a_decimals,
-                     wide::int256 b_raw, unsigned b_decimals,
-                     wide::int256 c_raw, unsigned c_decimals,
-                     unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept;
+std::expected<wide::int256, ArithmeticError> mixed_mul_div_kernel(wide::int256 a_raw, unsigned a_decimals,
+                                                                  wide::int256 b_raw, unsigned b_decimals,
+                                                                  wide::int256 c_raw, unsigned c_decimals,
+                                                                  unsigned dest_decimals, Rounding rounding,
+                                                                  std::size_t dest_bits) noexcept;
 
-std::strong_ordering
-mixed_compare_kernel(wide::int256 a_raw, unsigned a_decimals,
-                     wide::int256 b_raw, unsigned b_decimals) noexcept;
-
-
+std::strong_ordering mixed_compare_kernel(wide::int256 a_raw, unsigned a_decimals, wide::int256 b_raw,
+                                          unsigned b_decimals) noexcept;
 
 // Exact cross-scale comparison during constant evaluation.
 //
@@ -91,7 +87,7 @@ using compare_magnitude = std::array<std::uint64_t, compare_limbs>;
 constexpr void multiply_by_ten(compare_magnitude& value) noexcept {
     std::uint64_t carry = 0;
     for (std::size_t i = 0; i < compare_limbs; ++i) {
-        const std::uint64_t low  = (value[i] & 0xFFFF'FFFFULL) * 10u + carry;
+        const std::uint64_t low = (value[i] & 0xFFFF'FFFFULL) * 10u + carry;
         const std::uint64_t high = (value[i] >> 32) * 10u + (low >> 32);
         value[i] = (high << 32) | (low & 0xFFFF'FFFFULL);
         carry = high >> 32;
@@ -99,18 +95,16 @@ constexpr void multiply_by_ten(compare_magnitude& value) noexcept {
 }
 
 /// Compare two magnitudes, most significant limb first.
-[[nodiscard]] constexpr std::strong_ordering
-compare_magnitudes(const compare_magnitude& a, const compare_magnitude& b) noexcept {
+[[nodiscard]] constexpr std::strong_ordering compare_magnitudes(const compare_magnitude& a,
+                                                                const compare_magnitude& b) noexcept {
     for (std::size_t i = compare_limbs; i-- > 0;) {
-        if (a[i] != b[i]) return a[i] < b[i] ? std::strong_ordering::less
-                                             : std::strong_ordering::greater;
+        if (a[i] != b[i]) return a[i] < b[i] ? std::strong_ordering::less : std::strong_ordering::greater;
     }
     return std::strong_ordering::equal;
 }
 
-[[nodiscard]] constexpr std::strong_ordering
-constexpr_mixed_compare(wide::int256 a_raw, unsigned a_decimals,
-                        wide::int256 b_raw, unsigned b_decimals) noexcept {
+[[nodiscard]] constexpr std::strong_ordering constexpr_mixed_compare(wide::int256 a_raw, unsigned a_decimals,
+                                                                     wide::int256 b_raw, unsigned b_decimals) noexcept {
     const bool a_negative = a_raw.is_negative();
     const bool b_negative = b_raw.is_negative();
     if (a_negative != b_negative) {
@@ -143,7 +137,7 @@ constexpr_mixed_compare(wide::int256 a_raw, unsigned a_decimals,
 /// compared. `Fixed64<2>(1.50) == Fixed32<4>(1.5000)` is true, and no division
 /// happens.
 template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
-    requires (BitsA != BitsB || Da != Db)
+    requires(BitsA != BitsB || Da != Db)
 [[nodiscard]] constexpr bool operator==(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b) noexcept {
     return (a <=> b) == std::strong_ordering::equal;
 }
@@ -153,7 +147,7 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
 /// Needs no destination type and cannot lose anything: both sides are lifted to
 /// a common exponent and the integers are compared. No division happens.
 template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
-    requires (BitsA != BitsB || Da != Db)
+    requires(BitsA != BitsB || Da != Db)
 [[nodiscard]] constexpr std::strong_ordering operator<=>(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b) noexcept {
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
     // Comparing across scales needs no division, only a common exponent. The
@@ -164,11 +158,9 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
 #endif
     if consteval {
         // The general kernel is compiled into the library and cannot run here.
-        return detail::constexpr_mixed_compare(detail::to_int256_raw(a.raw()), Da,
-                                               detail::to_int256_raw(b.raw()), Db);
+        return detail::constexpr_mixed_compare(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db);
     }
-    return detail::mixed_compare_kernel(detail::to_int256_raw(a.raw()), Da,
-                                        detail::to_int256_raw(b.raw()), Db);
+    return detail::mixed_compare_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db);
 }
 
 /// Convert to another fixed-point type: any width, any scale.
@@ -181,17 +173,18 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
 /// \param rounding how to resolve a narrowing scale; `exact` by default.
 /// \return the converted value, or `ArithmeticError::overflow` / `inexact`.
 template<typename Dest, std::size_t BitsA, unsigned Da>
-[[nodiscard]] inline std::expected<Dest, ArithmeticError>
-fixed_cast(basic_fixed<BitsA, Da> a, Rounding rounding = Rounding::exact) noexcept {
+[[nodiscard]] inline std::expected<Dest, ArithmeticError> fixed_cast(basic_fixed<BitsA, Da> a,
+                                                                     Rounding rounding = Rounding::exact) noexcept {
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
     if constexpr (detail::mixed_native::cast_fits<BitsA, Da, Dest::bits, Dest::fractional_digits>()) {
-        const auto native = detail::mixed_native::cast<BitsA, Da, Dest::bits, Dest::fractional_digits>(a.raw(), rounding);
+        const auto native =
+            detail::mixed_native::cast<BitsA, Da, Dest::bits, Dest::fractional_digits>(a.raw(), rounding);
         if (!native) return std::unexpected(native.error());
         return Dest::from_raw(static_cast<typename Dest::raw_type>(*native));
     }
 #endif
-    auto res = detail::mixed_cast_kernel(detail::to_int256_raw(a.raw()), Da, Dest::fractional_digits,
-                                         rounding, Dest::bits);
+    auto res =
+        detail::mixed_cast_kernel(detail::to_int256_raw(a.raw()), Da, Dest::fractional_digits, rounding, Dest::bits);
     if (!res) return std::unexpected(res.error());
     return detail::from_int256_raw<Dest>(*res);
 }
@@ -206,17 +199,17 @@ fixed_cast(basic_fixed<BitsA, Da> a, Rounding rounding = Rounding::exact) noexce
 /// \param rounding how to resolve the single rounding.
 /// \return the result, or an `ArithmeticError`.
 template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
-[[nodiscard]] inline std::expected<Dest, ArithmeticError>
-add_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b, Rounding rounding = Rounding::nearest_even) noexcept {
+[[nodiscard]] inline std::expected<Dest, ArithmeticError> add_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b,
+                                                                 Rounding rounding = Rounding::nearest_even) noexcept {
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
     if constexpr (detail::mixed_native::add_fits<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>()) {
-        const auto native = detail::mixed_native::add_sub<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>(a.raw(), b.raw(), false, rounding);
+        const auto native = detail::mixed_native::add_sub<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>(
+            a.raw(), b.raw(), false, rounding);
         if (!native) return std::unexpected(native.error());
         return Dest::from_raw(static_cast<typename Dest::raw_type>(*native));
     }
 #endif
-    auto res = detail::mixed_add_sub_kernel(detail::to_int256_raw(a.raw()), Da,
-                                            detail::to_int256_raw(b.raw()), Db,
+    auto res = detail::mixed_add_sub_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
                                             false, Dest::fractional_digits, rounding, Dest::bits);
     if (!res) return std::unexpected(res.error());
     return detail::from_int256_raw<Dest>(*res);
@@ -232,17 +225,17 @@ add_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b, Rounding rounding = R
 /// \param rounding how to resolve the single rounding.
 /// \return the result, or an `ArithmeticError`.
 template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
-[[nodiscard]] inline std::expected<Dest, ArithmeticError>
-sub_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b, Rounding rounding = Rounding::nearest_even) noexcept {
+[[nodiscard]] inline std::expected<Dest, ArithmeticError> sub_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b,
+                                                                 Rounding rounding = Rounding::nearest_even) noexcept {
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
     if constexpr (detail::mixed_native::add_fits<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>()) {
-        const auto native = detail::mixed_native::add_sub<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>(a.raw(), b.raw(), true, rounding);
+        const auto native = detail::mixed_native::add_sub<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>(
+            a.raw(), b.raw(), true, rounding);
         if (!native) return std::unexpected(native.error());
         return Dest::from_raw(static_cast<typename Dest::raw_type>(*native));
     }
 #endif
-    auto res = detail::mixed_add_sub_kernel(detail::to_int256_raw(a.raw()), Da,
-                                            detail::to_int256_raw(b.raw()), Db,
+    auto res = detail::mixed_add_sub_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
                                             true, Dest::fractional_digits, rounding, Dest::bits);
     if (!res) return std::unexpected(res.error());
     return detail::from_int256_raw<Dest>(*res);
@@ -258,17 +251,17 @@ sub_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b, Rounding rounding = R
 /// \param rounding how to resolve the single rounding.
 /// \return the result, or an `ArithmeticError`.
 template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
-[[nodiscard]] inline std::expected<Dest, ArithmeticError>
-mul_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b, Rounding rounding = Rounding::nearest_even) noexcept {
+[[nodiscard]] inline std::expected<Dest, ArithmeticError> mul_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b,
+                                                                 Rounding rounding = Rounding::nearest_even) noexcept {
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
     if constexpr (detail::mixed_native::mul_fits<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>()) {
-        const auto native = detail::mixed_native::mul<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>(a.raw(), b.raw(), rounding);
+        const auto native = detail::mixed_native::mul<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>(
+            a.raw(), b.raw(), rounding);
         if (!native) return std::unexpected(native.error());
         return Dest::from_raw(static_cast<typename Dest::raw_type>(*native));
     }
 #endif
-    auto res = detail::mixed_mul_kernel(detail::to_int256_raw(a.raw()), Da,
-                                        detail::to_int256_raw(b.raw()), Db,
+    auto res = detail::mixed_mul_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
                                         Dest::fractional_digits, rounding, Dest::bits);
     if (!res) return std::unexpected(res.error());
     return detail::from_int256_raw<Dest>(*res);
@@ -284,17 +277,17 @@ mul_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b, Rounding rounding = R
 /// \param rounding how to resolve the single rounding.
 /// \return the result, or an `ArithmeticError`.
 template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
-[[nodiscard]] inline std::expected<Dest, ArithmeticError>
-div_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b, Rounding rounding = Rounding::nearest_even) noexcept {
+[[nodiscard]] inline std::expected<Dest, ArithmeticError> div_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b,
+                                                                 Rounding rounding = Rounding::nearest_even) noexcept {
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
     if constexpr (detail::mixed_native::div_fits<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>()) {
-        const auto native = detail::mixed_native::div<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>(a.raw(), b.raw(), rounding);
+        const auto native = detail::mixed_native::div<BitsA, Da, BitsB, Db, Dest::bits, Dest::fractional_digits>(
+            a.raw(), b.raw(), rounding);
         if (!native) return std::unexpected(native.error());
         return Dest::from_raw(static_cast<typename Dest::raw_type>(*native));
     }
 #endif
-    auto res = detail::mixed_div_kernel(detail::to_int256_raw(a.raw()), Da,
-                                        detail::to_int256_raw(b.raw()), Db,
+    auto res = detail::mixed_div_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
                                         Dest::fractional_digits, rounding, Dest::bits);
     if (!res) return std::unexpected(res.error());
     return detail::from_int256_raw<Dest>(*res);
@@ -312,18 +305,21 @@ div_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b, Rounding rounding = R
 ///         / `inexact`.
 template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::size_t BitsC, unsigned Dc>
 [[nodiscard]] inline std::expected<Dest, ArithmeticError>
-mul_div_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b, basic_fixed<BitsC, Dc> c, Rounding rounding = Rounding::nearest_even) noexcept {
+mul_div_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b, basic_fixed<BitsC, Dc> c,
+           Rounding rounding = Rounding::nearest_even) noexcept {
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
-    if constexpr (detail::mixed_native::mul_div_fits<BitsA, Da, BitsB, Db, BitsC, Dc, Dest::bits, Dest::fractional_digits>()) {
-        const auto native = detail::mixed_native::mul_div<BitsA, Da, BitsB, Db, BitsC, Dc, Dest::bits, Dest::fractional_digits>(a.raw(), b.raw(), c.raw(), rounding);
+    if constexpr (detail::mixed_native::mul_div_fits<BitsA, Da, BitsB, Db, BitsC, Dc, Dest::bits,
+                                                     Dest::fractional_digits>()) {
+        const auto native =
+            detail::mixed_native::mul_div<BitsA, Da, BitsB, Db, BitsC, Dc, Dest::bits, Dest::fractional_digits>(
+                a.raw(), b.raw(), c.raw(), rounding);
         if (!native) return std::unexpected(native.error());
         return Dest::from_raw(static_cast<typename Dest::raw_type>(*native));
     }
 #endif
-    auto res = detail::mixed_mul_div_kernel(detail::to_int256_raw(a.raw()), Da,
-                                            detail::to_int256_raw(b.raw()), Db,
-                                            detail::to_int256_raw(c.raw()), Dc,
-                                            Dest::fractional_digits, rounding, Dest::bits);
+    auto res =
+        detail::mixed_mul_div_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
+                                     detail::to_int256_raw(c.raw()), Dc, Dest::fractional_digits, rounding, Dest::bits);
     if (!res) return std::unexpected(res.error());
     return detail::from_int256_raw<Dest>(*res);
 }

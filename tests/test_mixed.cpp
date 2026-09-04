@@ -5,7 +5,7 @@
 using namespace fixedwide;
 
 void test_mixed_compare() {
-    auto a = Fixed32<4>::from_raw(15'000); // 1.5
+    auto a = Fixed32<4>::from_raw(15'000);                              // 1.5
     auto b = Fixed128<12>::from_raw(wide::int128(1'500'000'000'000LL)); // 1.5
     CHECK(a == b);
     CHECK(!(a < b));
@@ -97,8 +97,8 @@ void test_constexpr_compare_matches_kernel() {
                 CHECK(from_constexpr == from_kernel);
             }
             // Zeros and the identity case, which the random sweep rarely hits.
-            CHECK(detail::constexpr_mixed_compare(wide::int256(), da, wide::int256(), db)
-                  == std::strong_ordering::equal);
+            CHECK(detail::constexpr_mixed_compare(wide::int256(), da, wide::int256(), db) ==
+                  std::strong_ordering::equal);
         }
     }
 }

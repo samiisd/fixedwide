@@ -7,7 +7,6 @@ namespace fixedwide::detail {
 
 namespace {
 
-
 u1024_limbs make_u1024(wide::uint256 val) noexcept {
     u1024_limbs res{};
     for (int i = 0; i < 4; ++i) res.limbs[i] = val.limbs[i];
@@ -21,9 +20,9 @@ u1024_limbs limit_magnitude_u256(std::size_t bits, bool negative) noexcept {
     return lim;
 }
 
-std::expected<wide::int256, ArithmeticError>
-evaluate_rational(bool negative, const u1024_limbs& num, const u1024_limbs& den,
-                  Rounding rounding, std::size_t dest_bits) noexcept {
+std::expected<wide::int256, ArithmeticError> evaluate_rational(bool negative, const u1024_limbs& num,
+                                                               const u1024_limbs& den, Rounding rounding,
+                                                               std::size_t dest_bits) noexcept {
     if (den.is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
     auto divres = divmod_knuth(num, den);
     auto limit = limit_magnitude_u256(dest_bits, negative);
@@ -43,9 +42,8 @@ evaluate_rational(bool negative, const u1024_limbs& num, const u1024_limbs& den,
 
 } // namespace
 
-std::strong_ordering
-mixed_compare_kernel(wide::int256 a_raw, unsigned a_decimals,
-                     wide::int256 b_raw, unsigned b_decimals) noexcept {
+std::strong_ordering mixed_compare_kernel(wide::int256 a_raw, unsigned a_decimals, wide::int256 b_raw,
+                                          unsigned b_decimals) noexcept {
     bool a_neg = a_raw.is_negative();
     bool b_neg = b_raw.is_negative();
     if (a_neg != b_neg) {
@@ -82,9 +80,9 @@ mixed_compare_kernel(wide::int256 a_raw, unsigned a_decimals,
     return cmp;
 }
 
-std::expected<wide::int256, ArithmeticError>
-mixed_cast_kernel(wide::int256 src_raw, unsigned src_decimals, unsigned dest_decimals,
-                  Rounding rounding, std::size_t dest_bits) noexcept {
+std::expected<wide::int256, ArithmeticError> mixed_cast_kernel(wide::int256 src_raw, unsigned src_decimals,
+                                                               unsigned dest_decimals, Rounding rounding,
+                                                               std::size_t dest_bits) noexcept {
     bool neg = src_raw.is_negative();
     u1024_limbs num = make_u1024(magnitude(src_raw));
     u1024_limbs den(1ULL);
@@ -99,11 +97,10 @@ mixed_cast_kernel(wide::int256 src_raw, unsigned src_decimals, unsigned dest_dec
     return evaluate_rational(neg, num, den, rounding, dest_bits);
 }
 
-std::expected<wide::int256, ArithmeticError>
-mixed_add_sub_kernel(wide::int256 a_raw, unsigned a_decimals,
-                     wide::int256 b_raw, unsigned b_decimals,
-                     bool subtract, unsigned dest_decimals,
-                     Rounding rounding, std::size_t dest_bits) noexcept {
+std::expected<wide::int256, ArithmeticError> mixed_add_sub_kernel(wide::int256 a_raw, unsigned a_decimals,
+                                                                  wide::int256 b_raw, unsigned b_decimals,
+                                                                  bool subtract, unsigned dest_decimals,
+                                                                  Rounding rounding, std::size_t dest_bits) noexcept {
     unsigned m = std::min(a_decimals, b_decimals);
     unsigned expA = b_decimals - m;
     unsigned expB = a_decimals - m;
@@ -157,10 +154,10 @@ mixed_add_sub_kernel(wide::int256 a_raw, unsigned a_decimals,
     return evaluate_rational(sum_neg, num, den, rounding, dest_bits);
 }
 
-std::expected<wide::int256, ArithmeticError>
-mixed_mul_kernel(wide::int256 a_raw, unsigned a_decimals,
-                 wide::int256 b_raw, unsigned b_decimals,
-                 unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept {
+std::expected<wide::int256, ArithmeticError> mixed_mul_kernel(wide::int256 a_raw, unsigned a_decimals,
+                                                              wide::int256 b_raw, unsigned b_decimals,
+                                                              unsigned dest_decimals, Rounding rounding,
+                                                              std::size_t dest_bits) noexcept {
     bool neg = a_raw.is_negative() != b_raw.is_negative();
     u1024_limbs ma = make_u1024(magnitude(a_raw));
     u1024_limbs mb = make_u1024(magnitude(b_raw));
@@ -183,10 +180,10 @@ mixed_mul_kernel(wide::int256 a_raw, unsigned a_decimals,
     return evaluate_rational(neg, num, den, rounding, dest_bits);
 }
 
-std::expected<wide::int256, ArithmeticError>
-mixed_div_kernel(wide::int256 a_raw, unsigned a_decimals,
-                 wide::int256 b_raw, unsigned b_decimals,
-                 unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept {
+std::expected<wide::int256, ArithmeticError> mixed_div_kernel(wide::int256 a_raw, unsigned a_decimals,
+                                                              wide::int256 b_raw, unsigned b_decimals,
+                                                              unsigned dest_decimals, Rounding rounding,
+                                                              std::size_t dest_bits) noexcept {
     if (b_raw.is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
     bool neg = a_raw.is_negative() != b_raw.is_negative();
 
@@ -210,11 +207,11 @@ mixed_div_kernel(wide::int256 a_raw, unsigned a_decimals,
     return evaluate_rational(neg, num, den, rounding, dest_bits);
 }
 
-std::expected<wide::int256, ArithmeticError>
-mixed_mul_div_kernel(wide::int256 a_raw, unsigned a_decimals,
-                     wide::int256 b_raw, unsigned b_decimals,
-                     wide::int256 c_raw, unsigned c_decimals,
-                     unsigned dest_decimals, Rounding rounding, std::size_t dest_bits) noexcept {
+std::expected<wide::int256, ArithmeticError> mixed_mul_div_kernel(wide::int256 a_raw, unsigned a_decimals,
+                                                                  wide::int256 b_raw, unsigned b_decimals,
+                                                                  wide::int256 c_raw, unsigned c_decimals,
+                                                                  unsigned dest_decimals, Rounding rounding,
+                                                                  std::size_t dest_bits) noexcept {
     if (c_raw.is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
     bool neg = a_raw.is_negative() != (b_raw.is_negative() != c_raw.is_negative());
 
@@ -227,7 +224,8 @@ mixed_mul_div_kernel(wide::int256 a_raw, unsigned a_decimals,
     for (int i = 0; i < 16; ++i) num.limbs[i] = prod_full.limbs[i];
 
     u1024_limbs den = mc;
-    int exp = static_cast<int>(c_decimals) + static_cast<int>(dest_decimals) - static_cast<int>(a_decimals + b_decimals);
+    int exp =
+        static_cast<int>(c_decimals) + static_cast<int>(dest_decimals) - static_cast<int>(a_decimals + b_decimals);
 
     if (exp >= 0) {
         auto s = pow10_limbs(static_cast<unsigned>(exp));

@@ -33,11 +33,13 @@ void expect(bool ok, const std::string& what) {
     if (!ok) fail(what);
 }
 
-template<class T> void escape(const T& value) {
+template<class T>
+void escape(const T& value) {
     __asm__ __volatile__("" : : "r"(&value) : "memory");
 }
 
-template<class T> T require(std::expected<T, fixedwide::ArithmeticError> r, const char* what) {
+template<class T>
+T require(std::expected<T, fixedwide::ArithmeticError> r, const char* what) {
     if (!r) fail(what);
     return *r;
 }
@@ -47,13 +49,14 @@ template<class T> T require(std::expected<T, fixedwide::ArithmeticError> r, cons
 int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         const std::string_view arg = argv[i];
-        if (arg == "--filter" && i + 1 < argc) fixedwide_bench::filter = argv[++i];
+        if (arg == "--filter" && i + 1 < argc)
+            fixedwide_bench::filter = argv[++i];
         else if (arg == "--iterations" && i + 1 < argc)
             fixedwide_bench::iterations = std::strtoull(argv[++i], nullptr, 10);
     }
 
     using Price = fixedwide::Fixed64<8>;
-    using Rate  = fixedwide::Fixed64<12>;
+    using Rate = fixedwide::Fixed64<12>;
     using Money = fixedwide::Fixed128<12>;
     using Small = fixedwide::Fixed32<6>;
 
@@ -64,8 +67,9 @@ int main(int argc, char** argv) {
     std::vector<Small> small(data_size);
     for (std::size_t i = 0; i < data_size; ++i) {
         price[i] = Price::from_raw(static_cast<std::int64_t>(rng() % 100'000'000'000ULL) + 1);
-        rate[i]  = Rate::from_raw(static_cast<std::int64_t>(rng() % 10'000'000'000'000ULL) + 1);
-        money_a[i] = Money::from_raw(fixedwide::wide::int128(static_cast<std::int64_t>(rng() % 100'000'000'000ULL) + 1));
+        rate[i] = Rate::from_raw(static_cast<std::int64_t>(rng() % 10'000'000'000'000ULL) + 1);
+        money_a[i] =
+            Money::from_raw(fixedwide::wide::int128(static_cast<std::int64_t>(rng() % 100'000'000'000ULL) + 1));
         money_b[i] = Money::from_raw(fixedwide::wide::int128(static_cast<std::int64_t>(rng() % 10'000'000'000ULL) + 1));
         small[i] = Small::from_raw(static_cast<std::int32_t>(rng() % 1'000'000U) + 1);
     }
@@ -84,8 +88,8 @@ int main(int argc, char** argv) {
     }
 
     std::printf("# fixedwide mixed-scale benchmark\n");
-    std::printf("# compiler=%s iterations=%zu repetitions=%u\n",
-                __VERSION__, fixedwide_bench::iterations, fixedwide_bench::repetitions);
+    std::printf("# compiler=%s iterations=%zu repetitions=%u\n", __VERSION__, fixedwide_bench::iterations,
+                fixedwide_bench::repetitions);
     std::printf("workload,iterations,repetitions,min_ns,median_ns,p95_ns,max_ns,samples\n");
 
     const auto index = [](std::size_t i) { return i & (data_size - 1); };
@@ -135,8 +139,8 @@ int main(int argc, char** argv) {
         huge_b[i] = Huge::from_raw(fixedwide::wide::int256(rng(), 0, 0, 0));
     }
     for (std::size_t i = 0; i < data_size; ++i) {
-        expect(fixedwide::mul(huge_a[i], huge_b[i]).has_value() ||
-               !fixedwide::mul(huge_a[i], huge_b[i]).has_value(), "Fixed256 multiply setup");
+        expect(fixedwide::mul(huge_a[i], huge_b[i]).has_value() || !fixedwide::mul(huge_a[i], huge_b[i]).has_value(),
+               "Fixed256 multiply setup");
     }
     fixedwide_bench::measure("wide256.Fixed256.add", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) escape(fixedwide::add(huge_a[index(i)], huge_b[index(i)]));

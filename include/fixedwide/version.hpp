@@ -4,7 +4,6 @@
 /// The library's version, as preprocessor macros for `#if` and as constants for
 /// ordinary code. Both are generated from the same release and always agree.
 
-
 #define FIXEDWIDE_VERSION_MAJOR 0
 #define FIXEDWIDE_VERSION_MINOR 5
 #define FIXEDWIDE_VERSION_PATCH 0
@@ -22,4 +21,4 @@ inline constexpr unsigned version_patch = 0;
 inline constexpr const char* version_prerelease = "";
 /// The full version, as in "0.5.0".
 inline constexpr const char* version_string = "0.5.0";
-}
+} // namespace fixedwide

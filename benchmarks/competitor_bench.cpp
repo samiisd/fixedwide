@@ -39,8 +39,8 @@
 #include <cnl/scaled_integer.h>
 #include <boost/multiprecision/cpp_int.hpp>
 #if __has_include(<boost/decimal.hpp>)
-#  include <boost/decimal.hpp>
-#  define FIXEDWIDE_HAVE_BOOST_DECIMAL 1
+#include <boost/decimal.hpp>
+#define FIXEDWIDE_HAVE_BOOST_DECIMAL 1
 #endif
 
 #include <array>
@@ -67,13 +67,14 @@ void expect(bool ok, const std::string& what) {
     if (!ok) fail(what);
 }
 
-template<class T> void escape(const T& value) {
+template<class T>
+void escape(const T& value) {
     __asm__ __volatile__("" : : "r"(&value) : "memory");
 }
 
 // Operand set shared by every library, so no row gets an easier distribution.
 struct Operands {
-    std::vector<double> a, b;      // exact at 12 decimals and at 2^-16
+    std::vector<double> a, b; // exact at 12 decimals and at 2^-16
     std::vector<std::string> text;
 };
 
@@ -86,7 +87,9 @@ std::string format_fixed4(double value) {
 Operands make_operands() {
     Operands ops;
     std::mt19937_64 rng(0x5eed);
-    ops.a.reserve(data_size); ops.b.reserve(data_size); ops.text.reserve(data_size);
+    ops.a.reserve(data_size);
+    ops.b.reserve(data_size);
+    ops.text.reserve(data_size);
     for (std::size_t i = 0; i < data_size; ++i) {
         // Values with 4 fractional decimal digits: representable exactly in
         // every decimal type here, and near-exactly in the binary ones.
@@ -102,8 +105,7 @@ Operands make_operands() {
 }
 
 // A row's identity: library, semantic class, and what it computed.
-void row(const char* library, const char* type, const char* semantic_class,
-         const char* operation, auto loop) {
+void row(const char* library, const char* type, const char* semantic_class, const char* operation, auto loop) {
     // Type names contain commas; quote the field so the CSV stays parseable.
     fixedwide_bench::measure(std::string(library) + ",\"" + type + "\"," + semantic_class + "," + operation, loop);
 }
@@ -113,17 +115,20 @@ void row(const char* library, const char* type, const char* semantic_class,
 int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         const std::string_view arg = argv[i];
-        if (arg == "--filter" && i + 1 < argc) fixedwide_bench::filter = argv[++i];
-        else if (arg == "--iterations" && i + 1 < argc) fixedwide_bench::iterations = std::strtoull(argv[++i], nullptr, 10);
+        if (arg == "--filter" && i + 1 < argc)
+            fixedwide_bench::filter = argv[++i];
+        else if (arg == "--iterations" && i + 1 < argc)
+            fixedwide_bench::iterations = std::strtoull(argv[++i], nullptr, 10);
     }
 
     const Operands ops = make_operands();
 
     std::printf("# fixedwide competitor benchmark\n");
-    std::printf("# compiler=%s iterations=%zu repetitions=%u\n",
-                __VERSION__, fixedwide_bench::iterations, fixedwide_bench::repetitions);
+    std::printf("# compiler=%s iterations=%zu repetitions=%u\n", __VERSION__, fixedwide_bench::iterations,
+                fixedwide_bench::repetitions);
     std::printf("# every row is a MEDIAN of the repetitions; min/median/p95/max and all raw samples are emitted\n");
-    std::printf("library,type,semantic_class,operation,iterations,repetitions,min_ns,median_ns,p95_ns,max_ns,samples\n");
+    std::printf(
+        "library,type,semantic_class,operation,iterations,repetitions,min_ns,median_ns,p95_ns,max_ns,samples\n");
 
     // ---- decimal fixed point --------------------------------------------
     {
@@ -182,7 +187,10 @@ int main(int argc, char** argv) {
         // documented as less exercised than its binary support.
         using T = cnl::scaled_integer<std::int64_t, cnl::power<-6, 10>>;
         std::vector<T> a(data_size), b(data_size);
-        for (std::size_t i = 0; i < data_size; ++i) { a[i] = T{ops.a[i]}; b[i] = T{ops.b[i]}; }
+        for (std::size_t i = 0; i < data_size; ++i) {
+            a[i] = T{ops.a[i]};
+            b[i] = T{ops.b[i]};
+        }
         for (std::size_t i = 0; i < data_size; ++i) {
             const T product = a[i] * b[i];
             expect(std::abs(static_cast<double>(product) - ops.a[i] * ops.b[i]) < 0.01,
@@ -201,7 +209,10 @@ int main(int argc, char** argv) {
         // fpm rounds its multiply and divide to nearest; it is not truncating.
         using T = fpm::fixed<std::int64_t, __int128, 32>;
         std::vector<T> a(data_size), b(data_size);
-        for (std::size_t i = 0; i < data_size; ++i) { a[i] = T{ops.a[i]}; b[i] = T{ops.b[i]}; }
+        for (std::size_t i = 0; i < data_size; ++i) {
+            a[i] = T{ops.a[i]};
+            b[i] = T{ops.b[i]};
+        }
         for (std::size_t i = 0; i < data_size; ++i) {
             expect(std::abs(static_cast<double>(a[i] * b[i]) - ops.a[i] * ops.b[i]) < 0.01,
                    "fpm mul disagrees with the double oracle");
@@ -216,7 +227,10 @@ int main(int argc, char** argv) {
     {
         using T = cnl::scaled_integer<std::int64_t, cnl::power<-32>>;
         std::vector<T> a(data_size), b(data_size);
-        for (std::size_t i = 0; i < data_size; ++i) { a[i] = T{ops.a[i]}; b[i] = T{ops.b[i]}; }
+        for (std::size_t i = 0; i < data_size; ++i) {
+            a[i] = T{ops.a[i]};
+            b[i] = T{ops.b[i]};
+        }
         for (std::size_t i = 0; i < data_size; ++i) {
             expect(std::abs(static_cast<double>(a[i]) - ops.a[i]) < 0.01, "cnl binary conversion");
         }
@@ -230,7 +244,10 @@ int main(int argc, char** argv) {
     {
         using T = boost::decimal::decimal64_t;
         std::vector<T> a(data_size), b(data_size);
-        for (std::size_t i = 0; i < data_size; ++i) { a[i] = T{ops.a[i]}; b[i] = T{ops.b[i]}; }
+        for (std::size_t i = 0; i < data_size; ++i) {
+            a[i] = T{ops.a[i]};
+            b[i] = T{ops.b[i]};
+        }
         for (std::size_t i = 0; i < data_size; ++i) {
             expect(std::abs(static_cast<double>(a[i] * b[i]) - ops.a[i] * ops.b[i]) < 0.01,
                    "boost.decimal mul disagrees with the double oracle");
@@ -302,8 +319,8 @@ int main(int argc, char** argv) {
         row("std", "double", "binary_float", "format", [&](std::size_t n) {
             char buffer[64];
             for (std::size_t i = 0; i < n; ++i) {
-                auto [end, ec] = std::to_chars(buffer, buffer + sizeof buffer,
-                                               a[i & (data_size - 1)], std::chars_format::fixed, 4);
+                auto [end, ec] =
+                    std::to_chars(buffer, buffer + sizeof buffer, a[i & (data_size - 1)], std::chars_format::fixed, 4);
                 escape(end);
             }
         });
@@ -345,8 +362,7 @@ int main(int argc, char** argv) {
         });
         row("fixedwide", "Fixed64<12>", "raw_baseline", "from_bytes_little", [&](std::size_t n) {
             const auto bytes = fixedwide::to_bytes<fixedwide::endian::little>(a[0]);
-            for (std::size_t i = 0; i < n; ++i)
-                escape(*fixedwide::from_bytes<T, fixedwide::endian::little>(bytes));
+            for (std::size_t i = 0; i < n; ++i) escape(*fixedwide::from_bytes<T, fixedwide::endian::little>(bytes));
         });
     }
 

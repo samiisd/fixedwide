@@ -23,7 +23,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     char buf[128];
     auto f64 = parse<Fixed64<4>>(text, mode);
     if (f64) {
-        auto formatted = to_chars(buf, sizeof(buf), *f64, FormatOptions{.digits = 4, .rounding = Rounding::nearest_even});
+        auto formatted =
+            to_chars(buf, sizeof(buf), *f64, FormatOptions{.digits = 4, .rounding = Rounding::nearest_even});
         if (formatted) {
             auto reparsed = parse<Fixed64<4>>(std::string_view(buf, *formatted), Rounding::nearest_even);
             if (!reparsed || *reparsed != *f64) std::abort();
@@ -32,7 +33,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 
     auto f128 = parse<Fixed128<12>>(text, mode);
     if (f128) {
-        auto formatted = to_chars(buf, sizeof(buf), *f128, FormatOptions{.digits = 12, .rounding = Rounding::nearest_even});
+        auto formatted =
+            to_chars(buf, sizeof(buf), *f128, FormatOptions{.digits = 12, .rounding = Rounding::nearest_even});
         if (formatted) {
             auto reparsed = parse<Fixed128<12>>(std::string_view(buf, *formatted), Rounding::nearest_even);
             if (!reparsed || *reparsed != *f128) std::abort();
@@ -41,7 +43,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 
     auto f256 = parse<Fixed256<18>>(text, mode);
     if (f256) {
-        auto formatted = to_chars(buf, sizeof(buf), *f256, FormatOptions{.digits = 18, .rounding = Rounding::nearest_even});
+        auto formatted =
+            to_chars(buf, sizeof(buf), *f256, FormatOptions{.digits = 18, .rounding = Rounding::nearest_even});
         if (formatted) {
             auto reparsed = parse<Fixed256<18>>(std::string_view(buf, *formatted), Rounding::nearest_even);
             if (!reparsed || *reparsed != *f256) std::abort();
@@ -68,7 +71,10 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         auto d = sub(a, b);
         auto p = mul(a, b, mode);
         auto q = div(a, b, mode);
-        (void)s; (void)d; (void)p; (void)q;
+        (void)s;
+        (void)d;
+        (void)p;
+        (void)q;
     }
 
     if (size >= 32) {
@@ -92,10 +98,11 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 
         auto p128 = mul(f128_1, f128_2, mode);
         auto q128 = div(f128_1, f128_2, mode);
-        (void)p128; (void)q128;
+        (void)p128;
+        (void)q128;
 
         auto mixed_res = mul_to<Fixed128<12>>(Fixed64<4>::from_raw(static_cast<std::int64_t>(i1.low)),
-                                               Fixed64<8>::from_raw(static_cast<std::int64_t>(i2.low)), mode);
+                                              Fixed64<8>::from_raw(static_cast<std::int64_t>(i2.low)), mode);
         (void)mixed_res;
     }
 

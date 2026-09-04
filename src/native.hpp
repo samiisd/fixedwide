@@ -37,8 +37,7 @@ inline constexpr i128 i128_max = static_cast<i128>(u128_max >> 1);
     return static_cast<i128>((static_cast<u128>(v.high) << 64) | v.low);
 }
 [[nodiscard]] constexpr wide::int128 store(i128 v) noexcept {
-    return wide::int128(static_cast<std::uint64_t>(v),
-                        static_cast<std::uint64_t>(static_cast<u128>(v) >> 64));
+    return wide::int128(static_cast<std::uint64_t>(v), static_cast<std::uint64_t>(static_cast<u128>(v) >> 64));
 }
 [[nodiscard]] constexpr wide::uint128 store(u128 v) noexcept {
     return wide::uint128(static_cast<std::uint64_t>(v), static_cast<std::uint64_t>(v >> 64));
@@ -78,7 +77,10 @@ struct u256 {
     return result;
 }
 
-struct Quotient { u128 quotient; u128 remainder; };
+struct Quotient {
+    u128 quotient;
+    u128 remainder;
+};
 
 // General 128/64: reduce the high limb first, then div128by64's precondition holds.
 [[nodiscard]] inline Quotient divide128by64(u128 numerator, std::uint64_t divisor) noexcept {
@@ -108,8 +110,8 @@ struct Quotient { u128 quotient; u128 remainder; };
 
 // Append one radix-2^64 digit to a remainder smaller than the normalized
 // two-limb divisor. Returns one quotient digit and replaces the remainder.
-[[nodiscard]] inline std::uint64_t divide_digit(u128& remainder, std::uint64_t next,
-                                                std::uint64_t v0, std::uint64_t v1) noexcept {
+[[nodiscard]] inline std::uint64_t divide_digit(u128& remainder, std::uint64_t next, std::uint64_t v0,
+                                                std::uint64_t v1) noexcept {
     const auto high = static_cast<std::uint64_t>(remainder >> 64);
     const auto low = static_cast<std::uint64_t>(remainder);
     std::uint64_t quotient, rhat;
@@ -138,8 +140,8 @@ struct Quotient { u128 quotient; u128 remainder; };
 // 256/128 with a quotient proven to fit 128 bits. always_inline so callers with
 // a constant divisor keep specialising it instead of copying 256-bit temporaries
 // through an extra call ABI.
-[[nodiscard, gnu::always_inline]] inline std::expected<Quotient, ArithmeticError>
-divide_narrow(u256 numerator, u128 divisor) noexcept {
+[[nodiscard, gnu::always_inline]] inline std::expected<Quotient, ArithmeticError> divide_narrow(u256 numerator,
+                                                                                                u128 divisor) noexcept {
     if (divisor == 0) return std::unexpected(ArithmeticError::division_by_zero);
     // floor(N/d) < 2^128 iff floor(N/2^128) < d: exact, not a heuristic.
     if (numerator.hi >= divisor) return std::unexpected(ArithmeticError::overflow);
@@ -152,8 +154,7 @@ divide_narrow(u256 numerator, u128 divisor) noexcept {
         const auto qlow = div128by64(remainder, static_cast<std::uint64_t>(numerator.lo), d, remainder);
         return Quotient{(static_cast<u128>(qhigh) << 64) | qlow, remainder};
     }
-    const auto shift = static_cast<unsigned>(
-        std::countl_zero(static_cast<std::uint64_t>(divisor >> 64)));
+    const auto shift = static_cast<unsigned>(std::countl_zero(static_cast<std::uint64_t>(divisor >> 64)));
     const u128 normalized_divisor = divisor << shift;
     const auto v0 = static_cast<std::uint64_t>(normalized_divisor);
     const auto v1 = static_cast<std::uint64_t>(normalized_divisor >> 64);
@@ -163,8 +164,8 @@ divide_narrow(u256 numerator, u128 divisor) noexcept {
     std::uint64_t qhigh = 0;
     // Compare the top 192 bits of the numerator against the divisor: if smaller,
     // the quotient fits 64 bits and its leading digit is known to be zero.
-    const bool quotient_fits_64 = (numerator.hi >> 64) == 0 &&
-        (((numerator.hi << 64) | (numerator.lo >> 64)) < divisor);
+    const bool quotient_fits_64 =
+        (numerator.hi >> 64) == 0 && (((numerator.hi << 64) | (numerator.lo >> 64)) < divisor);
     if (quotient_fits_64) {
         remainder = (remainder << 64) | middle;
     } else {
@@ -174,11 +175,11 @@ divide_narrow(u256 numerator, u128 divisor) noexcept {
     return Quotient{(static_cast<u128>(qhigh) << 64) | qlow, remainder >> shift};
 }
 
-[[nodiscard]] inline std::expected<i128, ArithmeticError> finish(
-    Quotient value, u128 divisor, bool negative, Rounding rounding,
-    u128 positive_limit = static_cast<u128>(i128_max)) noexcept {
-    const auto rounded = round_magnitude(value.quotient, value.remainder, divisor, negative,
-                                         rounding, positive_limit + static_cast<unsigned>(negative));
+[[nodiscard]] inline std::expected<i128, ArithmeticError>
+finish(Quotient value, u128 divisor, bool negative, Rounding rounding,
+       u128 positive_limit = static_cast<u128>(i128_max)) noexcept {
+    const auto rounded = round_magnitude(value.quotient, value.remainder, divisor, negative, rounding,
+                                         positive_limit + static_cast<unsigned>(negative));
     if (!rounded) return std::unexpected(rounded.error());
     return apply_sign(*rounded, negative);
 }

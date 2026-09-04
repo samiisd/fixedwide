@@ -53,7 +53,12 @@ if(MSVC)
     target_compile_options(fixedwide PRIVATE /W4 /permissive- /utf-8 /Zc:preprocessor)
     target_compile_options(fixedwide PUBLIC /Zc:__cplusplus)
 else()
-    target_compile_options(fixedwide PRIVATE -Wall -Wextra -Wconversion -Wshadow)
+    # -Wsign-conversion is on because this library is nothing but integer
+    # index and width arithmetic: a signed/unsigned slip here is a wrong answer,
+    # not a style question. The `warnings` CI job compiles the same set with
+    # -Werror over every backend.
+    target_compile_options(fixedwide PRIVATE
+        -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast)
 endif()
 
 set_target_properties(fixedwide PROPERTIES

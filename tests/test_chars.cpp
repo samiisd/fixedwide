@@ -55,7 +55,8 @@ void test_chars_formatting() {
     CHECK(res_neg.has_value() && std::string_view(buf, *res_neg) == "-1.50");
 
     // Trim trailing zeros
-    auto res_trim = to_chars(buf, sizeof(buf), Fixed64<4>::from_raw(1234500LL), FormatOptions{.trim_trailing_zeros = true});
+    auto res_trim =
+        to_chars(buf, sizeof(buf), Fixed64<4>::from_raw(1234500LL), FormatOptions{.trim_trailing_zeros = true});
     CHECK(res_trim.has_value() && std::string_view(buf, *res_trim) == "123.45");
 
     // Buffer too small does not modify buffer

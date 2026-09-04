@@ -12,7 +12,7 @@ mul.Fixed128,52.000
 div.Fixed128,131.419
 mul_div.Fixed128,47.000
 quantize.Fixed128,155.000
-mul.Fixed256,702.000
+mul.Fixed256,697.000
 div.Fixed256,523.024
 quantize.Fixed256,557.000
 mul_to.native,52.617

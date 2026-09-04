@@ -21,22 +21,24 @@ jobs:
       # verifying the manifest inside the extracted tree. Do not reimplement it
       # here: the script is the thing that is tested locally.
       - name: Build and verify the archive
+        # scripts/release.sh exports the tracked tree into a staging directory,
+        # generates the manifest from what is actually staged, zips it, and then
+        # verifies and builds a fresh extraction. Every check in it is fatal.
         run: ./scripts/release.sh
-      - name: Build and test the extracted archive
-        run: |
-          version=$(sed -n 's/.*FIXEDWIDE_VERSION_STRING "\(.*\)"/\1/p' include/fixedwide/version.hpp)
-          unzip -q "fixedwide-${version}-source.zip" -d /tmp/extracted
-          cmake -S "/tmp/extracted/fixedwide-${version}" -B /tmp/extracted/build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-14 \
-            -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
-          cmake --build /tmp/extracted/build
-          ctest --test-dir /tmp/extracted/build --output-on-failure
       - name: Publish
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # The zip, its checksum and the verification log are three separate
+          # assets. None of them lives inside the archive, so nothing describes
+          # itself and no asset can be stale relative to another.
           gh release create "${GITHUB_REF_NAME}" \
             --title "${GITHUB_REF_NAME}" \
             --notes-file <(sed -n "/^## \[/,/^## \[/p" CHANGELOG.md | head -n -1) \
-            fixedwide-*-source.zip SHA256SUMS
+            dist/*
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: release-assets
+          path: dist/

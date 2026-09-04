@@ -56,14 +56,20 @@ struct Splitmix {
 // result of each operation and cannot hoist the loop out.
 volatile std::uint64_t sink = 0;
 
-std::uint64_t digest(std::int64_t v) { return static_cast<std::uint64_t>(v); }
-std::uint64_t digest(fw::wide::int128 v) { return v.low ^ v.high; }
+std::uint64_t digest(std::int64_t v) {
+    return static_cast<std::uint64_t>(v);
+}
+std::uint64_t digest(fw::wide::int128 v) {
+    return v.low ^ v.high;
+}
 std::uint64_t digest(fw::wide::int256 v) {
     return v.limbs[0] ^ v.limbs[1] ^ v.limbs[2] ^ v.limbs[3];
 }
 
 template<typename Fixed>
-std::uint64_t digest(Fixed v) { return digest(v.raw()); }
+std::uint64_t digest(Fixed v) {
+    return digest(v.raw());
+}
 
 // An expected<T, E>: fold both the value and the error into the sink, so the
 // error path is not optimised away either.
@@ -141,11 +147,11 @@ void run_format(std::uint64_t iterations, const Fixture& values) {
     sink = accumulator;
 }
 
-using Money64  = fw::Fixed64<12>;
+using Money64 = fw::Fixed64<12>;
 using Money128 = fw::Fixed128<18>;
 using Money256 = fw::Fixed256<38>;
-using Price    = fw::Fixed64<4>;
-using Rate     = fw::Fixed64<8>;
+using Price = fw::Fixed64<4>;
+using Rate = fw::Fixed64<8>;
 // Six decimals keeps Price x Rate inside the native mixed path; eighteen does
 // not, and that is the point of having both.
 using MixedFast = fw::Fixed128<6>;
@@ -158,32 +164,77 @@ constexpr auto nearest = fw::Rounding::nearest_even;
 // ---------------------------------------------------------------------------
 bool dispatch(std::string_view name, std::uint64_t n) {
     // 26 raw bits keeps a 12-decimal product inside 64 bits.
-    static const auto a64  = make_fixture<Money64>(1, 26);
-    static const auto b64  = make_fixture<Money64>(2, 26);
+    static const auto a64 = make_fixture<Money64>(1, 26);
+    static const auto b64 = make_fixture<Money64>(2, 26);
     static const auto a128 = make_fixture<Money128>(3, 56);
     static const auto b128 = make_fixture<Money128>(4, 56);
     static const auto a256 = make_fixture<Money256>(5, 60);
     static const auto b256 = make_fixture<Money256>(6, 60);
     static const auto price = make_fixture<Price>(7, 30);
-    static const auto rate  = make_fixture<Rate>(8, 30);
+    static const auto rate = make_fixture<Rate>(8, 30);
 
-    if (name == "add.Fixed64")      { run(n, a64, b64, [](auto x, auto y) { return fw::add(x, y); }); return true; }
-    if (name == "sub.Fixed64")      { run(n, a64, b64, [](auto x, auto y) { return fw::sub(x, y); }); return true; }
-    if (name == "mul.Fixed64")      { run(n, a64, b64, [](auto x, auto y) { return fw::mul(x, y, nearest); }); return true; }
-    if (name == "div.Fixed64")      { run(n, a64, b64, [](auto x, auto y) { return fw::div(x, y, nearest); }); return true; }
-    if (name == "mul_div.Fixed64")  { run(n, a64, b64, [](auto x, auto y) { return fw::mul_div(x, y, y, nearest); }); return true; }
-    if (name == "quantize.Fixed64") { run_unary(n, a64, [](auto x) { return fw::quantize(x, 4, nearest); }); return true; }
-    if (name == "remainder.Fixed64"){ run(n, a64, b64, [](auto x, auto y) { return fw::remainder(x, y); }); return true; }
+    if (name == "add.Fixed64") {
+        run(n, a64, b64, [](auto x, auto y) { return fw::add(x, y); });
+        return true;
+    }
+    if (name == "sub.Fixed64") {
+        run(n, a64, b64, [](auto x, auto y) { return fw::sub(x, y); });
+        return true;
+    }
+    if (name == "mul.Fixed64") {
+        run(n, a64, b64, [](auto x, auto y) { return fw::mul(x, y, nearest); });
+        return true;
+    }
+    if (name == "div.Fixed64") {
+        run(n, a64, b64, [](auto x, auto y) { return fw::div(x, y, nearest); });
+        return true;
+    }
+    if (name == "mul_div.Fixed64") {
+        run(n, a64, b64, [](auto x, auto y) { return fw::mul_div(x, y, y, nearest); });
+        return true;
+    }
+    if (name == "quantize.Fixed64") {
+        run_unary(n, a64, [](auto x) { return fw::quantize(x, 4, nearest); });
+        return true;
+    }
+    if (name == "remainder.Fixed64") {
+        run(n, a64, b64, [](auto x, auto y) { return fw::remainder(x, y); });
+        return true;
+    }
 
-    if (name == "add.Fixed128")     { run(n, a128, b128, [](auto x, auto y) { return fw::add(x, y); }); return true; }
-    if (name == "mul.Fixed128")     { run(n, a128, b128, [](auto x, auto y) { return fw::mul(x, y, nearest); }); return true; }
-    if (name == "div.Fixed128")     { run(n, a128, b128, [](auto x, auto y) { return fw::div(x, y, nearest); }); return true; }
-    if (name == "mul_div.Fixed128") { run(n, a128, b128, [](auto x, auto y) { return fw::mul_div(x, y, y, nearest); }); return true; }
-    if (name == "quantize.Fixed128"){ run_unary(n, a128, [](auto x) { return fw::quantize(x, 6, nearest); }); return true; }
+    if (name == "add.Fixed128") {
+        run(n, a128, b128, [](auto x, auto y) { return fw::add(x, y); });
+        return true;
+    }
+    if (name == "mul.Fixed128") {
+        run(n, a128, b128, [](auto x, auto y) { return fw::mul(x, y, nearest); });
+        return true;
+    }
+    if (name == "div.Fixed128") {
+        run(n, a128, b128, [](auto x, auto y) { return fw::div(x, y, nearest); });
+        return true;
+    }
+    if (name == "mul_div.Fixed128") {
+        run(n, a128, b128, [](auto x, auto y) { return fw::mul_div(x, y, y, nearest); });
+        return true;
+    }
+    if (name == "quantize.Fixed128") {
+        run_unary(n, a128, [](auto x) { return fw::quantize(x, 6, nearest); });
+        return true;
+    }
 
-    if (name == "mul.Fixed256")     { run(n, a256, b256, [](auto x, auto y) { return fw::mul(x, y, nearest); }); return true; }
-    if (name == "div.Fixed256")     { run(n, a256, b256, [](auto x, auto y) { return fw::div(x, y, nearest); }); return true; }
-    if (name == "quantize.Fixed256"){ run_unary(n, a256, [](auto x) { return fw::quantize(x, 12, nearest); }); return true; }
+    if (name == "mul.Fixed256") {
+        run(n, a256, b256, [](auto x, auto y) { return fw::mul(x, y, nearest); });
+        return true;
+    }
+    if (name == "div.Fixed256") {
+        run(n, a256, b256, [](auto x, auto y) { return fw::div(x, y, nearest); });
+        return true;
+    }
+    if (name == "quantize.Fixed256") {
+        run_unary(n, a256, [](auto x) { return fw::quantize(x, 12, nearest); });
+        return true;
+    }
 
     // Cross-scale. These come in pairs on purpose.
     //
@@ -193,14 +244,33 @@ bool dispatch(std::string_view name, std::uint64_t n) {
     // which one you get is decided at compile time by the widths and scales.
     // Both are measured, so neither can regress unnoticed and the cliff itself
     // stays visible. docs/benchmarks.md explains where the edge is.
-    if (name == "mul_to.native")  { run(n, price, rate, [](auto x, auto y) { return fw::mul_to<MixedFast>(x, y, nearest); }); return true; }
-    if (name == "div_to.native")  { run(n, price, rate, [](auto x, auto y) { return fw::div_to<MixedFast>(x, y, nearest); }); return true; }
-    if (name == "add_to.native")  { run(n, price, rate, [](auto x, auto y) { return fw::add_to<MixedFast>(x, y, nearest); }); return true; }
-    if (name == "mul_to.general") { run(n, price, rate, [](auto x, auto y) { return fw::mul_to<Money128>(x, y, nearest); }); return true; }
-    if (name == "div_to.general") { run(n, price, rate, [](auto x, auto y) { return fw::div_to<Money128>(x, y, nearest); }); return true; }
-    if (name == "compare.Price.Rate") { run(n, price, rate, [](auto x, auto y) -> std::int64_t { return (x <=> y) == std::strong_ordering::less; }); return true; }
+    if (name == "mul_to.native") {
+        run(n, price, rate, [](auto x, auto y) { return fw::mul_to<MixedFast>(x, y, nearest); });
+        return true;
+    }
+    if (name == "div_to.native") {
+        run(n, price, rate, [](auto x, auto y) { return fw::div_to<MixedFast>(x, y, nearest); });
+        return true;
+    }
+    if (name == "add_to.native") {
+        run(n, price, rate, [](auto x, auto y) { return fw::add_to<MixedFast>(x, y, nearest); });
+        return true;
+    }
+    if (name == "mul_to.general") {
+        run(n, price, rate, [](auto x, auto y) { return fw::mul_to<Money128>(x, y, nearest); });
+        return true;
+    }
+    if (name == "div_to.general") {
+        run(n, price, rate, [](auto x, auto y) { return fw::div_to<Money128>(x, y, nearest); });
+        return true;
+    }
+    if (name == "compare.Price.Rate") {
+        run(n, price, rate, [](auto x, auto y) -> std::int64_t { return (x <=> y) == std::strong_ordering::less; });
+        return true;
+    }
     if (name == "fixed_cast.Price.MixedFast") {
-        run_unary(n, price, [](auto x) { return fw::fixed_cast<MixedFast>(x, nearest); }); return true;
+        run_unary(n, price, [](auto x) { return fw::fixed_cast<MixedFast>(x, nearest); });
+        return true;
     }
 
     // Text. The parse fixture is strings, so it does not go through run().
@@ -226,8 +296,14 @@ bool dispatch(std::string_view name, std::uint64_t n) {
     // The which-type test is resolved before the loop, not inside it. A
     // string_view comparison per iteration scales with n, so it survives the
     // two-point subtraction and would be counted as part of to_chars.
-    if (name == "to_chars.Fixed64") { run_format(n, a64); return true; }
-    if (name == "to_chars.Fixed128") { run_format(n, a128); return true; }
+    if (name == "to_chars.Fixed64") {
+        run_format(n, a64);
+        return true;
+    }
+    if (name == "to_chars.Fixed128") {
+        run_format(n, a128);
+        return true;
+    }
 
     // Raw machine types, as a floor. Wall-clock cannot separate these -- they
     // are all a fraction of a nanosecond, below the resolution of a timed loop
@@ -289,16 +365,36 @@ bool dispatch(std::string_view name, std::uint64_t n) {
 
 constexpr const char* workloads[] = {
     "baseline.empty",
-    "add.Fixed64", "sub.Fixed64", "mul.Fixed64", "div.Fixed64", "mul_div.Fixed64",
-    "quantize.Fixed64", "remainder.Fixed64",
-    "add.Fixed128", "mul.Fixed128", "div.Fixed128", "mul_div.Fixed128", "quantize.Fixed128",
-    "mul.Fixed256", "div.Fixed256", "quantize.Fixed256",
-    "mul_to.native", "div_to.native", "add_to.native",
-    "mul_to.general", "div_to.general",
-    "compare.Price.Rate", "fixed_cast.Price.MixedFast",
-    "parse.Fixed64", "to_chars.Fixed64", "to_chars.Fixed128",
-    "add.int64_raw", "mul.int64_raw", "div.int64_raw",
-    "to_bytes.Fixed64", "memcpy.int64_raw",
+    "add.Fixed64",
+    "sub.Fixed64",
+    "mul.Fixed64",
+    "div.Fixed64",
+    "mul_div.Fixed64",
+    "quantize.Fixed64",
+    "remainder.Fixed64",
+    "add.Fixed128",
+    "mul.Fixed128",
+    "div.Fixed128",
+    "mul_div.Fixed128",
+    "quantize.Fixed128",
+    "mul.Fixed256",
+    "div.Fixed256",
+    "quantize.Fixed256",
+    "mul_to.native",
+    "div_to.native",
+    "add_to.native",
+    "mul_to.general",
+    "div_to.general",
+    "compare.Price.Rate",
+    "fixed_cast.Price.MixedFast",
+    "parse.Fixed64",
+    "to_chars.Fixed64",
+    "to_chars.Fixed128",
+    "add.int64_raw",
+    "mul.int64_raw",
+    "div.int64_raw",
+    "to_bytes.Fixed64",
+    "memcpy.int64_raw",
 };
 
 } // namespace
@@ -309,8 +405,7 @@ int main(int argc, char** argv) {
         return 0;
     }
     if (argc != 3) {
-        std::fprintf(stderr, "usage: %s <workload> <iterations>\n       %s --list\n",
-                     argv[0], argv[0]);
+        std::fprintf(stderr, "usage: %s <workload> <iterations>\n       %s --list\n", argv[0], argv[0]);
         return 2;
     }
     const std::uint64_t iterations = std::strtoull(argv[2], nullptr, 10);

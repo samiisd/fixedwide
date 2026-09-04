@@ -19,8 +19,8 @@ template<class UInt>
 }
 
 template<class UInt>
-[[nodiscard]] constexpr std::expected<UInt, ArithmeticError> round_magnitude(
-    UInt quotient, UInt remainder, UInt divisor, bool negative, Rounding rounding, UInt limit) noexcept {
+[[nodiscard]] constexpr std::expected<UInt, ArithmeticError>
+round_magnitude(UInt quotient, UInt remainder, UInt divisor, bool negative, Rounding rounding, UInt limit) noexcept {
     if (quotient > limit) return std::unexpected(ArithmeticError::overflow);
     if (remainder == 0) return quotient;
     bool increment = false;
@@ -28,14 +28,9 @@ template<class UInt>
     case Rounding::toward_zero: break;
     case Rounding::floor: increment = negative; break;
     case Rounding::ceil: increment = !negative; break;
-    case Rounding::nearest_even:
-        increment = nearest_even_increment(quotient, remainder, divisor);
-        break;
-    case Rounding::nearest_away:
-        increment = (remainder >= divisor - remainder);
-        break;
-    case Rounding::exact:
-        return std::unexpected(ArithmeticError::inexact);
+    case Rounding::nearest_even: increment = nearest_even_increment(quotient, remainder, divisor); break;
+    case Rounding::nearest_away: increment = (remainder >= divisor - remainder); break;
+    case Rounding::exact: return std::unexpected(ArithmeticError::inexact);
     }
     // Add branchlessly. Whether a rounding mode increments is a coin flip on
     // real data, so branching on it costs a mispredict on roughly every
@@ -46,27 +41,25 @@ template<class UInt>
     return quotient + static_cast<UInt>(increment);
 }
 
-inline constexpr std::uint64_t pow10_u64[19] = {
-    1ULL,
-    10ULL,
-    100ULL,
-    1'000ULL,
-    10'000ULL,
-    100'000ULL,
-    1'000'000ULL,
-    10'000'000ULL,
-    100'000'000ULL,
-    1'000'000'000ULL,
-    10'000'000'000ULL,
-    100'000'000'000ULL,
-    1'000'000'000'000ULL,
-    10'000'000'000'000ULL,
-    100'000'000'000'000ULL,
-    1'000'000'000'000'000ULL,
-    10'000'000'000'000'000ULL,
-    100'000'000'000'000'000ULL,
-    1'000'000'000'000'000'000ULL
-};
+inline constexpr std::uint64_t pow10_u64[19] = {1ULL,
+                                                10ULL,
+                                                100ULL,
+                                                1'000ULL,
+                                                10'000ULL,
+                                                100'000ULL,
+                                                1'000'000ULL,
+                                                10'000'000ULL,
+                                                100'000'000ULL,
+                                                1'000'000'000ULL,
+                                                10'000'000'000ULL,
+                                                100'000'000'000ULL,
+                                                1'000'000'000'000ULL,
+                                                10'000'000'000'000ULL,
+                                                100'000'000'000'000ULL,
+                                                1'000'000'000'000'000ULL,
+                                                10'000'000'000'000'000ULL,
+                                                100'000'000'000'000'000ULL,
+                                                1'000'000'000'000'000'000ULL};
 
 [[nodiscard]] constexpr std::uint64_t pow10(unsigned exp) noexcept {
     return exp < 19 ? pow10_u64[exp] : 0ULL;
@@ -147,23 +140,25 @@ inline constexpr unsigned dynamic_decimals = ~0u;
 
 template<unsigned D, typename T>
 [[nodiscard]] constexpr T scale_of(unsigned decimals) noexcept {
-    if constexpr (D == dynamic_decimals || D >= pow10_limit<T>) return pow10_wide<T>(decimals);
-    else return pow10_table<T, pow10_limit<T>>[D];
+    if constexpr (D == dynamic_decimals || D >= pow10_limit<T>)
+        return pow10_wide<T>(decimals);
+    else
+        return pow10_table<T, pow10_limit<T>>[D];
 }
 
 template<typename F>
 [[nodiscard]] constexpr decltype(auto) with_decimals(unsigned decimals, F&& f) {
     switch (decimals) {
-    case  0: return f(std::integral_constant<unsigned,  0>{});
-    case  1: return f(std::integral_constant<unsigned,  1>{});
-    case  2: return f(std::integral_constant<unsigned,  2>{});
-    case  3: return f(std::integral_constant<unsigned,  3>{});
-    case  4: return f(std::integral_constant<unsigned,  4>{});
-    case  5: return f(std::integral_constant<unsigned,  5>{});
-    case  6: return f(std::integral_constant<unsigned,  6>{});
-    case  7: return f(std::integral_constant<unsigned,  7>{});
-    case  8: return f(std::integral_constant<unsigned,  8>{});
-    case  9: return f(std::integral_constant<unsigned,  9>{});
+    case 0: return f(std::integral_constant<unsigned, 0>{});
+    case 1: return f(std::integral_constant<unsigned, 1>{});
+    case 2: return f(std::integral_constant<unsigned, 2>{});
+    case 3: return f(std::integral_constant<unsigned, 3>{});
+    case 4: return f(std::integral_constant<unsigned, 4>{});
+    case 5: return f(std::integral_constant<unsigned, 5>{});
+    case 6: return f(std::integral_constant<unsigned, 6>{});
+    case 7: return f(std::integral_constant<unsigned, 7>{});
+    case 8: return f(std::integral_constant<unsigned, 8>{});
+    case 9: return f(std::integral_constant<unsigned, 9>{});
     case 10: return f(std::integral_constant<unsigned, 10>{});
     case 11: return f(std::integral_constant<unsigned, 11>{});
     case 12: return f(std::integral_constant<unsigned, 12>{});
@@ -178,41 +173,34 @@ template<typename F>
 }
 
 // Low-level primitives for x86-64 / native vs portable
-#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__)) && !defined(FIXEDWIDE_FORCE_PORTABLE)
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__)) &&                           \
+    !defined(FIXEDWIDE_FORCE_PORTABLE)
 
-[[nodiscard]] inline std::uint64_t div128by64(std::uint64_t high, std::uint64_t low,
-                                              std::uint64_t divisor, std::uint64_t& remainder) noexcept {
+[[nodiscard]] inline std::uint64_t div128by64(std::uint64_t high, std::uint64_t low, std::uint64_t divisor,
+                                              std::uint64_t& remainder) noexcept {
     std::uint64_t quotient;
-    __asm__("divq %[divisor]"
-            : "=a"(quotient), "=d"(remainder)
-            : "a"(low), "d"(high), [divisor] "r"(divisor)
-            : "cc");
+    __asm__("divq %[divisor]" : "=a"(quotient), "=d"(remainder) : "a"(low), "d"(high), [divisor] "r"(divisor) : "cc");
     return quotient;
 }
 
-struct SignedQuotient64 { std::int64_t quotient; std::int64_t remainder; };
-[[nodiscard]] inline SignedQuotient64 div_signed64(std::int64_t high, std::uint64_t low, std::int64_t divisor) noexcept {
+struct SignedQuotient64 {
+    std::int64_t quotient;
+    std::int64_t remainder;
+};
+[[nodiscard]] inline SignedQuotient64 div_signed64(std::int64_t high, std::uint64_t low,
+                                                   std::int64_t divisor) noexcept {
     std::int64_t quotient, remainder;
-    __asm__("idivq %[divisor]"
-            : "=a"(quotient), "=d"(remainder)
-            : "a"(low), "d"(high), [divisor] "r"(divisor)
-            : "cc");
+    __asm__("idivq %[divisor]" : "=a"(quotient), "=d"(remainder) : "a"(low), "d"(high), [divisor] "r"(divisor) : "cc");
     return {quotient, remainder};
 }
 
 inline void mul64x64(std::uint64_t u, std::uint64_t v, std::uint64_t& hi, std::uint64_t& lo) noexcept {
-    __asm__("mulq %[v]"
-            : "=a"(lo), "=d"(hi)
-            : "a"(u), [v] "r"(v)
-            : "cc");
+    __asm__("mulq %[v]" : "=a"(lo), "=d"(hi) : "a"(u), [v] "r"(v) : "cc");
 }
 
 inline void imul64x64(std::int64_t u, std::int64_t v, std::int64_t& hi, std::uint64_t& lo) noexcept {
     std::uint64_t h;
-    __asm__("imulq %[v]"
-            : "=a"(lo), "=d"(h)
-            : "a"(u), [v] "r"(v)
-            : "cc");
+    __asm__("imulq %[v]" : "=a"(lo), "=d"(h) : "a"(u), [v] "r"(v) : "cc");
     hi = static_cast<std::int64_t>(h);
 }
 
@@ -238,8 +226,8 @@ inline void mul64x64(std::uint64_t u, std::uint64_t v, std::uint64_t& hi, std::u
     lo = (w1 << 32) | (w0 & 0xFFFF'FFFFULL);
 }
 
-[[nodiscard]] inline std::uint64_t div128by64(std::uint64_t high, std::uint64_t low,
-                                              std::uint64_t divisor, std::uint64_t& remainder) noexcept {
+[[nodiscard]] inline std::uint64_t div128by64(std::uint64_t high, std::uint64_t low, std::uint64_t divisor,
+                                              std::uint64_t& remainder) noexcept {
     // High must be strictly less than divisor.
     // Binary long division: 64 steps
     std::uint64_t q = 0;
@@ -256,8 +244,12 @@ inline void mul64x64(std::uint64_t u, std::uint64_t v, std::uint64_t& hi, std::u
     return q;
 }
 
-struct SignedQuotient64 { std::int64_t quotient; std::int64_t remainder; };
-[[nodiscard]] inline SignedQuotient64 div_signed64(std::int64_t high, std::uint64_t low, std::int64_t divisor) noexcept {
+struct SignedQuotient64 {
+    std::int64_t quotient;
+    std::int64_t remainder;
+};
+[[nodiscard]] inline SignedQuotient64 div_signed64(std::int64_t high, std::uint64_t low,
+                                                   std::int64_t divisor) noexcept {
     bool neg_num = high < 0;
     bool neg_den = divisor < 0;
     std::uint64_t uhi = static_cast<std::uint64_t>(high);
@@ -290,7 +282,10 @@ inline void imul64x64(std::int64_t u, std::int64_t v, std::int64_t& hi, std::uin
 
 #endif
 
-struct Quotient128 { wide::uint128 quotient; wide::uint128 remainder; };
+struct Quotient128 {
+    wide::uint128 quotient;
+    wide::uint128 remainder;
+};
 
 [[nodiscard]] inline Quotient128 divide128by64(wide::uint128 numerator, std::uint64_t divisor) noexcept {
     const auto high = numerator.high;
@@ -307,7 +302,8 @@ struct Quotient128 { wide::uint128 quotient; wide::uint128 remainder; };
     return {wide::uint128(qlow, qhigh), wide::uint128(remainder)};
 }
 
-[[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor, bool need_remainder = true) noexcept {
+[[nodiscard]] inline Quotient128 divide128(wide::uint128 numerator, wide::uint128 divisor,
+                                           [[maybe_unused]] bool need_remainder = true) noexcept {
     if (divisor.high == 0) return divide128by64(numerator, divisor.low);
     if (numerator < divisor) return {wide::uint128(0), numerator};
 
@@ -320,7 +316,7 @@ struct Quotient128 { wide::uint128 quotient; wide::uint128 remainder; };
 #else
     // Divisor >= 2^64 proves that quotient fits in 64 bits.
     // Binary search / Knuth D for 2 limbs by 2 limbs:
-    int shift = std::countl_zero(divisor.high);
+    const unsigned shift = static_cast<unsigned>(std::countl_zero(divisor.high));
     wide::uint128 norm_d = divisor << shift;
     wide::uint128 norm_n = numerator << shift;
     std::uint64_t v1 = norm_d.high;

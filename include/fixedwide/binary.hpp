@@ -110,8 +110,7 @@ void decode_limbs(std::uint64_t* limbs, const std::uint8_t* in, std::size_t num_
 ///
 /// \tparam Endian byte order; little by default.
 template<endian Endian = endian::little, std::size_t Bits, unsigned D>
-[[nodiscard]] inline std::array<std::uint8_t, Bits / 8>
-to_bytes(basic_fixed<Bits, D> value) noexcept {
+[[nodiscard]] inline std::array<std::uint8_t, Bits / 8> to_bytes(basic_fixed<Bits, D> value) noexcept {
     constexpr std::size_t N = Bits / 8;
     std::array<std::uint8_t, N> res;
     auto r = value.raw();
@@ -134,8 +133,7 @@ to_bytes(basic_fixed<Bits, D> value) noexcept {
 /// \return the value, or `BinaryError::wrong_size` when the span is not
 ///         exactly `Target::bits / 8` bytes.
 template<typename Target, endian Endian = endian::little>
-[[nodiscard]] inline std::expected<Target, BinaryError>
-from_bytes(std::span<const std::uint8_t> bytes) noexcept {
+[[nodiscard]] inline std::expected<Target, BinaryError> from_bytes(std::span<const std::uint8_t> bytes) noexcept {
     constexpr std::size_t N = Target::bits / 8;
     if (bytes.size() != N) return std::unexpected(BinaryError::wrong_size);
     if constexpr (Target::bits <= 64) {

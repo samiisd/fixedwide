@@ -1,0 +1,38 @@
+# Chosen to match the code that was already here, so adopting it was a
+# whitespace-only change rather than a rewrite: 4-space indent, attached braces,
+# pointers bound to the type. ColumnLimit is 120 because the existing 99th
+# percentile line is 115 characters and the tables of `if constexpr` branches
+# read worse when wrapped.
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+ColumnLimit: 120
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+AccessModifierOffset: -4
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Empty
+
+BreakBeforeBraces: Attach
+AlwaysBreakTemplateDeclarations: Yes
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: NextLine
+
+# The public headers document every declaration with /// comments; reflowing
+# them would fight the hand-wrapped prose.
+ReflowComments: false
+SortIncludes: Never
+
+SpaceAfterTemplateKeyword: false
+SpacesBeforeTrailingComments: 1
+IndentPPDirectives: None

@@ -34,7 +34,9 @@ using i128 = __int128;
 // Bits needed to hold 10^k, not a power of ten: 10^k < 16^k, so 4k always
 // suffices. Deliberately loose -- it only decides whether the fast path is
 // taken, and being conservative can never be wrong.
-[[nodiscard]] constexpr unsigned bits_for_pow10(unsigned k) noexcept { return 4 * k; }
+[[nodiscard]] constexpr unsigned bits_for_pow10(unsigned k) noexcept {
+    return 4 * k;
+}
 
 template<unsigned K>
 inline constexpr i128 pow10_v = [] {
@@ -48,9 +50,8 @@ inline constexpr i128 pow10_v = [] {
 template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
 [[nodiscard]] constexpr bool alignment_fits() noexcept {
     constexpr unsigned common = Da < Db ? Da : Db;
-    return BitsA <= 64 && BitsB <= 64
-        && BitsA + bits_for_pow10(Db - common) <= 126
-        && BitsB + bits_for_pow10(Da - common) <= 126;
+    return BitsA <= 64 && BitsB <= 64 && BitsA + bits_for_pow10(Db - common) <= 126 &&
+           BitsB + bits_for_pow10(Da - common) <= 126;
 }
 
 // Exact comparison with no division at all: scale both sides to a common
@@ -74,7 +75,10 @@ template<std::size_t Bits>
     return positive + static_cast<u128>(negative);
 }
 
-struct Divided { u128 quotient; u128 remainder; };
+struct Divided {
+    u128 quotient;
+    u128 remainder;
+};
 
 // Every divisor that reaches here is a power of ten, and the ones a mixed
 // operation actually uses fit 64 bits. A generic 128-by-128 divide is a
@@ -96,7 +100,8 @@ struct Divided { u128 quotient; u128 remainder; };
             std::uint64_t quotient_low, remainder;
             __asm__("divq %[divisor]"
                     : "=a"(quotient_low), "=d"(remainder)
-                    : "a"(low), "d"(partial), [divisor] "r"(d) : "cc");
+                    : "a"(low), "d"(partial), [divisor] "r"(d)
+                    : "cc");
             return {(static_cast<u128>(quotient_high) << 64) | quotient_low, u128{remainder}};
         }
     }
@@ -110,8 +115,8 @@ struct Divided { u128 quotient; u128 remainder; };
 // decision, so a result that cannot be represented is an overflow whatever the
 // mode -- not an `inexact` that happens to be checked first. Getting this order
 // wrong is how the fast path and the general kernel disagreed.
-[[nodiscard]] constexpr std::expected<i128, ArithmeticError>
-divide_rounded(i128 value, i128 divisor, Rounding rounding, u128 limit) noexcept {
+[[nodiscard]] constexpr std::expected<i128, ArithmeticError> divide_rounded(i128 value, i128 divisor, Rounding rounding,
+                                                                            u128 limit) noexcept {
     const bool negative = value < 0;
     const u128 magnitude = negative ? (u128{0} - static_cast<u128>(value)) : static_cast<u128>(value);
     const u128 denominator = static_cast<u128>(divisor);
@@ -144,11 +149,15 @@ divide_rounded(i128 value, i128 divisor, Rounding rounding, u128 limit) noexcept
 // The destination's representable range, as signed 128-bit bounds.
 template<std::size_t Bits>
 [[nodiscard]] constexpr i128 dest_max() noexcept {
-    if constexpr (Bits >= 128) return (static_cast<i128>(1) << 126) - 1 + (static_cast<i128>(1) << 126);
-    else return (static_cast<i128>(1) << (Bits - 1)) - 1;
+    if constexpr (Bits >= 128)
+        return (static_cast<i128>(1) << 126) - 1 + (static_cast<i128>(1) << 126);
+    else
+        return (static_cast<i128>(1) << (Bits - 1)) - 1;
 }
 template<std::size_t Bits>
-[[nodiscard]] constexpr i128 dest_min() noexcept { return -dest_max<Bits>() - 1; }
+[[nodiscard]] constexpr i128 dest_min() noexcept {
+    return -dest_max<Bits>() - 1;
+}
 
 template<std::size_t Bits>
 [[nodiscard]] constexpr std::expected<i128, ArithmeticError> check_range(i128 value) noexcept {
@@ -169,14 +178,16 @@ template<std::size_t Bits>
 // Widening the scale is a multiply; narrowing it is a divide and one rounding.
 template<std::size_t BitsSrc, unsigned Ds, std::size_t BitsDest, unsigned Dd>
 [[nodiscard]] constexpr bool cast_fits() noexcept {
-    if constexpr (BitsSrc > 64 || BitsDest > 128) return false;
-    else if constexpr (Dd >= Ds) return BitsSrc + bits_for_pow10(Dd - Ds) <= 126;
-    else return true;   // narrowing only shrinks the magnitude
+    if constexpr (BitsSrc > 64 || BitsDest > 128)
+        return false;
+    else if constexpr (Dd >= Ds)
+        return BitsSrc + bits_for_pow10(Dd - Ds) <= 126;
+    else
+        return true; // narrowing only shrinks the magnitude
 }
 
 template<std::size_t BitsSrc, unsigned Ds, std::size_t BitsDest, unsigned Dd, typename RawSrc>
-[[nodiscard]] constexpr std::expected<i128, ArithmeticError>
-cast(RawSrc a, Rounding rounding) noexcept {
+[[nodiscard]] constexpr std::expected<i128, ArithmeticError> cast(RawSrc a, Rounding rounding) noexcept {
     if constexpr (Dd >= Ds) {
         return check_range<BitsDest>(static_cast<i128>(a) * pow10_v<Dd - Ds>);
     } else {
@@ -188,8 +199,7 @@ cast(RawSrc a, Rounding rounding) noexcept {
 // --- add_to / sub_to -----------------------------------------------------
 // The exact sum lives at the larger of the two input scales; converting it to
 // the destination scale is the only place a rounding can occur.
-template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
-         std::size_t BitsDest, unsigned Dd>
+template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::size_t BitsDest, unsigned Dd>
 [[nodiscard]] constexpr bool add_fits() noexcept {
     constexpr unsigned common = Da < Db ? Da : Db;
     constexpr unsigned sum_scale = Da < Db ? Db : Da;
@@ -198,14 +208,14 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
     else if constexpr (Dd >= sum_scale) {
         constexpr unsigned aligned = (BitsA > BitsB ? BitsA : BitsB) + bits_for_pow10(sum_scale - common) + 1;
         return aligned + bits_for_pow10(Dd - sum_scale) <= 126;
-    } else return true;
+    } else
+        return true;
 }
 
-template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
-         std::size_t BitsDest, unsigned Dd, typename RawA, typename RawB>
-[[nodiscard]] constexpr std::expected<i128, ArithmeticError>
-add_sub(RawA a, RawB b, bool subtract, Rounding rounding) noexcept {
-    constexpr unsigned common = Da < Db ? Da : Db;
+template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::size_t BitsDest, unsigned Dd,
+         typename RawA, typename RawB>
+[[nodiscard]] constexpr std::expected<i128, ArithmeticError> add_sub(RawA a, RawB b, bool subtract,
+                                                                     Rounding rounding) noexcept {
     constexpr unsigned sum_scale = Da < Db ? Db : Da;
     const i128 lhs = static_cast<i128>(a) * pow10_v<sum_scale - Da>;
     const i128 rhs = static_cast<i128>(b) * pow10_v<sum_scale - Db>;
@@ -213,32 +223,31 @@ add_sub(RawA a, RawB b, bool subtract, Rounding rounding) noexcept {
     if constexpr (Dd >= sum_scale) {
         return check_range<BitsDest>(sum * pow10_v<Dd - sum_scale>);
     } else {
-        return divide_rounded(sum, pow10_v<sum_scale - Dd>, rounding,
-                              limit_magnitude_u128<BitsDest>(sum < 0));
+        return divide_rounded(sum, pow10_v<sum_scale - Dd>, rounding, limit_magnitude_u128<BitsDest>(sum < 0));
     }
 }
 
 // --- mul_to --------------------------------------------------------------
 // A signed 64x64 product always fits signed 128 bits, and it carries scale
 // Da + Db. Only the conversion to the destination scale rounds.
-template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
-         std::size_t BitsDest, unsigned Dd>
+template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::size_t BitsDest, unsigned Dd>
 [[nodiscard]] constexpr bool mul_fits() noexcept {
-    if constexpr (BitsA > 64 || BitsB > 64 || BitsDest > 128) return false;
-    else if constexpr (Dd >= Da + Db) return product_bits(BitsA, BitsB) + bits_for_pow10(Dd - Da - Db) <= 127;
-    else return true;
+    if constexpr (BitsA > 64 || BitsB > 64 || BitsDest > 128)
+        return false;
+    else if constexpr (Dd >= Da + Db)
+        return product_bits(BitsA, BitsB) + bits_for_pow10(Dd - Da - Db) <= 127;
+    else
+        return true;
 }
 
-template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
-         std::size_t BitsDest, unsigned Dd, typename RawA, typename RawB>
-[[nodiscard]] constexpr std::expected<i128, ArithmeticError>
-mul(RawA a, RawB b, Rounding rounding) noexcept {
+template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::size_t BitsDest, unsigned Dd,
+         typename RawA, typename RawB>
+[[nodiscard]] constexpr std::expected<i128, ArithmeticError> mul(RawA a, RawB b, Rounding rounding) noexcept {
     const i128 product = static_cast<i128>(a) * static_cast<i128>(b);
     if constexpr (Dd >= Da + Db) {
         return check_range<BitsDest>(product * pow10_v<Dd - Da - Db>);
     } else {
-        return divide_rounded(product, pow10_v<Da + Db - Dd>, rounding,
-                              limit_magnitude_u128<BitsDest>(product < 0));
+        return divide_rounded(product, pow10_v<Da + Db - Dd>, rounding, limit_magnitude_u128<BitsDest>(product < 0));
     }
 }
 
@@ -246,58 +255,66 @@ mul(RawA a, RawB b, Rounding rounding) noexcept {
 // a/b has scale Da - Db, so reaching the destination scale means scaling the
 // numerator by 10^(Dd + Db - Da), or the denominator by the inverse when that
 // exponent is negative. One rounding, at the end.
-template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
-         std::size_t BitsDest, unsigned Dd>
+template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::size_t BitsDest, unsigned Dd>
 [[nodiscard]] constexpr bool div_fits() noexcept {
-    if constexpr (BitsA > 64 || BitsB > 64 || BitsDest > 128) return false;
-    else if constexpr (Dd + Db >= Da) return BitsA + bits_for_pow10(Dd + Db - Da) <= 126;
-    else return BitsB + bits_for_pow10(Da - Db - Dd) <= 126;
+    if constexpr (BitsA > 64 || BitsB > 64 || BitsDest > 128)
+        return false;
+    else if constexpr (Dd + Db >= Da)
+        return BitsA + bits_for_pow10(Dd + Db - Da) <= 126;
+    else
+        return BitsB + bits_for_pow10(Da - Db - Dd) <= 126;
 }
 
-template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
-         std::size_t BitsDest, unsigned Dd, typename RawA, typename RawB>
-[[nodiscard]] constexpr std::expected<i128, ArithmeticError>
-div(RawA a, RawB b, Rounding rounding) noexcept {
+template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::size_t BitsDest, unsigned Dd,
+         typename RawA, typename RawB>
+[[nodiscard]] constexpr std::expected<i128, ArithmeticError> div(RawA a, RawB b, Rounding rounding) noexcept {
     if (b == RawB{0}) return std::unexpected(ArithmeticError::division_by_zero);
     i128 numerator = static_cast<i128>(a);
     i128 denominator = static_cast<i128>(b);
-    if constexpr (Dd + Db >= Da) numerator *= pow10_v<Dd + Db - Da>;
-    else denominator *= pow10_v<Da - Db - Dd>;
+    if constexpr (Dd + Db >= Da)
+        numerator *= pow10_v<Dd + Db - Da>;
+    else
+        denominator *= pow10_v<Da - Db - Dd>;
     // divide_rounded needs a positive divisor; move the sign to the numerator.
-    if (denominator < 0) { denominator = -denominator; numerator = -numerator; }
-    return divide_rounded(numerator, denominator, rounding,
-                          limit_magnitude_u128<BitsDest>(numerator < 0));
+    if (denominator < 0) {
+        denominator = -denominator;
+        numerator = -numerator;
+    }
+    return divide_rounded(numerator, denominator, rounding, limit_magnitude_u128<BitsDest>(numerator < 0));
 }
 
 // --- mul_div_to ----------------------------------------------------------
 // a*b/c at the destination scale is ra*rb*10^(Dc+Dd) / (rc*10^(Da+Db)),
 // with the surplus exponent applied to whichever side keeps both inside 128
 // bits. Still one rounding.
-template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
-         std::size_t BitsC, unsigned Dc, std::size_t BitsDest, unsigned Dd>
+template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::size_t BitsC, unsigned Dc,
+         std::size_t BitsDest, unsigned Dd>
 [[nodiscard]] constexpr bool mul_div_fits() noexcept {
-    if constexpr (BitsA > 64 || BitsB > 64 || BitsC > 64 || BitsDest > 128) return false;
+    if constexpr (BitsA > 64 || BitsB > 64 || BitsC > 64 || BitsDest > 128)
+        return false;
     else if constexpr (Dc + Dd >= Da + Db) {
         return product_bits(BitsA, BitsB) + bits_for_pow10(Dc + Dd - Da - Db) <= 127;
     } else {
-        return product_bits(BitsA, BitsB) <= 127
-            && BitsC + bits_for_pow10(Da + Db - Dc - Dd) <= 126;
+        return product_bits(BitsA, BitsB) <= 127 && BitsC + bits_for_pow10(Da + Db - Dc - Dd) <= 126;
     }
 }
 
-template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db,
-         std::size_t BitsC, unsigned Dc, std::size_t BitsDest, unsigned Dd,
-         typename RawA, typename RawB, typename RawC>
-[[nodiscard]] constexpr std::expected<i128, ArithmeticError>
-mul_div(RawA a, RawB b, RawC c, Rounding rounding) noexcept {
+template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::size_t BitsC, unsigned Dc,
+         std::size_t BitsDest, unsigned Dd, typename RawA, typename RawB, typename RawC>
+[[nodiscard]] constexpr std::expected<i128, ArithmeticError> mul_div(RawA a, RawB b, RawC c,
+                                                                     Rounding rounding) noexcept {
     if (c == RawC{0}) return std::unexpected(ArithmeticError::division_by_zero);
     i128 numerator = static_cast<i128>(a) * static_cast<i128>(b);
     i128 denominator = static_cast<i128>(c);
-    if constexpr (Dc + Dd >= Da + Db) numerator *= pow10_v<Dc + Dd - Da - Db>;
-    else denominator *= pow10_v<Da + Db - Dc - Dd>;
-    if (denominator < 0) { denominator = -denominator; numerator = -numerator; }
-    return divide_rounded(numerator, denominator, rounding,
-                          limit_magnitude_u128<BitsDest>(numerator < 0));
+    if constexpr (Dc + Dd >= Da + Db)
+        numerator *= pow10_v<Dc + Dd - Da - Db>;
+    else
+        denominator *= pow10_v<Da + Db - Dc - Dd>;
+    if (denominator < 0) {
+        denominator = -denominator;
+        numerator = -numerator;
+    }
+    return divide_rounded(numerator, denominator, rounding, limit_magnitude_u128<BitsDest>(numerator < 0));
 }
 
 } // namespace fixedwide::detail::mixed_native

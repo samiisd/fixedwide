@@ -10,8 +10,9 @@
 #include <compare>
 #include <type_traits>
 
-#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__)) && !defined(FIXEDWIDE_FORCE_PORTABLE)
-#  define FIXEDWIDE_HAS_X86_64_ASM 1
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__)) &&                           \
+    !defined(FIXEDWIDE_FORCE_PORTABLE)
+#define FIXEDWIDE_HAS_X86_64_ASM 1
 #endif
 
 namespace fixedwide {
@@ -91,22 +92,40 @@ template<std::size_t Bits>
 template<std::size_t Bits>
 struct raw_type_helper;
 
-template<> struct raw_type_helper<8>   { using type = std::int8_t; };
-template<> struct raw_type_helper<16>  { using type = std::int16_t; };
-template<> struct raw_type_helper<32>  { using type = std::int32_t; };
-template<> struct raw_type_helper<64>  { using type = std::int64_t; };
-template<> struct raw_type_helper<128> { using type = wide::int128; };
-template<> struct raw_type_helper<256> { using type = wide::int256; };
+template<>
+struct raw_type_helper<8> {
+    using type = std::int8_t;
+};
+template<>
+struct raw_type_helper<16> {
+    using type = std::int16_t;
+};
+template<>
+struct raw_type_helper<32> {
+    using type = std::int32_t;
+};
+template<>
+struct raw_type_helper<64> {
+    using type = std::int64_t;
+};
+template<>
+struct raw_type_helper<128> {
+    using type = wide::int128;
+};
+template<>
+struct raw_type_helper<256> {
+    using type = wide::int256;
+};
 
 template<std::size_t Bits>
 using raw_type_t = typename raw_type_helper<Bits>::type;
 
 template<std::size_t Bits>
 consteval unsigned max_decimals_for_bits() noexcept {
-    if constexpr (Bits == 8)   return 2;
-    if constexpr (Bits == 16)  return 4;
-    if constexpr (Bits == 32)  return 9;
-    if constexpr (Bits == 64)  return 18;
+    if constexpr (Bits == 8) return 2;
+    if constexpr (Bits == 16) return 4;
+    if constexpr (Bits == 32) return 9;
+    if constexpr (Bits == 64) return 18;
     if constexpr (Bits == 128) return 38;
     if constexpr (Bits == 256) return 76;
     return 0;
@@ -136,8 +155,7 @@ template<std::size_t Bits, unsigned Decimals>
 struct basic_fixed {
     static_assert(Bits == 8 || Bits == 16 || Bits == 32 || Bits == 64 || Bits == 128 || Bits == 256,
                   "Bits must be one of: 8, 16, 32, 64, 128, 256");
-    static_assert(Decimals <= max_decimals_for_bits<Bits>(),
-                  "Decimals exceeds maximum capacity for given bit width");
+    static_assert(Decimals <= max_decimals_for_bits<Bits>(), "Decimals exceeds maximum capacity for given bit width");
 
     /// The underlying signed integer type: `std::int8_t` … `wide::int256`.
     using raw_type = raw_type_t<Bits>;
@@ -153,9 +171,7 @@ struct basic_fixed {
 
     /// 10^`Decimals`, the factor between the raw integer and the value it
     /// represents. A compile-time constant, never a runtime lookup.
-    static constexpr raw_type scale() noexcept {
-        return compute_pow10<raw_type>(Decimals);
-    }
+    static constexpr raw_type scale() noexcept { return compute_pow10<raw_type>(Decimals); }
 
     /// Zero.
     constexpr basic_fixed() noexcept : m_raw(0) {}
@@ -165,9 +181,8 @@ struct basic_fixed {
     /// change of type the reader should see. Use `fixed_cast` from
     /// `<fixedwide/mixed.hpp>` to change scale, or to narrow.
     template<std::size_t OtherBits>
-        requires (OtherBits < Bits)
-    explicit constexpr basic_fixed(basic_fixed<OtherBits, Decimals> other) noexcept
-        : m_raw(0) {
+        requires(OtherBits < Bits)
+    explicit constexpr basic_fixed(basic_fixed<OtherBits, Decimals> other) noexcept : m_raw(0) {
         if constexpr (Bits <= 64) {
             m_raw = static_cast<raw_type>(other.raw());
         } else if constexpr (Bits == 128) {
@@ -193,26 +208,24 @@ struct basic_fixed {
     }
 
     /// The underlying scaled integer, unchanged. The inverse of `from_raw()`.
-    [[nodiscard]] constexpr raw_type raw() const noexcept {
-        return m_raw;
-    }
+    [[nodiscard]] constexpr raw_type raw() const noexcept { return m_raw; }
 
     /// The most negative representable value.
     [[nodiscard]] static constexpr basic_fixed min() noexcept {
-        if constexpr (Bits == 8)   return from_raw(INT8_MIN);
-        if constexpr (Bits == 16)  return from_raw(INT16_MIN);
-        if constexpr (Bits == 32)  return from_raw(INT32_MIN);
-        if constexpr (Bits == 64)  return from_raw(INT64_MIN);
+        if constexpr (Bits == 8) return from_raw(INT8_MIN);
+        if constexpr (Bits == 16) return from_raw(INT16_MIN);
+        if constexpr (Bits == 32) return from_raw(INT32_MIN);
+        if constexpr (Bits == 64) return from_raw(INT64_MIN);
         if constexpr (Bits == 128) return from_raw(wide::int128::min());
         if constexpr (Bits == 256) return from_raw(wide::int256::min());
     }
 
     /// The largest representable value.
     [[nodiscard]] static constexpr basic_fixed max() noexcept {
-        if constexpr (Bits == 8)   return from_raw(INT8_MAX);
-        if constexpr (Bits == 16)  return from_raw(INT16_MAX);
-        if constexpr (Bits == 32)  return from_raw(INT32_MAX);
-        if constexpr (Bits == 64)  return from_raw(INT64_MAX);
+        if constexpr (Bits == 8) return from_raw(INT8_MAX);
+        if constexpr (Bits == 16) return from_raw(INT16_MAX);
+        if constexpr (Bits == 32) return from_raw(INT32_MAX);
+        if constexpr (Bits == 64) return from_raw(INT64_MAX);
         if constexpr (Bits == 128) return from_raw(wide::int128::max());
         if constexpr (Bits == 256) return from_raw(wide::int256::max());
     }
@@ -228,17 +241,23 @@ private:
 };
 
 /// 8-bit storage, up to 2 decimals. 1 byte.
-template<unsigned D> using Fixed8   = basic_fixed<8, D>;
+template<unsigned D>
+using Fixed8 = basic_fixed<8, D>;
 /// 16-bit storage, up to 4 decimals. 2 bytes.
-template<unsigned D> using Fixed16  = basic_fixed<16, D>;
+template<unsigned D>
+using Fixed16 = basic_fixed<16, D>;
 /// 32-bit storage, up to 9 decimals. 4 bytes.
-template<unsigned D> using Fixed32  = basic_fixed<32, D>;
+template<unsigned D>
+using Fixed32 = basic_fixed<32, D>;
 /// 64-bit storage, up to 18 decimals. 8 bytes. The common choice for money.
-template<unsigned D> using Fixed64  = basic_fixed<64, D>;
+template<unsigned D>
+using Fixed64 = basic_fixed<64, D>;
 /// 128-bit storage, up to 38 decimals. 16 bytes.
-template<unsigned D> using Fixed128 = basic_fixed<128, D>;
+template<unsigned D>
+using Fixed128 = basic_fixed<128, D>;
 /// 256-bit storage, up to 76 decimals. 32 bytes.
-template<unsigned D> using Fixed256 = basic_fixed<256, D>;
+template<unsigned D>
+using Fixed256 = basic_fixed<256, D>;
 
 // Size and alignment invariants
 static_assert(sizeof(Fixed8<2>) == 1 && alignof(Fixed8<2>) <= 8);
@@ -337,7 +356,6 @@ constexpr Dest from_int256_raw(wide::int256 val) noexcept {
 
 } // namespace detail
 
-
 // --- 0.4 compatibility surface -------------------------------------------
 // Everything below fixes the scale at 12 digits, which is what 0.4's API did:
 // it had no scale parameter, only FP64 and FP128. It is kept for one reason --
@@ -345,14 +363,14 @@ constexpr Dest from_int256_raw(wide::int256 val) noexcept {
 // library, so these names have to exist for the comparison to mean anything --
 // and it is not the API this library is for. The generic replacement for each
 // is named beside it. Nothing here is used by the rest of the library.
-using FP64 = Fixed64<12>;                    // Fixed64<D>
-using FP128 = Fixed128<12>;                  // Fixed128<D>
-inline constexpr auto fp64_min = FP64::min();    // basic_fixed<Bits, D>::min()
-inline constexpr auto fp64_max = FP64::max();    // basic_fixed<Bits, D>::max()
+using FP64 = Fixed64<12>;                     // Fixed64<D>
+using FP128 = Fixed128<12>;                   // Fixed128<D>
+inline constexpr auto fp64_min = FP64::min(); // basic_fixed<Bits, D>::min()
+inline constexpr auto fp64_max = FP64::max(); // basic_fixed<Bits, D>::max()
 inline constexpr auto fp128_min = FP128::min();
 inline constexpr auto fp128_max = FP128::max();
-inline constexpr unsigned fractional_digits = 12;             // Fixed::fractional_digits
-inline constexpr std::int64_t scale = 1'000'000'000'000LL;    // Fixed::scale()
+inline constexpr unsigned fractional_digits = 12;          // Fixed::fractional_digits
+inline constexpr std::int64_t scale = 1'000'000'000'000LL; // Fixed::scale()
 // --- end of the 0.4 compatibility surface --------------------------------
 
 /// Free-function spelling of `T::from_raw`, for call sites that already have

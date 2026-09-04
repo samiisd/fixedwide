@@ -47,10 +47,10 @@ int main() {
     std::cout << "operator<<          " << v << "\n";
 
     // Parsing rejects what it cannot represent exactly, by default.
-    if (parse<Fixed64<2>>("1.005")) return 1;                       // too_precise
+    if (parse<Fixed64<2>>("1.005")) return 1; // too_precise
     if (!parse<Fixed64<2>>("1.005", Rounding::nearest_even)) return 1;
-    if (parse<Money>("not a number")) return 1;                     // invalid
-    if (parse<Money>("")) return 1;                                 // empty
+    if (parse<Money>("not a number")) return 1; // invalid
+    if (parse<Money>("")) return 1;             // empty
 
     std::cout << "OK" << std::endl;
     return 0;

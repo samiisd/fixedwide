@@ -15,12 +15,8 @@ namespace fixedwide::detail {
     unsigned __int128 ua = (static_cast<unsigned __int128>(a.high) << 64) | a.low;
     unsigned __int128 ub = (static_cast<unsigned __int128>(b.high) << 64) | b.low;
     u256_internal res = static_cast<u256_internal>(ua) * static_cast<u256_internal>(ub);
-    return wide::uint256(
-        static_cast<std::uint64_t>(res),
-        static_cast<std::uint64_t>(res >> 64),
-        static_cast<std::uint64_t>(res >> 128),
-        static_cast<std::uint64_t>(res >> 192)
-    );
+    return wide::uint256(static_cast<std::uint64_t>(res), static_cast<std::uint64_t>(res >> 64),
+                         static_cast<std::uint64_t>(res >> 128), static_cast<std::uint64_t>(res >> 192));
 #elif defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
     if (((a.high | b.high)) == 0) {
         unsigned __int128 p = static_cast<unsigned __int128>(a.low) * b.low;
@@ -78,10 +74,13 @@ namespace fixedwide::detail {
 #endif
 }
 
-struct FullQuotient { wide::uint256 quotient; wide::uint128 remainder; };
+struct FullQuotient {
+    wide::uint256 quotient;
+    wide::uint128 remainder;
+};
 
-[[nodiscard]] inline std::uint64_t divide_digit(wide::uint128& remainder, std::uint64_t next,
-                                                std::uint64_t v0, std::uint64_t v1) noexcept {
+[[nodiscard]] inline std::uint64_t divide_digit(wide::uint128& remainder, std::uint64_t next, std::uint64_t v0,
+                                                std::uint64_t v1) noexcept {
     const auto high = remainder.high;
     const auto low = remainder.low;
     std::uint64_t quotient, rhat;
@@ -94,15 +93,15 @@ struct FullQuotient { wide::uint256 quotient; wide::uint128 remainder; };
         quotient = div128by64(high, low, v1, rhat);
     }
 #if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
-    while (!carry && (static_cast<unsigned __int128>(quotient) * v0 >
-                     ((static_cast<unsigned __int128>(rhat) << 64) | next))) {
+    while (!carry &&
+           (static_cast<unsigned __int128>(quotient) * v0 > ((static_cast<unsigned __int128>(rhat) << 64) | next))) {
         --quotient;
         const std::uint64_t previous = rhat;
         rhat += v1;
         carry = rhat < previous;
     }
-    unsigned __int128 diff = ((static_cast<unsigned __int128>(rhat) << 64) | next) -
-                             static_cast<unsigned __int128>(quotient) * v0;
+    unsigned __int128 diff =
+        ((static_cast<unsigned __int128>(rhat) << 64) | next) - static_cast<unsigned __int128>(quotient) * v0;
     remainder = wide::uint128(static_cast<std::uint64_t>(diff), static_cast<std::uint64_t>(diff >> 64));
 #else
     while (!carry) {
@@ -123,15 +122,17 @@ struct FullQuotient { wide::uint256 quotient; wide::uint128 remainder; };
     return quotient;
 }
 
-[[nodiscard]] inline std::expected<Quotient128, ArithmeticError> divide_narrow(
-    wide::uint256 numerator, wide::uint128 divisor) noexcept {
+[[nodiscard]] inline std::expected<Quotient128, ArithmeticError> divide_narrow(wide::uint256 numerator,
+                                                                               wide::uint128 divisor) noexcept {
     if (divisor.is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
 #if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
     unsigned __int128 div_u = (static_cast<unsigned __int128>(divisor.high) << 64) | divisor.low;
     unsigned __int128 high = (static_cast<unsigned __int128>(numerator.limbs[3]) << 64) | numerator.limbs[2];
     unsigned __int128 low = (static_cast<unsigned __int128>(numerator.limbs[1]) << 64) | numerator.limbs[0];
     if (high >= div_u) return std::unexpected(ArithmeticError::overflow);
-    if (high == 0) return divide128(wide::uint128(static_cast<std::uint64_t>(low), static_cast<std::uint64_t>(low >> 64)), divisor);
+    if (high == 0)
+        return divide128(wide::uint128(static_cast<std::uint64_t>(low), static_cast<std::uint64_t>(low >> 64)),
+                         divisor);
     if (divisor.high == 0) {
         const auto d = divisor.low;
         auto rem = static_cast<std::uint64_t>(high);
@@ -147,9 +148,9 @@ struct FullQuotient { wide::uint256 quotient; wide::uint128 remainder; };
     const unsigned __int128 normalized_low = low << shift;
     const auto middle = static_cast<std::uint64_t>(normalized_low >> 64);
     std::uint64_t qhigh = 0;
-    bool fits_64 = (numerator.limbs[3] == 0) &&
-                   ((numerator.limbs[2] < divisor.high) ||
-                    (numerator.limbs[2] == divisor.high && numerator.limbs[1] < divisor.low));
+    bool fits_64 =
+        (numerator.limbs[3] == 0) && ((numerator.limbs[2] < divisor.high) ||
+                                      (numerator.limbs[2] == divisor.high && numerator.limbs[1] < divisor.low));
     wide::uint128 rem_w;
     if (fits_64) {
         remainder = (remainder << 64) | middle;
@@ -160,8 +161,8 @@ struct FullQuotient { wide::uint256 quotient; wide::uint128 remainder; };
     }
     const auto qlow = divide_digit(rem_w, static_cast<std::uint64_t>(normalized_low), v0, v1);
     unsigned __int128 final_rem = ((static_cast<unsigned __int128>(rem_w.high) << 64) | rem_w.low) >> shift;
-    return Quotient128{wide::uint128(qlow, qhigh),
-                       wide::uint128(static_cast<std::uint64_t>(final_rem), static_cast<std::uint64_t>(final_rem >> 64))};
+    return Quotient128{wide::uint128(qlow, qhigh), wide::uint128(static_cast<std::uint64_t>(final_rem),
+                                                                 static_cast<std::uint64_t>(final_rem >> 64))};
 #else
     const wide::uint128 high(numerator.limbs[2], numerator.limbs[3]);
     const wide::uint128 low(numerator.limbs[0], numerator.limbs[1]);
@@ -182,9 +183,9 @@ struct FullQuotient { wide::uint256 quotient; wide::uint128 remainder; };
     const wide::uint128 normalized_low = low << shift;
     const auto middle = normalized_low.high;
     std::uint64_t qhigh = 0;
-    bool fits_64 = (numerator.limbs[3] == 0) &&
-                   ((numerator.limbs[2] < divisor.high) ||
-                    (numerator.limbs[2] == divisor.high && numerator.limbs[1] < divisor.low));
+    bool fits_64 =
+        (numerator.limbs[3] == 0) && ((numerator.limbs[2] < divisor.high) ||
+                                      (numerator.limbs[2] == divisor.high && numerator.limbs[1] < divisor.low));
     if (fits_64) {
         remainder = (remainder << 64) | wide::uint128(middle, 0ULL);
     } else {

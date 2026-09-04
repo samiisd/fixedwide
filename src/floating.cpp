@@ -9,8 +9,8 @@ namespace fixedwide::detail {
 namespace {
 
 template<typename Float>
-std::expected<wide::int256, ArithmeticError>
-float_to_raw(Float value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
+std::expected<wide::int256, ArithmeticError> float_to_raw(Float value, unsigned decimals, Rounding rounding,
+                                                          std::size_t bits) noexcept {
     if (std::isnan(value) || std::isinf(value)) {
         return std::unexpected(ArithmeticError::invalid_value);
     }
@@ -33,9 +33,7 @@ float_to_raw(Float value, unsigned decimals, Rounding rounding, std::size_t bits
     // whose long double is IEEE binary128 the value is 113 and the cap loses
     // the low bits; sizeof was used here before and got that case wrong in the
     // other direction, by claiming 64 bits of a 113-bit significand.
-    constexpr int sig_bits = std::numeric_limits<Float>::digits < 64
-                                 ? std::numeric_limits<Float>::digits
-                                 : 64;
+    constexpr int sig_bits = std::numeric_limits<Float>::digits < 64 ? std::numeric_limits<Float>::digits : 64;
     const Float scaled_m = std::ldexp(m, sig_bits);
 
     std::uint64_t significand = static_cast<std::uint64_t>(scaled_m);
@@ -83,8 +81,7 @@ template<typename Float>
 Float raw_to_float(wide::int256 raw, unsigned decimals) noexcept {
     bool neg = raw.is_negative();
     auto mag = magnitude(raw);
-    Float d = static_cast<Float>(mag.limbs[0]) +
-              static_cast<Float>(mag.limbs[1]) * std::ldexp(Float(1.0), 64) +
+    Float d = static_cast<Float>(mag.limbs[0]) + static_cast<Float>(mag.limbs[1]) * std::ldexp(Float(1.0), 64) +
               static_cast<Float>(mag.limbs[2]) * std::ldexp(Float(1.0), 128) +
               static_cast<Float>(mag.limbs[3]) * std::ldexp(Float(1.0), 192);
     Float scale = std::pow(Float(10.0), static_cast<Float>(decimals));
@@ -94,18 +91,18 @@ Float raw_to_float(wide::int256 raw, unsigned decimals) noexcept {
 
 } // namespace
 
-std::expected<wide::int256, ArithmeticError>
-from_float_kernel(float value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
+std::expected<wide::int256, ArithmeticError> from_float_kernel(float value, unsigned decimals, Rounding rounding,
+                                                               std::size_t bits) noexcept {
     return float_to_raw(value, decimals, rounding, bits);
 }
 
-std::expected<wide::int256, ArithmeticError>
-from_float_kernel(double value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
+std::expected<wide::int256, ArithmeticError> from_float_kernel(double value, unsigned decimals, Rounding rounding,
+                                                               std::size_t bits) noexcept {
     return float_to_raw(value, decimals, rounding, bits);
 }
 
-std::expected<wide::int256, ArithmeticError>
-from_float_kernel(long double value, unsigned decimals, Rounding rounding, std::size_t bits) noexcept {
+std::expected<wide::int256, ArithmeticError> from_float_kernel(long double value, unsigned decimals, Rounding rounding,
+                                                               std::size_t bits) noexcept {
     return float_to_raw(value, decimals, rounding, bits);
 }
 

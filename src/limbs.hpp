@@ -60,9 +60,7 @@ struct uint_limbs {
         return 0;
     }
 
-    [[nodiscard]] constexpr unsigned clz() const noexcept {
-        return static_cast<unsigned>(L * 64) - bit_width();
-    }
+    [[nodiscard]] constexpr unsigned clz() const noexcept { return static_cast<unsigned>(L * 64) - bit_width(); }
 
     constexpr bool operator==(const uint_limbs&) const noexcept = default;
     constexpr std::strong_ordering operator<=>(const uint_limbs& o) const noexcept {
@@ -151,21 +149,35 @@ struct uint_limbs {
         return res;
     }
 
-    constexpr bool operator==(std::uint64_t val) const noexcept {
-        return limbs[0] == val && active_limbs() <= 1;
-    }
+    constexpr bool operator==(std::uint64_t val) const noexcept { return limbs[0] == val && active_limbs() <= 1; }
     constexpr bool operator!=(std::uint64_t val) const noexcept { return !(*this == val); }
 
     constexpr uint_limbs operator+(std::uint64_t val) const noexcept { return *this + uint_limbs(val); }
     constexpr uint_limbs operator-(std::uint64_t val) const noexcept { return *this - uint_limbs(val); }
     constexpr uint_limbs operator/(std::uint64_t val) const noexcept { return divmod64(*this, val).quotient; }
-    constexpr uint_limbs operator/(int val) const noexcept { return divmod64(*this, static_cast<std::uint64_t>(val)).quotient; }
-    constexpr uint_limbs operator%(std::uint64_t val) const noexcept { return uint_limbs(divmod64(*this, val).remainder); }
+    constexpr uint_limbs operator/(int val) const noexcept {
+        return divmod64(*this, static_cast<std::uint64_t>(val)).quotient;
+    }
+    constexpr uint_limbs operator%(std::uint64_t val) const noexcept {
+        return uint_limbs(divmod64(*this, val).remainder);
+    }
 
-    constexpr uint_limbs& operator+=(const uint_limbs& o) noexcept { *this = *this + o; return *this; }
-    constexpr uint_limbs& operator+=(std::uint64_t val) noexcept { *this = *this + val; return *this; }
-    constexpr uint_limbs& operator-=(const uint_limbs& o) noexcept { *this = *this - o; return *this; }
-    constexpr uint_limbs& operator-=(std::uint64_t val) noexcept { *this = *this - val; return *this; }
+    constexpr uint_limbs& operator+=(const uint_limbs& o) noexcept {
+        *this = *this + o;
+        return *this;
+    }
+    constexpr uint_limbs& operator+=(std::uint64_t val) noexcept {
+        *this = *this + val;
+        return *this;
+    }
+    constexpr uint_limbs& operator-=(const uint_limbs& o) noexcept {
+        *this = *this - o;
+        return *this;
+    }
+    constexpr uint_limbs& operator-=(std::uint64_t val) noexcept {
+        *this = *this - val;
+        return *this;
+    }
 
     constexpr uint_limbs operator&(std::uint64_t val) const noexcept {
         uint_limbs res{};
@@ -188,10 +200,7 @@ struct uint_limbs {
     }
 
     [[nodiscard]] constexpr wide::uint256 to_uint256() const noexcept {
-        return wide::uint256(limbs[0],
-                             L > 1 ? limbs[1] : 0ULL,
-                             L > 2 ? limbs[2] : 0ULL,
-                             L > 3 ? limbs[3] : 0ULL);
+        return wide::uint256(limbs[0], L > 1 ? limbs[1] : 0ULL, L > 2 ? limbs[2] : 0ULL, L > 3 ? limbs[3] : 0ULL);
     }
 };
 
@@ -254,7 +263,8 @@ struct DivMod64Result {
 // a 72-byte result back through memory. The profile of a Fixed256 multiply was
 // dominated by exactly those stack round-trips, not by the divisions.
 template<std::size_t L>
-[[nodiscard, gnu::always_inline]] inline DivMod64Result<L> divmod64(const uint_limbs<L>& num, std::uint64_t divisor) noexcept {
+[[nodiscard, gnu::always_inline]] inline DivMod64Result<L> divmod64(const uint_limbs<L>& num,
+                                                                    std::uint64_t divisor) noexcept {
     DivMod64Result<L> res{};
     std::uint64_t rem = 0;
     // Skip leading zero limbs. While the remainder is still zero, a zero limb
@@ -280,7 +290,8 @@ struct DivModResult {
 };
 
 template<std::size_t Lnum, std::size_t Lden>
-[[nodiscard]] inline DivModResult<Lnum, Lden> divmod_knuth(const uint_limbs<Lnum>& num, const uint_limbs<Lden>& den) noexcept {
+[[nodiscard]] inline DivModResult<Lnum, Lden> divmod_knuth(const uint_limbs<Lnum>& num,
+                                                           const uint_limbs<Lden>& den) noexcept {
     DivModResult<Lnum, Lden> res{};
     std::size_t n = den.active_limbs();
     if (n == 0) return res; // Division by zero
@@ -299,7 +310,7 @@ template<std::size_t Lnum, std::size_t Lden>
     }
 
     std::size_t m = m_plus_n - n;
-    unsigned shift = std::countl_zero(den.limbs[n - 1]);
+    const unsigned shift = static_cast<unsigned>(std::countl_zero(den.limbs[n - 1]));
 
     // Normalized divisor
     std::uint64_t v[Lden + 1]{};
@@ -326,7 +337,10 @@ template<std::size_t Lnum, std::size_t Lden>
     std::uint64_t v1 = v[n - 1];
     std::uint64_t v2 = v[n - 2];
 
-    for (int j = static_cast<int>(m); j >= 0; --j) {
+    // Counts down from m to 0 inclusive. `j` is std::size_t rather than int so
+    // that every u[j + i] indexes without a signed-to-unsigned conversion; the
+    // `j-- > 0` idiom is what makes an unsigned countdown terminate.
+    for (std::size_t j = m + 1; j-- > 0;) {
         std::uint64_t u_top = u[j + n];
         std::uint64_t u_next = u[j + n - 1];
         std::uint64_t u_next2 = u[j + n - 2];
@@ -375,7 +389,7 @@ template<std::size_t Lnum, std::size_t Lden>
             u[j + n] -= borrow;
         }
 
-        if (j < static_cast<int>(Lnum)) {
+        if (j < Lnum) {
             res.quotient.limbs[j] = qhat;
         }
     }

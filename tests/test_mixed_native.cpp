@@ -20,9 +20,8 @@ namespace detail = fixedwide::detail;
 
 namespace {
 
-
 constexpr Rounding all_modes[] = {
-    Rounding::toward_zero, Rounding::floor, Rounding::ceil,
+    Rounding::toward_zero,  Rounding::floor,        Rounding::ceil,
     Rounding::nearest_even, Rounding::nearest_away, Rounding::exact,
 };
 
@@ -45,13 +44,13 @@ void compare_pair(A a, B b) {
     for (auto mode : all_modes) {
         same<Dest>(fixedwide::add_to<Dest>(a, b, mode),
                    detail::mixed_add_sub_kernel(detail::to_int256_raw(a.raw()), A::fractional_digits,
-                                                detail::to_int256_raw(b.raw()), B::fractional_digits,
-                                                false, Dest::fractional_digits, mode, Dest::bits),
+                                                detail::to_int256_raw(b.raw()), B::fractional_digits, false,
+                                                Dest::fractional_digits, mode, Dest::bits),
                    "add_to");
         same<Dest>(fixedwide::sub_to<Dest>(a, b, mode),
                    detail::mixed_add_sub_kernel(detail::to_int256_raw(a.raw()), A::fractional_digits,
-                                                detail::to_int256_raw(b.raw()), B::fractional_digits,
-                                                true, Dest::fractional_digits, mode, Dest::bits),
+                                                detail::to_int256_raw(b.raw()), B::fractional_digits, true,
+                                                Dest::fractional_digits, mode, Dest::bits),
                    "sub_to");
         same<Dest>(fixedwide::mul_to<Dest>(a, b, mode),
                    detail::mixed_mul_kernel(detail::to_int256_raw(a.raw()), A::fractional_digits,
@@ -101,9 +100,7 @@ void check_divide_magnitude() {
     for (unsigned magnitude_bits = 0; magnitude_bits <= 128; ++magnitude_bits) {
         for (unsigned divisor_bits = 1; divisor_bits <= 128; ++divisor_bits) {
             for (int repeat = 0; repeat < 4; ++repeat) {
-                const auto mask = [](unsigned bits) {
-                    return bits >= 128 ? ~u128{0} : ((u128{1} << bits) - 1);
-                };
+                const auto mask = [](unsigned bits) { return bits >= 128 ? ~u128{0} : ((u128{1} << bits) - 1); };
                 u128 magnitude = ((static_cast<u128>(rng()) << 64) | rng()) & mask(magnitude_bits);
                 u128 divisor = (((static_cast<u128>(rng()) << 64) | rng()) & mask(divisor_bits)) | 1;
                 const auto got = detail::mixed_native::divide_magnitude(magnitude, divisor);
@@ -113,8 +110,9 @@ void check_divide_magnitude() {
         }
     }
 }
-static_assert(detail::mixed_native::divide_magnitude(
-                  static_cast<unsigned __int128>(1'000'000), static_cast<unsigned __int128>(7)).quotient == 142857);
+static_assert(detail::mixed_native::divide_magnitude(static_cast<unsigned __int128>(1'000'000),
+                                                     static_cast<unsigned __int128>(7))
+                  .quotient == 142857);
 #else
 void check_divide_magnitude() {}
 #endif
@@ -122,17 +120,26 @@ void check_divide_magnitude() {}
 int main() {
     check_divide_magnitude();
     using Price = fixedwide::Fixed64<8>;
-    using Rate  = fixedwide::Fixed64<12>;
+    using Rate = fixedwide::Fixed64<12>;
     using Money = fixedwide::Fixed128<12>;
     using Small = fixedwide::Fixed32<6>;
-    using Tiny  = fixedwide::Fixed16<2>;
+    using Tiny = fixedwide::Fixed16<2>;
 
     std::mt19937_64 rng(0x31CED);
 
-    std::vector<std::int64_t> wide_values{0, 1, -1, 2, -2,
-                                          INT64_MAX, INT64_MIN, INT64_MAX - 1, INT64_MIN + 1,
-                                          100'000'000LL, -100'000'000LL,
-                                          1'000'000'000'000LL, -1'000'000'000'000LL};
+    std::vector<std::int64_t> wide_values{0,
+                                          1,
+                                          -1,
+                                          2,
+                                          -2,
+                                          INT64_MAX,
+                                          INT64_MIN,
+                                          INT64_MAX - 1,
+                                          INT64_MIN + 1,
+                                          100'000'000LL,
+                                          -100'000'000LL,
+                                          1'000'000'000'000LL,
+                                          -1'000'000'000'000LL};
     for (int i = 0; i < 14; ++i) wide_values.push_back(static_cast<std::int64_t>(rng()));
 
     std::vector<std::int32_t> narrow_values{0, 1, -1, INT32_MAX, INT32_MIN, 1'000'000, -1'000'000};
@@ -148,10 +155,11 @@ int main() {
 
     // Combinations the bounds must reject, so the kernel runs and still agrees.
     sweep<fixedwide::Fixed256<24>, Price, Rate>("F256<-Price,Rate", wide_values, wide_values);
-    sweep<Money, Price, fixedwide::Fixed128<18>>("Money<-Price,F128",
-        wide_values, std::vector<fixedwide::wide::int128>{
-            fixedwide::wide::int128(0), fixedwide::wide::int128(1),
-            fixedwide::wide::int128(-1), fixedwide::wide::int128(1'000'000'000'000LL)});
+    sweep<Money, Price, fixedwide::Fixed128<18>>(
+        "Money<-Price,F128", wide_values,
+        std::vector<fixedwide::wide::int128>{fixedwide::wide::int128(0), fixedwide::wide::int128(1),
+                                             fixedwide::wide::int128(-1),
+                                             fixedwide::wide::int128(1'000'000'000'000LL)});
 
     std::printf("test_mixed_native passed (%lu checks)\n", checks);
     return 0;

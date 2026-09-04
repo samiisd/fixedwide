@@ -284,17 +284,63 @@ jobs:
             -DFIXEDWIDE_COVERAGE=ON -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
           cmake --build build
       - name: Run tests and report coverage
+        # pipefail is not optional here. The previous version piped llvm-cov
+        # through tee without it, so when llvm-cov failed -- which it did, on
+        # every run, because source DIRECTORIES were passed where it expects
+        # object files -- the step took tee's exit status and the job reported
+        # success with no coverage report at all.
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p "$PWD/profraw"
           # An absolute pattern: ctest runs each test from its own binary
           # directory, so a relative one scatters the files and the merge finds
           # nothing.
           LLVM_PROFILE_FILE="$PWD/profraw/%p.profraw" ctest --test-dir build --output-on-failure
           llvm-profdata-20 merge -sparse profraw/*.profraw -o merged.profdata
-          objects=$(find build/tests build/examples -maxdepth 1 -type f -perm -u+x \
-                    | sed 's/^/-object /' | tr '\n' ' ')
-          echo '### Coverage' >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          llvm-cov-20 report $objects -instr-profile=merged.profdata \
-            "$PWD/src" "$PWD/include" | tee -a "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          # One positional binary, every other binary via -object, and the
+          # sources selected with a regex rather than by path arguments.
+          mapfile -t binaries < <(find build/tests build/examples -maxdepth 1 -type f -perm -u+x | sort)
+          primary=${binaries[0]}
+          extra=()
+          for b in "${binaries[@]:1}"; do extra+=(-object "$b"); done
+          ignore='-ignore-filename-regex=(tests|examples|benchmarks|fuzz|_deps)/'
+
+          llvm-cov-20 report "$primary" "${extra[@]}" \
+            -instr-profile=merged.profdata "$ignore" | tee coverage.txt
+
+          {
+            echo '### Coverage'
+            echo '```'
+            cat coverage.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Enforce coverage thresholds
+        shell: bash
+        run: |
+          set -euo pipefail
+          read -r lines branches < <(awk '/^TOTAL/ {
+              for (i = 1; i <= NF; ++i) if ($i ~ /%$/) { gsub("%","",$i); pct[++n] = $i }
+              # llvm-cov TOTAL columns: regions, functions, lines, branches.
+              print pct[3], pct[4]
+          }' coverage.txt)
+          echo "line coverage:   $lines%"
+          echo "branch coverage: $branches%"
+          # Set from what this configuration actually reaches (72.1% / 77.5%),
+          # with a small margin. They are a ratchet against regression, not an
+          # aspiration -- raising them is a tracked open item in STATUS.md.
+          #
+          # This is one native build, so code that only the portable backend
+          # reaches reads as uncovered here: src/division.hpp shows 10% because
+          # the native build never calls it. The portable and no-int128 jobs are
+          # what cover it, and both run the whole suite.
+          fail=0
+          awk -v v="$lines"    'BEGIN { exit (v+0 >= 70) ? 0 : 1 }' || { echo "line coverage below 70%" >&2; fail=1; }
+          awk -v v="$branches" 'BEGIN { exit (v+0 >= 75) ? 0 : 1 }' || { echo "branch coverage below 75%" >&2; fail=1; }
+          exit $fail
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.txt

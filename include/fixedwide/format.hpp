@@ -21,14 +21,12 @@
 /// `std::format_context` has a `char*`, so a hard-coded context silently made
 /// every `basic_fixed` non-formattable there. libstdc++ happened not to notice.
 template<std::size_t Bits, unsigned Decimals>
-struct std::formatter<fixedwide::basic_fixed<Bits, Decimals>, char>
-    : std::formatter<std::string_view, char> {
+struct std::formatter<fixedwide::basic_fixed<Bits, Decimals>, char> : std::formatter<std::string_view, char> {
     template<typename FormatContext>
     auto format(const fixedwide::basic_fixed<Bits, Decimals>& value, FormatContext& ctx) const {
         char buffer[fixedwide::text_capacity];
         const auto written = fixedwide::to_chars(buffer, sizeof(buffer), value);
-        const std::string_view text = written ? std::string_view(buffer, *written)
-                                              : std::string_view{};
+        const std::string_view text = written ? std::string_view(buffer, *written) : std::string_view{};
         return std::formatter<std::string_view, char>::format(text, ctx);
     }
 };

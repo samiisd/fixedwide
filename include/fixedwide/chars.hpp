@@ -35,33 +35,28 @@ namespace detail {
 // Explicitly instantiated per width in chars.cpp, so the destination's limits
 // are constants inside the kernel rather than a runtime switch.
 template<std::size_t Bits>
-std::expected<wide::int256, ParseError>
-parse_fixed_kernel(std::string_view text, unsigned decimals, Rounding rounding) noexcept;
+std::expected<wide::int256, ParseError> parse_fixed_kernel(std::string_view text, unsigned decimals,
+                                                           Rounding rounding) noexcept;
 
 // One entry point per storage width: routing a Fixed64<12> through the 256-bit
 // kernel widened its raw value to 32 bytes and passed it through memory.
-std::expected<std::size_t, FormatError>
-format_fixed_kernel(char* buffer, std::size_t capacity, std::int64_t raw, unsigned decimals,
-                    FormatOptions options) noexcept;
+std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::size_t capacity, std::int64_t raw,
+                                                            unsigned decimals, FormatOptions options) noexcept;
 
-std::expected<std::size_t, FormatError>
-format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw, unsigned decimals,
-                    FormatOptions options) noexcept;
+std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw,
+                                                            unsigned decimals, FormatOptions options) noexcept;
 
 // One entry point per storage width: routing a Fixed64<12> through the 256-bit
 // kernel widened its raw value to 32 bytes and passed it through memory.
-std::expected<std::size_t, FormatError>
-format_fixed_kernel(char* buffer, std::size_t capacity, std::int64_t raw, unsigned decimals,
-                    FormatOptions options) noexcept;
+std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::size_t capacity, std::int64_t raw,
+                                                            unsigned decimals, FormatOptions options) noexcept;
 
-std::expected<std::size_t, FormatError>
-format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw, unsigned decimals,
-                    FormatOptions options) noexcept;
+std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::size_t capacity, wide::int128 raw,
+                                                            unsigned decimals, FormatOptions options) noexcept;
 
-std::expected<std::size_t, FormatError>
-format_fixed_kernel(char* buffer, std::size_t capacity,
-                    wide::int256 raw, unsigned decimals,
-                    FormatOptions options, std::size_t bits) noexcept;
+std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::size_t capacity, wide::int256 raw,
+                                                            unsigned decimals, FormatOptions options,
+                                                            std::size_t bits) noexcept;
 
 } // namespace detail
 
@@ -117,13 +112,11 @@ to_chars(char* buffer, std::size_t capacity, basic_fixed<Bits, D> value, FormatO
         options.digits = D;
     }
     if constexpr (Bits <= 64) {
-        return detail::format_fixed_kernel(buffer, capacity, static_cast<std::int64_t>(value.raw()),
-                                           D, options);
+        return detail::format_fixed_kernel(buffer, capacity, static_cast<std::int64_t>(value.raw()), D, options);
     } else if constexpr (Bits == 128) {
         return detail::format_fixed_kernel(buffer, capacity, value.raw(), D, options);
     } else {
-        return detail::format_fixed_kernel(buffer, capacity, detail::to_int256_raw(value.raw()),
-                                           D, options, Bits);
+        return detail::format_fixed_kernel(buffer, capacity, detail::to_int256_raw(value.raw()), D, options, Bits);
     }
 }
 
@@ -155,18 +148,23 @@ to_chars(char* first, char* last, basic_fixed<Bits, D> value, FormatOptions opti
 
 /// Write a wide integer as decimal text -- no scale, no point.
 /// \return the number of bytes written, or `FormatError::buffer_too_small`.
-[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity, wide::int128 value) noexcept;
-[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity, wide::uint128 value) noexcept;
-[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity, wide::int256 value) noexcept;
-[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity, wide::uint256 value) noexcept;
-
+[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity,
+                                                               wide::int128 value) noexcept;
+[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity,
+                                                               wide::uint128 value) noexcept;
+[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity,
+                                                               wide::int256 value) noexcept;
+[[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* buffer, std::size_t capacity,
+                                                               wide::uint256 value) noexcept;
 
 // 0.4 compatibility surface: fixed at 12 digits. Generic replacement:
 // parse<T>(text, rounding). See fixed.hpp.
-[[nodiscard]] inline std::expected<Fixed64<12>, ParseError> parse64(std::string_view text, Rounding rounding = Rounding::exact) noexcept {
+[[nodiscard]] inline std::expected<Fixed64<12>, ParseError> parse64(std::string_view text,
+                                                                    Rounding rounding = Rounding::exact) noexcept {
     return parse<Fixed64<12>>(text, rounding);
 }
-[[nodiscard]] inline std::expected<Fixed128<12>, ParseError> parse128(std::string_view text, Rounding rounding = Rounding::exact) noexcept {
+[[nodiscard]] inline std::expected<Fixed128<12>, ParseError> parse128(std::string_view text,
+                                                                      Rounding rounding = Rounding::exact) noexcept {
     return parse<Fixed128<12>>(text, rounding);
 }
 } // namespace fixedwide

@@ -18,17 +18,16 @@ constexpr Money apply_rate(Money amount, Money rate) {
     return mul(amount, rate, Rounding::nearest_even).value();
 }
 
-constexpr Money hundred = Money::from_raw(1'000'000);   // 100.0000
-constexpr Money rate    = Money::from_raw(1'075);       //   0.1075
+constexpr Money hundred = Money::from_raw(1'000'000); // 100.0000
+constexpr Money rate = Money::from_raw(1'075);        //   0.1075
 
-static_assert(apply_rate(hundred, rate) == Money::from_raw(107'500));   // 10.7500
+static_assert(apply_rate(hundred, rate) == Money::from_raw(107'500)); // 10.7500
 static_assert(add(hundred, hundred).value() == Money::from_raw(2'000'000));
-static_assert(div(hundred, Money::from_raw(30'000), Rounding::toward_zero).value()
-              == Money::from_raw(333'333));                              // 33.3333
-static_assert(quantize(Money::from_raw(12'345), 2, Rounding::nearest_even).value()
-              == Money::from_raw(12'300));                               // 1.2345 -> 1.23
-static_assert(remainder(Money::from_raw(100'000), Money::from_raw(30'000)).value()
-              == Money::from_raw(10'000));
+static_assert(div(hundred, Money::from_raw(30'000), Rounding::toward_zero).value() ==
+              Money::from_raw(333'333)); // 33.3333
+static_assert(quantize(Money::from_raw(12'345), 2, Rounding::nearest_even).value() ==
+              Money::from_raw(12'300)); // 1.2345 -> 1.23
+static_assert(remainder(Money::from_raw(100'000), Money::from_raw(30'000)).value() == Money::from_raw(10'000));
 
 // Errors are constexpr too: an overflow at compile time is a value you can
 // static_assert on, not a hard error, so a table can be validated in place.
