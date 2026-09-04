@@ -1,4 +1,5 @@
 # fixedwide competitor benchmark
 # compiler=Clang 22.1.8 iterations=1048576 repetitions=11
 # every row is a MEDIAN of the repetitions; min/median/p95/max and all raw samples are emitted
-std,"float",raw_baseline,mul,1048576,11,0.204280,0.205436,0.207834,0.209726,"0.205436;0.207366;0.205274;0.205646;0.205522;0.209726;0.205206;0.204280;0.205063;0.204528;0.207834"
+NOTE 123.456789012345 * 2 at 12 decimals: cnl raw=-2111655 (wrong), fixedwide raw=246913578024690 (exact)
+PASSED validations=57347

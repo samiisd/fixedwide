@@ -33,6 +33,7 @@
 #include <fixedwide/arithmetic.hpp>
 #include <fixedwide/chars.hpp>
 #include <fixedwide/binary.hpp>
+#include <fixedwide/floating.hpp>
 #include "measurement.hpp"
 
 #include <fpm/fixed.hpp>
@@ -182,25 +183,49 @@ int main(int argc, char** argv) {
         });
     }
     {
-        // CNL with radix 10: a decimal fixed-point configuration, so this is the
-        // like-for-like comparison against Fixed64<12>. CNL's decimal support is
-        // documented as less exercised than its binary support.
+        // CNL with radix 10. NOTE the scale: this row is scale 6 and the
+        // fixedwide decimal rows above are scale 12, so the two are NOT
+        // like-for-like -- a 10^6 rescale is a cheaper division than a 10^12
+        // one. The matched-scale comparison is the block further down; this row
+        // is kept because it is what the earlier reports quoted, and removing it
+        // silently would make those numbers unexplainable.
+        //
+        // CNL's decimal support is documented as less exercised than its binary
+        // support.
         using T = cnl::scaled_integer<std::int64_t, cnl::power<-6, 10>>;
         std::vector<T> a(data_size), b(data_size);
         for (std::size_t i = 0; i < data_size; ++i) {
             a[i] = T{ops.a[i]};
             b[i] = T{ops.b[i]};
         }
+        // The result is forced back to T on purpose.
+        //
+        // cnl::scaled_integer::operator* does NOT rescale: it returns a type
+        // whose exponent is the SUM of the operands', so `a * b` is a bare
+        // 64-bit multiply and the product is left at scale 10^-12. Timing that
+        // and calling it a decimal multiply compared fixedwide's
+        // multiply-widen-rescale-check against CNL's multiply alone, which is
+        // how the earlier reports arrived at "CNL is about 8x faster". Assigning
+        // to T performs the rescale, which is the comparable operation.
         for (std::size_t i = 0; i < data_size; ++i) {
             const T product = a[i] * b[i];
             expect(std::abs(static_cast<double>(product) - ops.a[i] * ops.b[i]) < 0.01,
                    "cnl decimal mul disagrees with the double oracle");
         }
         row("cnl", "scaled_integer<int64,power<-6,10>>", "decimal_fixed", "mul_unchecked", [&](std::size_t n) {
-            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] * b[i & (data_size - 1)]);
+            for (std::size_t i = 0; i < n; ++i) {
+                const T product = a[i & (data_size - 1)] * b[i & (data_size - 1)];
+                escape(product);
+            }
         });
         row("cnl", "scaled_integer<int64,power<-6,10>>", "decimal_fixed", "div_unchecked", [&](std::size_t n) {
-            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] / b[i & (data_size - 1)]);
+            // Same correction as the multiply: division returns the DIFFERENCE
+            // of the exponents, so it must be brought back to T to be the same
+            // operation fixedwide::div performs.
+            for (std::size_t i = 0; i < n; ++i) {
+                const T quotient = a[i & (data_size - 1)] / b[i & (data_size - 1)];
+                escape(quotient);
+            }
         });
     }
 
@@ -235,7 +260,11 @@ int main(int argc, char** argv) {
             expect(std::abs(static_cast<double>(a[i]) - ops.a[i]) < 0.01, "cnl binary conversion");
         }
         row("cnl", "scaled_integer<int64,power<-32>>", "binary_fixed", "mul_unchecked", [&](std::size_t n) {
-            for (std::size_t i = 0; i < n; ++i) escape(a[i & (data_size - 1)] * b[i & (data_size - 1)]);
+            // Forced back to T for the same reason as the decimal rows above.
+            for (std::size_t i = 0; i < n; ++i) {
+                const T product = a[i & (data_size - 1)] * b[i & (data_size - 1)];
+                escape(product);
+            }
         });
     }
 
@@ -324,6 +353,124 @@ int main(int argc, char** argv) {
                 escape(end);
             }
         });
+    }
+
+    // ---- matched-scale decimal comparison --------------------------------
+    //
+    // The rows above compare Fixed64<12> against a scale-6 CNL type, which is
+    // not the same operation. These pair each scale with its own counterpart,
+    // and validate against an EXACT integer oracle rather than a 0.01 floating
+    // tolerance -- a tolerance that loose cannot tell a correct decimal result
+    // from a wrong one at either scale.
+    //
+    // In its own scope, like every other group here: see the note on the
+    // fixedwide/raw-floor block for why that matters.
+    {
+        // Both libraries are built from the SAME raw scaled integer, not from a
+        // double. Constructing from a double made them disagree immediately --
+        // CNL truncates that conversion and fixedwide rounds to nearest -- so
+        // the two would have been timing different inputs. The validation
+        // caught it; this is the fix.
+        //
+        // Operands include negatives, which the shared positive fixture does
+        // not reach.
+        auto compare_pair = [&]<unsigned Decimals, int Power>(const char* fw_name, const char* cnl_name) {
+            using FW = fixedwide::basic_fixed<64, Decimals>;
+            using CN = cnl::scaled_integer<std::int64_t, cnl::power<Power, 10>>;
+            static_assert(static_cast<int>(Decimals) == -Power, "the two scales must match");
+
+            // Raw magnitudes are derived from the scale so both scale points see
+            // the same VALUES. A fixed raw range would have made scale 12 mean
+            // values around 1e-6, whose products underflow to zero -- fast, and
+            // measuring nothing.
+            std::int64_t unit = 1;
+            for (unsigned d = 0; d < Decimals; ++d) unit *= 10;
+
+            std::mt19937_64 rng(0xC0FFEE);
+            std::vector<FW> fa(data_size), fb(data_size);
+            std::vector<CN> ca(data_size), cb(data_size);
+            for (std::size_t i = 0; i < data_size; ++i) {
+                // Values in [1, 1000) and divisors in [1, 100), signs mixed.
+                std::int64_t ra = static_cast<std::int64_t>(rng() % 1000) * unit
+                                + static_cast<std::int64_t>(rng() % static_cast<std::uint64_t>(unit)) + unit;
+                std::int64_t rb = static_cast<std::int64_t>(rng() % 100) * unit
+                                + static_cast<std::int64_t>(rng() % static_cast<std::uint64_t>(unit)) + unit;
+                if (i % 3 == 0) ra = -ra;
+                if (i % 5 == 0) rb = -rb;
+
+                fa[i] = FW::from_raw(ra);
+                fb[i] = FW::from_raw(rb);
+                ca[i] = cnl::_impl::from_rep<CN>(ra);
+                cb[i] = cnl::_impl::from_rep<CN>(rb);
+                expect(fa[i].raw() == cnl::_impl::to_rep(ca[i]), "fixedwide and cnl disagree on the operand");
+                expect(fb[i].raw() == cnl::_impl::to_rep(cb[i]), "fixedwide and cnl disagree on the divisor");
+            }
+
+            // Exact integer oracle: the full 128-bit product divided by the
+            // scale, truncated -- which is what CNL does. fixedwide is checked
+            // against its own nearest-even contract separately above.
+            for (std::size_t i = 0; i < data_size; ++i) {
+                const __int128 full = static_cast<__int128>(fa[i].raw()) * fb[i].raw();
+                __int128 scale = 1;
+                for (unsigned d = 0; d < Decimals; ++d) scale *= 10;
+                const CN rescaled = ca[i] * cb[i];   // the assignment IS the rescale
+                expect(cnl::_impl::to_rep(rescaled) == static_cast<std::int64_t>(full / scale),
+                       "cnl decimal multiply disagrees with the exact integer oracle");
+            }
+
+            row("fixedwide", fw_name, "decimal_matched", "mul_nearest_even", [&](std::size_t n) {
+                for (std::size_t i = 0; i < n; ++i)
+                    escape(*fixedwide::mul(fa[i & (data_size - 1)], fb[i & (data_size - 1)]));
+            });
+            row("cnl", cnl_name, "decimal_matched", "mul_unchecked", [&](std::size_t n) {
+                for (std::size_t i = 0; i < n; ++i) {
+                    const CN product = ca[i & (data_size - 1)] * cb[i & (data_size - 1)];
+                    escape(product);
+                }
+            });
+            row("fixedwide", fw_name, "decimal_matched", "div_nearest_even", [&](std::size_t n) {
+                for (std::size_t i = 0; i < n; ++i)
+                    escape(*fixedwide::div(fa[i & (data_size - 1)], fb[i & (data_size - 1)]));
+            });
+            row("cnl", cnl_name, "decimal_matched", "div_unchecked", [&](std::size_t n) {
+                for (std::size_t i = 0; i < n; ++i) {
+                    const CN quotient = ca[i & (data_size - 1)] / cb[i & (data_size - 1)];
+                    escape(quotient);
+                }
+            });
+        };
+
+        // Scale 6 only, and that is itself the finding.
+        //
+        // cnl::scaled_integer forms the product in its rep type, so a scale-12
+        // multiply overflows int64 for any value above about 0.003. At scale 12
+        // it cannot multiply ordinary money at all: the demonstration below is
+        // checked on every run, so this claim cannot go stale.
+        compare_pair.template operator()<6, -6>("Fixed64<6>", "scaled_integer<int64,power<-6,10>>");
+
+        {
+            using CN12 = cnl::scaled_integer<std::int64_t, cnl::power<-12, 10>>;
+            using FW12 = fixedwide::Fixed64<12>;
+            constexpr std::int64_t ra = 123'456789012345LL;   // 123.456789012345
+            constexpr std::int64_t rb = 2'000000000000LL;     //   2.000000000000
+            constexpr std::int64_t exact = 246'913578024690LL;
+
+            const CN12 cnl_product = cnl::_impl::from_rep<CN12>(ra) * cnl::_impl::from_rep<CN12>(rb);
+            const auto fw_product = fixedwide::mul(FW12::from_raw(ra), FW12::from_raw(rb));
+
+            // CNL is wrong here, and wrong without saying so. fixedwide widens
+            // to 128 bits for the intermediate and gets the exact answer.
+            expect(cnl::_impl::to_rep(cnl_product) != exact,
+                   "cnl scale-12 multiply was expected to overflow silently");
+            expect(fw_product.has_value() && fw_product->raw() == exact,
+                   "fixedwide scale-12 multiply must be exact where cnl overflows");
+
+            std::fprintf(stderr,
+                         "NOTE 123.456789012345 * 2 at 12 decimals:"
+                         " cnl raw=%lld (wrong), fixedwide raw=%lld (exact)\n",
+                         static_cast<long long>(cnl::_impl::to_rep(cnl_product)),
+                         static_cast<long long>(fw_product->raw()));
+        }
     }
 
     // ---- fixedwide against the raw-type floor ----------------------------

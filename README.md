@@ -1,8 +1,9 @@
 # fixedwide
 
 **Exact decimal arithmetic for C++23, with the overflow checked.** Fixed-point
-decimal types and portable 128/256-bit integers. No heap allocation, no virtual
-dispatch, no exceptions — every fallible operation returns `std::expected`.
+decimal types and portable 128/256-bit integers. Core arithmetic, parsing and
+caller-buffer formatting allocate nothing, dispatch nothing virtually, and throw
+nothing — every fallible operation returns `std::expected` instead.
 
 [![CI](https://github.com/Samiisd/fixedwide/actions/workflows/ci.yml/badge.svg)](https://github.com/Samiisd/fixedwide/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -130,12 +131,13 @@ raw samples: [`reports/BENCHMARK_COMPETITORS.md`](reports/BENCHMARK_COMPETITORS.
 
 | | **fixedwide**<br>`Fixed64<12>` | Boost.Decimal<br>`decimal64_t` | CNL<br>`scaled_integer` | `double` |
 |---|---:|---:|---:|---:|
-| multiply | **2.62** | 3.54 | 0.35 | 0.22 |
-| divide | **2.18** | 8.64 | 1.10 | 0.74 |
-| parse | **11.42** | 13.77 | — | 5.28 |
-| format | 13.97 | **12.42** | — | 28.95 |
+| multiply | **2.63** | 3.54 | 0.54 | 0.22 |
+| divide | **2.17** | 8.59 | 1.09 | 0.74 |
+| parse | **12.30** | 13.67 | — | 5.40 |
+| format | 14.10 | **12.57** | — | 28.65 |
 | exact in decimal | yes | yes | yes | **no** |
 | overflow detected | **yes** | no | no | no |
+| 12 decimals usable | **yes** | yes | **no** (see below) | no |
 
 ### Against the raw machine types
 
@@ -145,15 +147,18 @@ so the price of the contract is visible instead of argued:
 
 | | **fixedwide**<br>`Fixed64<12>` | raw `int64_t` | `double` |
 |---|---:|---:|---:|
-| add | **0.39** | 0.27 | 0.22 |
+| add | **0.38** | 0.31 | 0.26 |
 | store 8 bytes | **0.19** `to_bytes` | 0.19 `memcpy` | — |
 | load 8 bytes | **0.18** `from_bytes` | 0.18 `memcpy` | — |
 
-**Serialization runs at the `memcpy` floor** while doing strictly more: the byte
-order is named, so what one machine writes another reads, and `from_bytes`
-rejects a span of the wrong length. **A checked decimal add is within about
-0.12 ns of a raw `int64_t` add** — exactly two extra instructions, counted
-deterministically rather than timed.
+**In this fixture, serialization measures at the `memcpy` floor** while doing
+strictly more: the byte order is named, so what one machine writes another
+reads, and `from_bytes` rejects a span of the wrong length. That is a
+throughput-bound loop over eight bytes, not a universal claim — under Valgrind
+`to_bytes` is 110 instructions against `memcpy`'s 54, and on a longer dependent
+chain the gap would show. **A checked decimal add is within about 0.07 ns of a
+raw `int64_t` add** — exactly two extra instructions, counted deterministically
+rather than timed.
 
 These rows are all a fraction of a nanosecond and throughput-bound. Read the
 ordering, not the ratio; and read
@@ -165,10 +170,21 @@ which says where the instruction counts and the timings disagree.
 - Against **Boost.Decimal**, the closest comparable contract here, multiply is
   faster, divide is about **four times** faster, and parsing is faster.
   Formatting is the row it loses, and that is an open item.
-- **CNL's decimal multiply is about 7x quicker**, because it is a raw `int64`
-  multiply and a rescale with no overflow detection: on overflow it silently
-  produces a wrong answer. Returning `std::expected` is what that row costs, and
-  it is the trade this library exists to make.
+- **CNL's decimal multiply is about 2.8x quicker at a matched scale**, because
+  it does not check for overflow. That is the trade this library exists to make.
+  (An earlier version of this table said 8x. It was wrong: CNL's `operator*`
+  returns a *wider* scale rather than rescaling, so the timed expression was a
+  bare 64-bit multiply. The rows above now force the result back to the declared
+  type, which is the same operation `fixedwide::mul` performs.)
+- **CNL cannot do 12 decimals at all.** It forms the product in `int64_t`, so a
+  scale-12 multiply overflows above roughly 0.003. The competitor benchmark
+  checks this on every run:
+
+  ```
+  123.456789012345 * 2, at 12 decimals
+    cnl        -0.000002        silently wrong, and negative
+    fixedwide  246.913578024690 exact
+  ```
 - Formatting is about **twice as fast as `std::to_chars` on a `double`**.
   Parsing is about twice as slow — but `std::from_chars` produces a binary float
   and rejects nothing on a decimal grid, so it is not the same job.

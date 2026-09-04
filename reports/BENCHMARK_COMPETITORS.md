@@ -13,7 +13,7 @@ Each number is the **median** of 11 timed repetitions of 262144
 operations. Minimum, median, p95, maximum and every raw sample are in
 `reports/raw/competitors.csv`. Every timed loop's output was validated against
 an independent oracle **outside** the timed region first; the run reports
-`validations=45057` and refuses to print results if any check fails.
+`validations=57347` and refuses to print results if any check fails.
 
 ## Reproducing it
 
@@ -39,20 +39,34 @@ boost 1.92.0
 
 ## Results
 
-### decimal fixed
+### decimal fixed, matched scale
 
-Decimal fixed point: an integer scaled by a power of ten. The same numerical contract as fixedwide.
+The like-for-like comparison: the same scale, the same operand integers, and both
+results brought back to the declared type. Validated against an exact integer oracle.
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| cnl | `scaled_integer<int64,power<-6,10>>` | mul_unchecked | 0.348 | no |
-| cnl | `scaled_integer<int64,power<-6,10>>` | div_unchecked | 1.101 | no |
-| fixedwide | `Fixed64<12>` | dependent_chain_mul | 2.074 | yes |
-| fixedwide | `Fixed64<12>` | div_nearest_even | 2.178 | yes |
-| fixedwide | `Fixed64<12>` | mul_div_one_rounding | 2.383 | yes |
-| fixedwide | `Fixed64<12>` | mul_nearest_even | 2.617 | yes |
-| fixedwide | `Fixed64<12>` | parse | 11.424 | yes |
-| fixedwide | `Fixed64<12>` | format | 13.965 | yes |
+| cnl | `scaled_integer<int64,power<-6,10>>` | mul_unchecked | 0.538 | no |
+| cnl | `scaled_integer<int64,power<-6,10>>` | div_unchecked | 1.194 | no |
+| fixedwide | `Fixed64<6>` | mul_nearest_even | 1.518 | yes |
+| fixedwide | `Fixed64<6>` | div_nearest_even | 1.995 | yes |
+
+### decimal fixed
+
+Decimal fixed point: an integer scaled by a power of ten. Note the CNL rows are
+scale 6 against fixedwide's scale 12 -- see the matched-scale class above for the
+comparison that controls for that.
+
+| library | type | operation | median ns/op | checked |
+|---|---|---|---:|---|
+| cnl | `scaled_integer<int64,power<-6,10>>` | mul_unchecked | 0.544 | no |
+| cnl | `scaled_integer<int64,power<-6,10>>` | div_unchecked | 1.090 | no |
+| fixedwide | `Fixed64<12>` | dependent_chain_mul | 2.039 | yes |
+| fixedwide | `Fixed64<12>` | div_nearest_even | 2.171 | yes |
+| fixedwide | `Fixed64<12>` | mul_div_one_rounding | 2.308 | yes |
+| fixedwide | `Fixed64<12>` | mul_nearest_even | 2.626 | yes |
+| fixedwide | `Fixed64<12>` | parse | 12.303 | yes |
+| fixedwide | `Fixed64<12>` | format | 14.098 | yes |
 
 ### binary fixed
 
@@ -60,9 +74,9 @@ Binary fixed point: an integer scaled by a power of two. Cannot represent 0.01 e
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| cnl | `scaled_integer<int64,power<-32>>` | mul_unchecked | 0.313 | no |
-| fpm | `fixed<int64,int128,32>` | mul_nearest_unchecked | 1.364 | no |
-| fpm | `fixed<int64,int128,32>` | div_nearest_unchecked | 1.935 | no |
+| cnl | `scaled_integer<int64,power<-32>>` | mul_unchecked | 0.488 | no |
+| fpm | `fixed<int64,int128,32>` | mul_nearest_unchecked | 1.351 | no |
+| fpm | `fixed<int64,int128,32>` | div_nearest_unchecked | 1.945 | no |
 
 ### decimal float
 
@@ -71,9 +85,9 @@ IEEE 754 decimal floating point: a decimal significand with a moving exponent.
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
 | boost.decimal | `decimal64_t` | mul | 3.540 | no |
-| boost.decimal | `decimal64_t` | div | 8.640 | no |
-| boost.decimal | `decimal64_t` | format | 12.416 | no |
-| boost.decimal | `decimal64_t` | parse | 13.772 | no |
+| boost.decimal | `decimal64_t` | div | 8.594 | no |
+| boost.decimal | `decimal64_t` | format | 12.574 | no |
+| boost.decimal | `decimal64_t` | parse | 13.669 | no |
 
 ### raw integer
 
@@ -81,7 +95,7 @@ Wide-integer arithmetic with no scale and no rounding. A floor, not a competitor
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| boost.multiprecision | `int128_t` | mul_unchecked | 0.892 | no |
+| boost.multiprecision | `int128_t` | mul_unchecked | 0.888 | n/a |
 
 ### binary float
 
@@ -90,29 +104,28 @@ IEEE 754 binary floating point. The cost of not being deterministic in decimal.
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
 | std | `double` | mul | 0.222 | n/a |
-| std | `double` | div | 0.736 | n/a |
-| std | `double` | parse | 5.280 | n/a |
-| std | `double` | format | 28.945 | n/a |
+| std | `double` | div | 0.739 | n/a |
+| std | `double` | parse | 5.403 | n/a |
+| std | `double` | format | 28.648 | n/a |
 
 ### raw machine types
 
 Not competitors: the floor. What the hardware costs with no scale, no rounding mode,
-no overflow check and no decimal guarantee. The fixedwide rows are here so the two
-can be read against each other directly.
+no overflow check and no decimal guarantee.
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| std | `int64_t` | memcpy_load | 0.183 | n/a |
+| std | `int64_t` | memcpy_load | 0.182 | n/a |
 | fixedwide | `Fixed64<12>` | from_bytes_little | 0.184 | yes |
-| std | `int64_t` | memcpy_store | 0.192 | n/a |
-| fixedwide | `Fixed64<12>` | to_bytes_little | 0.194 | yes |
-| std | `float` | add | 0.198 | n/a |
+| std | `int64_t` | memcpy_store | 0.190 | n/a |
+| fixedwide | `Fixed64<12>` | to_bytes_little | 0.190 | yes |
 | std | `float` | mul | 0.203 | n/a |
-| std | `double` | add | 0.217 | n/a |
-| std | `int64_t` | add_unchecked | 0.272 | n/a |
-| std | `int64_t` | mul_unchecked | 0.331 | n/a |
-| fixedwide | `Fixed64<12>` | add_checked | 0.388 | yes |
-| std | `int64_t` | div_unchecked | 1.101 | n/a |
+| std | `float` | add | 0.206 | n/a |
+| std | `double` | add | 0.260 | n/a |
+| std | `int64_t` | add_unchecked | 0.312 | n/a |
+| std | `int64_t` | mul_unchecked | 0.330 | n/a |
+| fixedwide | `Fixed64<12>` | add_checked | 0.384 | yes |
+| std | `int64_t` | div_unchecked | 1.090 | n/a |
 
 ## The raw-type floor
 
@@ -145,31 +158,67 @@ nanosecond and throughput-bound, so read the ordering, not the ratio.
 
 ## Reading these numbers honestly
 
-**fixedwide is not the fastest multiply here, and should not be.** CNL's decimal
-multiply is about eight times quicker because it is a raw `int64` multiply and a
-rescale with no overflow detection: on overflow it silently produces a wrong
-answer. `fixedwide::mul` returns `std::expected` and reports it. That is the
-trade this library exists to make, and the row shows its price rather than
-hiding it.
+**Against CNL, at a matched scale, the multiply gap is about 2.8x — not the 8x
+this report used to claim.** The old figure compared fixedwide's
+multiply-widen-rescale-check against a CNL expression that never rescaled at
+all: `cnl::scaled_integer::operator*` returns a type whose exponent is the *sum*
+of the operands', so `a * b` is a bare 64-bit multiply leaving the product at a
+different scale. Bringing the result back to the declared type is the comparable
+operation, and the `decimal fixed, matched scale` rows above do that.
 
-Where the contract is comparable, against **Boost.Decimal** -- the nearest thing
-here to the same use case:
+CNL is still faster, and the reason is unchanged and worth stating plainly: it
+does not check for overflow. `fixedwide::mul` returns `std::expected` and
+reports it. That is the trade this library exists to make.
 
-* multiply is faster, and divide about four times faster;
-* **parsing is faster** (12.2 ns against 14.2 ns);
-* formatting is slower (14.0 ns against 12.4 ns), and that is an open item.
+**CNL cannot do twelve decimals at all**, which is the more important finding.
+It forms the product in its representation type, so a scale-12 multiply
+overflows `int64_t` for any value above roughly 0.003. Checked on every run of
+this benchmark:
+
+```
+123.456789012345 * 2, at 12 decimals
+  cnl        raw = -2111655         wrong, negative, and silent
+  fixedwide  raw = 246913578024690  exact
+```
+
+fixedwide forms the intermediate at twice the width, so it returns the right
+answer rather than either wrapping or erroring. That is why the matched-scale
+comparison above is at scale 6: it is the widest scale at which both libraries
+compute the same function.
+
+Against **Boost.Decimal** — the nearest thing here to the same use case:
+
+* multiply is faster (2.63 ns against 3.54), and divide about four times faster
+  (2.17 against 8.59);
+* **parsing is faster** (12.3 ns against 13.7);
+* formatting is slower (14.1 ns against 12.6), and that is an open item.
 
 Against the standard library's binary-float text routines:
 
 * **formatting is about twice as fast** as `std::to_chars` on a `double`;
 * **parsing is about twice as slow** as `std::from_chars` on a `double`. That
-  gap is real and is reported, but it is not a like-for-like row:
+  gap is real and reported, but it is not a like-for-like row:
   `std::from_chars` produces a binary float and rejects nothing on a decimal
   grid, while this parser produces an exact scaled integer and refuses input it
-  cannot represent. Boost.Decimal, which does the comparable job, is the row to
-  read against.
+  cannot represent. Boost.Decimal is the row to read against.
 
 ## Corrections to the previous report
+
+* **The CNL rows did not rescale.** `scaled_integer::operator*` and
+  `operator/` return a type whose exponent is the sum or difference of the
+  operands', so the timed expression was a bare 64-bit multiply or divide with
+  the result left at the wrong scale. Every CNL row is now forced back to its
+  declared type, which is the operation fixedwide performs. The multiply gap
+  went from a reported 8x to a measured 2.8x at a matched scale.
+* **The CNL comparison was at the wrong scale.** `Fixed64<12>` was compared
+  against a scale-6 CNL type. There is now a `decimal fixed, matched scale`
+  class that pairs each scale with its own counterpart, seeds both libraries
+  from the identical raw integers, and validates against an exact integer
+  oracle instead of a 0.01 floating tolerance that could not tell a correct
+  decimal result from a wrong one.
+* **Operands were positive only.** The matched-scale fixture includes negatives,
+  and derives magnitudes from the scale so both scale points see the same
+  values.
 
 * **CNL is not base-2 only.** `cnl::scaled_integer` is radix-parameterised and is
   benchmarked here in both a base-10 and a base-2 configuration. CNL's own

@@ -24,6 +24,45 @@ permissions:
 # compile there. They are paired with libc++, which has no such gate. That was
 # measured, not assumed; see docs/ci.md.
 jobs:
+  lint:
+    name: format and warnings
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install clang 20
+        run: |
+          wget -qO llvm.sh https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
+          sudo ./llvm.sh 20
+          sudo apt-get install -y --no-install-recommends clang-format-20 libboost-dev cmake ninja-build
+      # scripts/format.sh owns the exclusion list, because clang-format does not
+      # honour .clang-format-ignore when handed an explicit path -- which is how
+      # this script and every editor invoke it.
+      - name: clang-format
+        run: CLANG_FORMAT=clang-format-20 ./scripts/format.sh --check
+      # Warnings are errors here and nowhere else, so a new warning fails a pull
+      # request without making every other job brittle. Both backends, because
+      # they compile different code.
+      - name: Warnings are errors (native)
+        run: |
+          cmake -B build-warn -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-Werror \
+            -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
+          cmake --build build-warn
+      - name: Warnings are errors (portable)
+        run: |
+          cmake -B build-warn-portable -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-Werror \
+            -DFIXEDWIDE_FORCE_PORTABLE=ON \
+            -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
+          cmake --build build-warn-portable
+      - name: Warnings are errors (gcc)
+        run: |
+          sudo apt-get install -y --no-install-recommends g++-14
+          cmake -B build-warn-gcc -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=g++-14 -DCMAKE_CXX_FLAGS=-Werror \
+            -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
+          cmake --build build-warn-gcc
+
   linux:
     name: linux ${{ matrix.toolchain.name }} ${{ matrix.build_type }}
     runs-on: ubuntu-24.04
