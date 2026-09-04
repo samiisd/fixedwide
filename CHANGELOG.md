@@ -135,6 +135,13 @@ nothing in this tree had ever built. Two of its own rows could not have compiled
   paired 0.4 comparison requires it to be byte-identical to 0.4's copy.
 - A CI job that consumes the library through `FetchContent`, because the
   README's install instructions were never tested.
+- **A big-endian job**, under s390x emulation. `binary.hpp` has always
+  implemented both byte orders and only little-endian had ever been executed --
+  every host, CI runner and phone this library had run on was little-endian, so
+  `to_bytes<endian::big>` was shipped, documented and untested. It passes 32/32
+  including the examples. `scripts/test_big_endian.sh` proves the target really
+  is big-endian before reporting anything, so the job cannot pass by silently
+  running on the wrong architecture.
 - A `decimal fixed, matched scale` benchmark class that pairs each scale with
   its own counterpart, seeds both libraries from identical raw integers,
   includes negative operands, and checks an exact integer oracle. It surfaced
@@ -158,6 +165,10 @@ nothing in this tree had ever built. Two of its own rows could not have compiled
   | `mul_to`, 64-bit operands | 8561 | **416** |
   | `div_to`, 64-bit operands | 8377 | **729** |
   | `mul_to`, 256-bit operands | 8561 | **1764** |
+
+  In wall-clock, on the same machine, timing the identical operation against the
+  old kernel and the new one: `mul_to` 332.67 ns -> 19.69 ns and `div_to`
+  590.95 ns -> 35.36 ns, with the native path unchanged at 1.45 ns as a control.
 
   Instructions per operation, measured deterministically. Same results: 1,017,500
   differential checks against Boost.Multiprecision, unchanged, over the native

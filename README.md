@@ -284,6 +284,7 @@ Every row below is `executed-pass` in
 | Linux x86-64 | GCC 14, `FIXEDWIDE_FORCE_PORTABLE` | portable |
 | Linux x86-64 | GCC 14, `__SIZEOF_INT128__` undefined | portable |
 | Linux x86-64 | Clang 18, ASan + UBSan, both backends | both |
+| Linux s390x (**big-endian**, emulated) | GCC 14 | portable |
 
 Also executed on every push: the shared library, install plus an external
 `find_package` consumer, `conan create` with `test_package` in both backends,
@@ -291,9 +292,9 @@ a libFuzzer smoke run, and the instruction-count gate. Executed on the
 maintainer's hardware and recorded in `reports/`: Clang 22 and GCC 16, a
 no-exceptions / no-RTTI build, and AArch64 on a real device.
 
-Not configured, and therefore not claimed: Windows ARM64, and big-endian
-hardware — `binary.hpp` implements both byte orders but only little-endian has
-ever been executed.
+Big-endian runs under emulation rather than on hardware, and is described that
+way; the job refuses to report a pass unless the target really is big-endian.
+Not configured, and therefore not claimed: Windows ARM64.
 
 Note on Clang: Clang 17 and 18 report `__cpp_concepts` as `201907`, and
 libstdc++ gates `<expected>` on `202002`, so **this library cannot compile with

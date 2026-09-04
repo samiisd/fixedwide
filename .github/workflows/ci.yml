@@ -167,6 +167,20 @@ jobs:
       - run: cmake --build build
       - run: ctest --test-dir build --output-on-failure
 
+  big-endian:
+    name: big-endian (s390x)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: s390x
+      # binary.hpp has always implemented both byte orders and only one of them
+      # had ever been executed: every host this library had run on was
+      # little-endian. Emulated and slow, so correctness only -- no timing is
+      # taken from it.
+      - run: ./scripts/test_big_endian.sh
+
   portable-backend:
     name: ${{ matrix.config.name }}
     runs-on: ubuntu-24.04
@@ -427,12 +441,11 @@ jobs:
           # A ratchet against regression, not an aspiration. Raise it when the
           # number rises; never lower it to make a build green.
           fail=0
-          # Merging both backends moved this from 72.1/77.5 to 75.1/77.9
-          # locally on clang 22; the runner's clang 20 reads about 5 points
-          # lower, so the gate starts here and is tightened from the first
-          # merged CI measurement rather than guessed at.
-          awk -v v="$lines"    'BEGIN { exit (v+0 >= 68) ? 0 : 1 }' || { echo "line coverage below 68%" >&2; fail=1; }
-          awk -v v="$branches" 'BEGIN { exit (v+0 >= 75) ? 0 : 1 }' || { echo "branch coverage below 75%" >&2; fail=1; }
+          # Set from the first merged CI measurement: 70.14% line, 76.82%
+          # branch. Raise it when the number rises; never lower it to make a
+          # build green -- that is what a ratchet means.
+          awk -v v="$lines"    'BEGIN { exit (v+0 >= 70) ? 0 : 1 }' || { echo "line coverage below 70%" >&2; fail=1; }
+          awk -v v="$branches" 'BEGIN { exit (v+0 >= 76) ? 0 : 1 }' || { echo "branch coverage below 76%" >&2; fail=1; }
           exit $fail
       - uses: actions/upload-artifact@v7
         if: always()

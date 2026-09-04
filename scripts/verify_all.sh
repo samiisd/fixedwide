@@ -169,7 +169,7 @@ ci_row "Instruction-count regression gate"                 "instruction-count re
 ci_row "Clang libFuzzer smoke run (CI)"                    "fuzz smoke"
 ci_row "Coverage instrumentation (CI)"                     "coverage"
 record "Windows ARM64" not-configured "no runner configured; not claimed as supported"
-record "Big-endian hardware" not-configured "no host available; binary.hpp defines both byte orders but only little-endian has been executed"
+ci_row "Big-endian (s390x, emulated)" "big-endian (s390x)"
 
 echo
 echo "matrix written to $MATRIX"

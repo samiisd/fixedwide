@@ -104,6 +104,18 @@ results — 1,017,500 differential checks against Boost.Multiprecision, unchange
 across the native and portable backends — for 8561 → 416 instructions on the
 64-bit case and 8377 → 729 on the divide.
 
+In wall-clock, timing the identical operation against the old kernel and the
+new one on the same machine:
+
+| `Fixed64<4>` × `Fixed64<8>` → `Fixed128<18>` | before | after |
+|---|---:|---:|
+| `mul_to` | 332.67 ns | **19.69 ns** |
+| `div_to` | 590.95 ns | **35.36 ns** |
+| `mul_to` on the native path, for reference | 1.45 ns | 1.47 ns |
+
+The native row is the control: it does not go through this kernel and does not
+move.
+
 What remains is real work: the general path evaluates an exact rational and
 performs a division that the native path avoids entirely. If a mixed operation
 is on a hot path, keeping the destination scale close to what the operands need

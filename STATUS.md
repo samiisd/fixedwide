@@ -116,6 +116,8 @@ Executed and passing in CI:
 * Windows x64, MSVC and clang-cl
 * Forced portable backend, and portable with `__SIZEOF_INT128__` undefined
 * ASan + UBSan over both the native and the portable backend
+* **Big-endian (s390x, emulated)** -- 32/32, the first execution of the
+  big-endian half of `binary.hpp`
 * Shared library
 * CMake install plus an external `find_package` consumer
 * `conan create` plus `test_package`, native and portable
@@ -130,7 +132,8 @@ Executed on this host, and not reproducible in CI:
 * The paired wall-clock comparison against 0.4, which needs a 0.4 source tree
   that is not in this repository and cannot be
 
-Not configured, and so not claimed: Windows ARM64, big-endian hardware.
+Not configured, and so not claimed: Windows ARM64. Big-endian is executed under
+emulation rather than on hardware, which is stated as such.
 
 ## Compiler floor
 
@@ -212,8 +215,12 @@ that work, measured. Eight examples in `examples/` are ctest tests.
    still run the general four-limb routines.
 7. `Fixed256` multiply and divide are about 28 ns. Both build a 512-bit
    intermediate and divide it by a scale that occupies one limb.
-8. Big-endian byte order is implemented in `binary.hpp` but has never been
-   executed: no runner and no hardware. It is marked `not-configured`.
+8. Big-endian is now executed, under s390x emulation: 32/32 including the
+   examples, on every push. It had been implemented, documented and shipped
+   without ever running, because every host, CI runner and phone this library
+   had touched was little-endian. The job proves the target really is
+   big-endian before it reports anything. Emulated, so correctness only -- no
+   timing is taken from it.
 9. On a platform whose `long double` is IEEE binary128, `from_float` keeps 64
    significand bits rather than 113. The cap is explicit in `src/floating.cpp`
    and is what the `std::uint64_t` accumulator can hold.

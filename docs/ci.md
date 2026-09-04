@@ -15,6 +15,7 @@ claimed anywhere, including in the README.
 | `macos` (arm64) | An assumption about `long double`, or about libc++ |
 | `windows` MSVC and clang-cl | A GNU builtin, GNU inline asm, or `__int128` used without a guard |
 | `forced-portable`, `no-int128` | The multi-limb fallback diverging from the native path |
+| `big-endian (s390x)` | A byte-order bug in `binary.hpp`, whose big-endian half had never been executed on anything |
 | `asan+ubsan`, both backends | Undefined behaviour or an out-of-bounds access |
 | `shared library` | A missing export or an ODR problem |
 | `install + find_package consumer` | A broken exported CMake package |
