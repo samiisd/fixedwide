@@ -11,9 +11,9 @@ A performance pass. No public type, signature or semantic changed. The internal
 `detail::` entry points changed shape, so headers and library must be rebuilt
 together.
 
-Against the untouched 0.4 release on Clang 17, the audit's compiler: 62 of 100
-rows faster (was 48), no row more than 25% slower (was 9), worst row +13.1% (was
-+63.8%), median row -1.22% (was +0.4%). Clang 18 and Clang 22 also have zero rows
+Against the untouched 0.4 release on Clang 17, the audit's compiler: 63 of 100
+rows faster (was 48), no row more than 25% slower (was 9), worst row +12.6% (was
++63.8%), median row -1.88% (was +0.4%). Clang 18 and Clang 22 also have zero rows
 above 25%. Full per-row output in `reports/BENCHMARK_VS_0_4.md`.
 
 ### Fixed
@@ -46,15 +46,37 @@ above 25%. Full per-row output in `reports/BENCHMARK_VS_0_4.md`.
   26% faster than 0.4 on Clang 17.
 - The 64-bit range test in `mul` and `mul_div` was two paired equality tests per
   operand, each with a branch. Replaced by one addition.
+- Every mixed-scale rescale divided a 128-bit value by a power of ten with a
+  `__udivti3` call out to libgcc, although every divisor a mixed operation
+  reaches fits 64 bits. `detail::mixed_native::divide_magnitude` does it in one
+  or two hardware divisions, keeping the generic form for a wider divisor and for
+  constant evaluation. `mul_to.Money.from.Price.Rate` 7.69 ns -> 2.48 ns, against
+  3.50 ns in alpha.4; measured in isolation the same loop went 7.47 -> 2.09 ns.
+  `tests/test_mixed_native.cpp` sweeps every magnitude width from 0 to 128
+  against every divisor width from 1 to 128 against the compiler's own division,
+  because `divq` faults rather than wraps when its quotient does not fit a limb.
+- `arithmetic.hpp` included `<concepts>` and `<limits>` for `std::same_as`,
+  `std::integral` and two raw bounds. All three are one line each over
+  `<type_traits>` and a shift. `mixed.hpp` included `<concepts>` and used
+  nothing from it. Worth 4 ms of parse time per translation unit.
 
 ### Changed
 - The 256-bit entry points take their operands by reference. A 32-byte struct is
   passed in memory by value, so each call copied three of them onto the stack.
   Measured effect under 2%; kept because it is strictly less work.
-- `arithmetic.hpp` now costs 62% more to include than 0.4's, up from 38%. The
-  scale-specialised kernels are instantiated per decimal count against the
-  caller's own return type, which is what removes the return-path copy. Traded
-  deliberately: this release optimises runtime, not build time.
+- The names that fix the scale at 12 digits -- `FP64`, `FP128`, `fp64_min/max`,
+  `fp128_min/max`, `fractional_digits`, `scale`, `mul_wide`, `narrow`, `parse64`,
+  `parse128`, `from_double64`, `from_double128` -- are now labelled in their
+  headers as the 0.4 compatibility surface, each with its generic replacement,
+  and listed in one table in README.md. They exist because the paired benchmark
+  compiles 0.4's byte-identical source against this library. No other public name
+  is tied to a particular width or scale.
+- `arithmetic.hpp` costs 45.5% more to include than 0.4's, where alpha.4 measured
+  55.9%. STATUS.md had claimed 38.2% for alpha.4; `reports/COMPILE_TIME.md` from
+  that release says 55.9%, and the stale figure is corrected. Compiled against an
+  identical translation unit, alpha.4's headers and these take the same time: the
+  performance work above costs no build time, and dropping two standard headers
+  bought some back.
 
 ### Known open
 - Fourteen rows still exceed the 3% gate on Clang 17, worst +13.1%. They are the
@@ -63,10 +85,13 @@ above 25%. Full per-row output in `reports/BENCHMARK_VS_0_4.md`.
   into the caller, which makes the calling function large enough for Clang to
   give it a stack frame and `-fstack-protector-strong` to put a canary on it.
   Removing the inline path restores 0.4's call shape and measures worse.
-- `Fixed256::quantize` is still about 27 ns. Its divisor always fits one limb,
-  and both its division and its multiply-back still run the four-limb routines.
-- The mixed-scale multiply rescales with a `__udivti3` call although its divisor
-  always fits 64 bits.
+- `Fixed256::quantize` is still about 27 ns, and `Fixed256` multiply and divide
+  about 28 ns. Their divisor always fits one limb, and both the division and the
+  multiply-back still run the general four-limb routines. The same fix that
+  worked for the mixed rescale applies.
+- `detail/constexpr_arith.hpp`, the compile-time evaluation path, is 9 ms of the
+  15 ms that `arithmetic.hpp` costs over 0.4's. It cannot be dropped without
+  dropping `constexpr` arithmetic.
 
 ## [0.5.0-alpha.4] - 2026-09-03
 

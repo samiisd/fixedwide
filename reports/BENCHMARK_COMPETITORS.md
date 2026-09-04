@@ -45,14 +45,14 @@ Decimal fixed point: an integer scaled by a power of ten. The same numerical con
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| cnl | `scaled_integer<int64,power<-6,10>>` | mul_unchecked | 0.335 | no |
-| cnl | `scaled_integer<int64,power<-6,10>>` | div_unchecked | 1.100 | no |
-| fixedwide | `Fixed64<12>` | dependent_chain_mul | 2.066 | yes |
-| fixedwide | `Fixed64<12>` | div_nearest_even | 2.184 | yes |
-| fixedwide | `Fixed64<12>` | mul_div_one_rounding | 2.382 | yes |
-| fixedwide | `Fixed64<12>` | mul_nearest_even | 2.602 | yes |
-| fixedwide | `Fixed64<12>` | parse | 12.328 | yes |
-| fixedwide | `Fixed64<12>` | format | 14.059 | yes |
+| cnl | `scaled_integer<int64,power<-6,10>>` | mul_unchecked | 0.331 | no |
+| cnl | `scaled_integer<int64,power<-6,10>>` | div_unchecked | 1.098 | no |
+| fixedwide | `Fixed64<12>` | dependent_chain_mul | 2.056 | yes |
+| fixedwide | `Fixed64<12>` | div_nearest_even | 2.172 | yes |
+| fixedwide | `Fixed64<12>` | mul_div_one_rounding | 2.374 | yes |
+| fixedwide | `Fixed64<12>` | mul_nearest_even | 2.598 | yes |
+| fixedwide | `Fixed64<12>` | parse | 12.377 | yes |
+| fixedwide | `Fixed64<12>` | format | 14.002 | yes |
 
 ### binary fixed
 
@@ -60,9 +60,9 @@ Binary fixed point: an integer scaled by a power of two. Cannot represent 0.01 e
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| cnl | `scaled_integer<int64,power<-32>>` | mul_unchecked | 0.315 | no |
-| fpm | `fixed<int64,int128,32>` | mul_nearest_unchecked | 1.358 | no |
-| fpm | `fixed<int64,int128,32>` | div_nearest_unchecked | 1.950 | no |
+| cnl | `scaled_integer<int64,power<-32>>` | mul_unchecked | 0.371 | no |
+| fpm | `fixed<int64,int128,32>` | mul_nearest_unchecked | 1.353 | no |
+| fpm | `fixed<int64,int128,32>` | div_nearest_unchecked | 1.945 | no |
 
 ### decimal float
 
@@ -70,10 +70,10 @@ IEEE 754 decimal floating point: a decimal significand with a moving exponent.
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| boost.decimal | `decimal64_t` | mul | 3.564 | no |
-| boost.decimal | `decimal64_t` | div | 8.602 | no |
-| boost.decimal | `decimal64_t` | format | 12.662 | no |
-| boost.decimal | `decimal64_t` | parse | 14.280 | no |
+| boost.decimal | `decimal64_t` | mul | 3.551 | no |
+| boost.decimal | `decimal64_t` | div | 8.614 | no |
+| boost.decimal | `decimal64_t` | format | 12.448 | no |
+| boost.decimal | `decimal64_t` | parse | 14.225 | no |
 
 ### raw integer
 
@@ -81,7 +81,7 @@ Wide-integer arithmetic with no scale and no rounding. A floor, not a competitor
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| boost.multiprecision | `int128_t` | mul_unchecked | 0.896 | n/a |
+| boost.multiprecision | `int128_t` | mul_unchecked | 0.893 | n/a |
 
 ### binary float
 
@@ -89,10 +89,10 @@ IEEE 754 binary floating point. The cost of not being deterministic in decimal.
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| std | `double` | mul | 0.217 | n/a |
-| std | `double` | div | 0.744 | n/a |
-| std | `double` | parse | 5.252 | n/a |
-| std | `double` | format | 28.757 | n/a |
+| std | `double` | mul | 0.227 | n/a |
+| std | `double` | div | 0.741 | n/a |
+| std | `double` | parse | 5.205 | n/a |
+| std | `double` | format | 28.383 | n/a |
 
 ## Reading these numbers honestly
 
@@ -107,8 +107,8 @@ Where the contract is comparable, against **Boost.Decimal** -- the nearest thing
 here to the same use case:
 
 * multiply is faster, and divide about four times faster;
-* **parsing is faster** (12.3 ns against 14.3 ns);
-* formatting is slower (14.1 ns against 12.7 ns), and that is an open item.
+* **parsing is faster** (12.4 ns against 14.2 ns);
+* formatting is slower (14.0 ns against 12.4 ns), and that is an open item.
 
 Against the standard library's binary-float text routines:
 

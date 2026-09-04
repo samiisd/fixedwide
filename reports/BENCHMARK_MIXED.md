@@ -16,33 +16,44 @@ region (20,480 checks). Raw samples in `reports/raw/mixed.csv`.
 | operation | ns |
 |---|---:|
 | `Money.add` on `Fixed128<12>` | 0.53 |
-| `Money.mul` on `Fixed128<12>` | 1.89 |
+| `Money.mul` on `Fixed128<12>` | 1.90 |
 | `Money.div` on `Fixed128<12>` | 2.91 |
 
 `Money.div` was 4.94 ns in alpha.4. The alpha.5 divide work moved the floor
 itself, which is why the mixed rows measured against it are compared to the
 number in the same run and not to the previous release's.
 
+`Money`, `Price`, `Rate` and `Small` are type aliases local to
+`benchmarks/mixed_bench.cpp` (`Fixed128<12>`, `Fixed64<8>`, `Fixed64<12>`,
+`Fixed32<6>`), named for readability in a row label. The library has no such
+types; its public API is parameterised on width and scale throughout.
+
 ## Mixed width and scale
 
 | operation | before | now | speedup | floor |
 |---|---:|---:|---:|---:|
-| `mul_to.Money.from.Price.Rate` | 338.79 | 7.69 | 44x | 1.89 |
-| `div_to.Rate.from.Price.Small` | 369.88 | 4.02 | 92x | 2.91 |
-| `add_to.Money.from.Price.Rate` | 418.22 | 0.56 | 747x | 0.53 |
-| `mul_div_to.Money.from.Price.Rate.Small` | 309.40 | 4.36 | 71x | 2.91 |
-| `fixed_cast.Money.from.Price` | 215.34 | 0.36 | 612x | - |
-| `compare.Price.vs.Rate` | 268.79 | 0.48 | 569x | - |
-| `mul_to.Rate.from.Small.Small` | 232.74 | 0.30 | 762x | 1.89 |
+| `mul_to.Money.from.Price.Rate` | 338.79 | 2.48 | 137x | 1.90 |
+| `div_to.Rate.from.Price.Small` | 369.88 | 4.12 | 90x | 2.91 |
+| `add_to.Money.from.Price.Rate` | 418.22 | 0.56 | 747x | 0.55 |
+| `mul_div_to.Money.from.Price.Rate.Small` | 309.40 | 4.37 | 71x | 2.91 |
+| `fixed_cast.Money.from.Price` | 215.34 | 0.35 | 612x | - |
+| `compare.Price.vs.Rate` | 268.79 | 0.47 | 569x | - |
+| `mul_to.Rate.from.Small.Small` | 232.74 | 0.30 | 762x | 1.90 |
 
-`mul_to.Money.from.Price.Rate` measured 3.50 ns in alpha.4 and 7.69 ns here. The
-generated code for the operation is unchanged between the two releases: compiled
-into an isolated translation unit with the same loop body, both trees produce
-7.47 ns. What moved is code placement inside this benchmark's own translation
-unit. The 7.5 ns is the honest cost of the operation, and it is dominated by one
-thing: rescaling the 128-bit product is a `__udivti3` call, even though the
-divisor is a power of ten that always fits 64 bits. That is an open item, not a
-regression.
+`mul_to.Money.from.Price.Rate` was 3.50 ns in alpha.4 and is 2.48 ns here. Every
+rescale in this file divides by a power of ten, and every one that a mixed
+operation reaches fits 64 bits -- but the value being divided is 128 bits, so the
+quotient was a `__udivti3` call out to libgcc. One or two hardware divisions do
+the same work. `detail::mixed_native::divide_magnitude` takes that path when the
+divisor fits one limb, and keeps the generic form for a wider divisor and for
+constant evaluation, where no instruction runs. Measured in isolation, the same
+loop went from 7.47 ns to 2.09 ns.
+
+`tests/test_mixed_native.cpp` sweeps every magnitude width from 0 to 128 against
+every divisor width from 1 to 128 and requires the narrow path to return exactly
+what the compiler's own division returns: `divq` faults rather than wraps when
+its quotient does not fit a limb, so the reduction that makes it safe is
+checked, not assumed.
 
 Every mixed operation previously built an exact rational in 1024-bit limbs and
 divided it with Knuth's algorithm, including comparison, which needs no division
@@ -60,10 +71,10 @@ combinations the bounds must reject.
 | operation | before | after | speedup |
 |---|---:|---:|---:|
 | `Fixed256.add` | 1.49 | 1.51 | 1.0x |
-| `Fixed256.mul` | 38.13 | 28.12 | 1.4x |
-| `Fixed256.div` | 35.28 | 28.15 | 1.3x |
-| `Fixed256.mul_div` | 24.90 | 19.13 | 1.3x |
-| `Fixed256.quantize` | 27.65 | 26.79 | 1.0x |
+| `Fixed256.mul` | 38.13 | 28.34 | 1.3x |
+| `Fixed256.div` | 35.28 | 28.28 | 1.2x |
+| `Fixed256.mul_div` | 24.90 | 19.01 | 1.3x |
+| `Fixed256.quantize` | 27.65 | 26.69 | 1.0x |
 
 `quantize` is effectively unchanged and is still the slowest `Fixed256`
 operation. Its divisor is always a power of ten that occupies one limb, yet both

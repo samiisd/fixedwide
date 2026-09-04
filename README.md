@@ -15,7 +15,26 @@ surface.)
 | `Fixed128<D>` | `wide::int128` | 128 bits | $0 \le D \le 38$ | 16 bytes | 8 |
 | `Fixed256<D>` | `wide::int256` | 256 bits | $0 \le D \le 76$ | 32 bytes | 8 |
 
-Backward compatibility aliases `FP64` (alias for `Fixed64<12>`) and `FP128` (alias for `Fixed128<12>`) are provided out of the box.
+### The 0.4 compatibility surface
+
+A small set of names fixes the scale at 12 digits, because that is what 0.4's
+API was: it had no scale parameter, only `FP64` and `FP128`. They are kept so
+the paired benchmark can compile 0.4's byte-identical source against this
+library, which is what makes the comparison mean anything. They are **not** the
+API this library is for, nothing else in the library uses them, and each one is
+marked in the header with its generic replacement:
+
+| 0.4 name | generic replacement |
+| :--- | :--- |
+| `FP64`, `FP128` | `Fixed64<D>`, `Fixed128<D>` |
+| `fp64_min/max`, `fp128_min/max` | `basic_fixed<Bits, D>::min()` / `::max()` |
+| `fractional_digits`, `scale` | `Fixed::fractional_digits`, `Fixed::scale()` |
+| `mul_wide(a, b)` | `mul_to<Dest>(a, b)` |
+| `narrow(v)` | `fixed_cast<Dest>(v)` |
+| `parse64`, `parse128` | `parse<T>(text, rounding)` |
+| `from_double64`, `from_double128` | `from_float<Target>(value, rounding)` |
+
+Everything else in the public API is parameterised on width and scale.
 
 ---
 
@@ -129,16 +148,16 @@ medians of 27 samples per row.
 
 **The generalized version is not yet at parity with 0.4, and this README will
 say so until it is.** On Clang 17, 7 of 100 rows are more than 5% slower and the
-worst is +13%; the previous release's figures were 21 rows and +64%, and the one
+worst is +12.6%; the previous release's figures were 21 rows and +64%, and the one
 before that 32 rows and +161%. No row on any of the three measured compilers is
-more than 25% slower, and the median row is now 1.2% *faster*. What remains is
+more than 25% slower, and the median row is now 1.9% *faster*. What remains is
 the 2.4 ns 64-bit `div` and `mul_div` rows, where the gap is four instructions
 per operation and none of them is arithmetic.
 
 Where this version is ahead of 0.4:
 
-- **62 of 100 benchmark rows are at or faster than 0.4** on Clang 17
-- mixed-width, mixed-scale arithmetic: **44x to 760x faster** than alpha.3
+- **63 of 100 benchmark rows are at or faster than 0.4** on Clang 17
+- mixed-width, mixed-scale arithmetic: **71x to 760x faster** than alpha.3
   (`add_to`, `fixed_cast` and cross-scale comparison now cost the same as the
   same-type operation in the destination domain)
 - `mul`, `div`, `mul_div`, `quantize` and `remainder` are **`constexpr`**
@@ -150,8 +169,8 @@ Against other libraries, by semantic class and with every timed result validated
 outside the timed region ([full table](reports/BENCHMARK_COMPETITORS.md)):
 
 - versus **Boost.Decimal** `decimal64_t`, the closest comparable contract:
-  multiply 2.6 ns vs 3.6 ns, divide 2.2 ns vs 8.6 ns, parse 12.3 ns vs 14.3 ns.
-  Formatting is the one row it loses: 14.1 ns vs 12.7 ns.
+  multiply 2.6 ns vs 3.6 ns, divide 2.2 ns vs 8.6 ns, parse 12.4 ns vs 14.2 ns.
+  Formatting is the one row it loses: 14.0 ns vs 12.4 ns.
 - **formatting** is about twice as fast as `std::to_chars` on a `double`
 - **CNL's unchecked decimal multiply is about 8x faster** than the checked one
   here. That is the cost of returning `std::expected` on overflow instead of
