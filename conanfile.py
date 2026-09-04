@@ -71,14 +71,31 @@ class FixedwideConan(ConanFile):
 
     def validate(self):
         check_min_cppstd(self, 23)
-        # std::expected is the library's error channel; without it nothing here
-        # compiles, and a confusing template error is worse than this message.
+
+        # Both of these are measured, not guessed, and both produce a wall of
+        # template errors if they are left to fail on their own.
+        #
+        # gcc 14: libstdc++ did not put frexpl and ldexpl in namespace std
+        # until then, and src/floating.cpp needs them.
+        # clang 18: fine, but only with libc++ -- see below.
         minimum = {"gcc": "14", "clang": "18", "apple-clang": "15", "msvc": "193"}
         compiler = str(self.settings.compiler)
         required = minimum.get(compiler)
         if required and Version(self.settings.compiler.version) < required:
             raise ConanInvalidConfiguration(
                 f"fixedwide needs {compiler} >= {required} for C++23 std::expected"
+            )
+
+        # Clang 17 and 18 report __cpp_concepts as 201907; libstdc++ gates
+        # <expected> on 202002, so std::expected does not exist for them with
+        # that standard library. Nothing this library can do works around it.
+        libcxx = self.settings.get_safe("compiler.libcxx")
+        if (compiler == "clang" and Version(self.settings.compiler.version) < "19"
+                and libcxx and "libstdc++" in str(libcxx)):
+            raise ConanInvalidConfiguration(
+                "clang < 19 cannot see std::expected with libstdc++ (it reports "
+                "__cpp_concepts=201907, and libstdc++ gates <expected> on 202002). "
+                "Use -s compiler.libcxx=libc++, or clang 19 or newer."
             )
 
     def generate(self):

@@ -202,11 +202,18 @@ jobs:
           python-version: '3.12'
       - run: pip install "conan>=2.4"
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 cmake ninja-build
+      # The runner's default c++ is g++-13, so `conan profile detect` would
+      # describe one compiler while CMake used another. Name it explicitly --
+      # and g++-13 genuinely cannot build this: libstdc++ did not put frexpl in
+      # namespace std until GCC 14.
       - run: conan profile detect --force
-      # test_package links the package and checks the number it prints, so a
-      # recipe that packages nothing usable fails here rather than downstream.
-      - run: conan create . --build=missing -s compiler.cppstd=23 -s compiler.version=14
+      - name: conan create
+        env: { CC: gcc-14, CXX: g++-14 }
+        # test_package links the package and checks the number it prints, so a
+        # recipe that packages nothing usable fails here rather than downstream.
+        run: conan create . --build=missing -s compiler.cppstd=23 -s compiler.version=14
       - name: The portable backend must package too
+        env: { CC: gcc-14, CXX: g++-14 }
         run: conan create . --build=missing -s compiler.cppstd=23 -s compiler.version=14 -o "&:force_portable=True"
 
   benchmark:
@@ -240,12 +247,21 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-18 libc++-18-dev libc++abi-18-dev cmake ninja-build
+      # Clang 20 with libstdc++, not Clang 18 with libc++: the libFuzzer runtime
+      # Ubuntu ships is built against libstdc++, so linking it into a libc++
+      # binary leaves std::thread and std::string undefined. Clang 20 reports
+      # __cpp_concepts=202002, so libstdc++ gives it <expected> and no second
+      # standard library is needed.
+      - name: Install clang 20
+        run: |
+          wget -qO llvm.sh https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
+          sudo ./llvm.sh 20
+          sudo apt-get install -y --no-install-recommends cmake ninja-build
       - run: |
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_COMPILER=clang++-18 \
-            -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ \
-            -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_FUZZER=ON -DFIXEDWIDE_BUILD_TESTS=OFF
+            -DCMAKE_CXX_COMPILER=clang++-20 \
+            -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_FUZZER=ON \
+            -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF
           cmake --build build --target fixedwide_fuzz
       # Short on a pull request; the nightly workflow runs it for much longer.
       - run: ./build/fuzz/fixedwide_fuzz fuzz/corpus -max_total_time=90 -print_final_stats=1
@@ -255,18 +271,30 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-18 llvm-18 libc++-18-dev libc++abi-18-dev libboost-dev cmake ninja-build
+      # Clang 20 with libstdc++, for the same reason as the fuzz job: one
+      # standard library, and llvm-cov from the matching release.
+      - name: Install clang 20
+        run: |
+          wget -qO llvm.sh https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
+          sudo ./llvm.sh 20
+          sudo apt-get install -y --no-install-recommends libboost-dev cmake ninja-build
       - run: |
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_COMPILER=clang++-18 \
-            -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ \
+            -DCMAKE_CXX_COMPILER=clang++-20 \
             -DFIXEDWIDE_COVERAGE=ON -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
           cmake --build build
-      - run: |
-          cd build
-          LLVM_PROFILE_FILE="%p.profraw" ctest --output-on-failure
-          llvm-profdata-18 merge -sparse *.profraw -o merged.profdata
-          llvm-cov-18 report ./tests/test_core -instr-profile=merged.profdata \
-            $(ls tests/test_* tests/audit_* | sed 's/^/-object /') \
-            /home/runner/work/fixedwide/fixedwide/src /home/runner/work/fixedwide/fixedwide/include \
-            | tee "$GITHUB_STEP_SUMMARY"
+      - name: Run tests and report coverage
+        run: |
+          mkdir -p "$PWD/profraw"
+          # An absolute pattern: ctest runs each test from its own binary
+          # directory, so a relative one scatters the files and the merge finds
+          # nothing.
+          LLVM_PROFILE_FILE="$PWD/profraw/%p.profraw" ctest --test-dir build --output-on-failure
+          llvm-profdata-20 merge -sparse profraw/*.profraw -o merged.profdata
+          objects=$(find build/tests build/examples -maxdepth 1 -type f -perm -u+x \
+                    | sed 's/^/-object /' | tr '\n' ' ')
+          echo '### Coverage' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          llvm-cov-20 report $objects -instr-profile=merged.profdata \
+            "$PWD/src" "$PWD/include" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

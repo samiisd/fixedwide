@@ -2,6 +2,7 @@
 #include "detail.hpp"
 #include "limbs.hpp"
 #include <cmath>
+#include <limits>
 
 namespace fixedwide::detail {
 
@@ -19,20 +20,23 @@ float_to_raw(Float value, unsigned decimals, Rounding rounding, std::size_t bits
 
     bool negative = std::signbit(value);
     int exp = 0;
-    Float m = 0;
-    if constexpr (std::is_same_v<Float, long double>) {
-        m = std::abs(std::frexpl(value, &exp));
-    } else {
-        m = std::abs(std::frexp(value, &exp));
-    }
+    // std::frexp and std::ldexp are overloaded for long double in C++, so the
+    // C `frexpl`/`ldexpl` spellings are unnecessary -- and libstdc++ did not
+    // put those two in namespace std until GCC 14, so naming them made the
+    // library fail to compile on GCC 13 while claiming to support GCC.
+    const Float m = std::abs(std::frexp(value, &exp));
 
-    constexpr int sig_bits = (sizeof(Float) == sizeof(float)) ? 24 : (sizeof(Float) == sizeof(double)) ? 53 : 64;
-    Float scaled_m = 0;
-    if constexpr (std::is_same_v<Float, long double>) {
-        scaled_m = std::ldexpl(m, sig_bits);
-    } else {
-        scaled_m = std::ldexp(m, sig_bits);
-    }
+    // The significand is accumulated in a std::uint64_t, so no more than 64
+    // bits of it can be kept. numeric_limits reports what the platform's type
+    // actually has -- 24 for float, 53 for double, 64 for x86 long double, and
+    // 53 for long double on arm64 macOS, where it is double. On a platform
+    // whose long double is IEEE binary128 the value is 113 and the cap loses
+    // the low bits; sizeof was used here before and got that case wrong in the
+    // other direction, by claiming 64 bits of a 113-bit significand.
+    constexpr int sig_bits = std::numeric_limits<Float>::digits < 64
+                                 ? std::numeric_limits<Float>::digits
+                                 : 64;
+    const Float scaled_m = std::ldexp(m, sig_bits);
 
     std::uint64_t significand = static_cast<std::uint64_t>(scaled_m);
     int pwr = exp - sig_bits;

@@ -55,7 +55,13 @@ if(FIXEDWIDE_BUILD_TESTS)
         target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
         target_include_directories(${NAME} PRIVATE ${CMAKE_SOURCE_DIR})
         target_include_directories(${NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
-        target_include_directories(${NAME} PRIVATE ${Boost_INCLUDE_DIRS})
+        # Only when Boost was actually found: an unset Boost_INCLUDE_DIRS
+        # expands to Boost_INCLUDE_DIR-NOTFOUND, which CMake reports as an error
+        # at generate time. That is what broke the Windows jobs, where Boost is
+        # not installed and the two Boost-backed suites are skipped anyway.
+        if(Boost_FOUND)
+            target_include_directories(${NAME} PRIVATE ${Boost_INCLUDE_DIRS})
+        endif()
         add_test(NAME fixedwide.audit.${NAME} COMMAND ${NAME})
     endforeach()
 
