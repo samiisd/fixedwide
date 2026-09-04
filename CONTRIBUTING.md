@@ -16,6 +16,18 @@
    19.3x, on x86-64 and AArch64, with the native and the portable backend.
    `docs/ci.md` records which combinations actually work and why some do not.
 
+## Writing commit messages
+
+One trap, learned by walking into it: GitHub reads `[skip` `ci]` **anywhere** in
+a commit message, not just the subject line. A commit that merely *described*
+the coverage badge using that token skipped its own CI run, and the omission is
+silent -- no run appears, nothing is red, and it looks like CI simply has not
+started yet.
+
+If you need to mention it in prose, break the token or say "the skip-ci marker".
+The one place the real token belongs is the badge-refresh commit the coverage
+job makes, where skipping is the point.
+
 ## Formatting
 
 ```bash

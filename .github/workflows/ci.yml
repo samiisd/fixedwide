@@ -462,8 +462,10 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add docs/assets/coverage.svg
-            # [skip ci] so refreshing the badge does not start another run that
-            # refreshes the badge.
+            # The marker below stops this commit from starting another run
+            # that would refresh the badge again. Note that GitHub reads it
+            # anywhere in a message, so do not repeat the literal token in
+            # ordinary commit prose -- see CONTRIBUTING.md.
             git commit -m "ci: refresh the coverage badge [skip ci]"
             git push
           else
