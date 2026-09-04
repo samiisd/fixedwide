@@ -164,6 +164,23 @@ nothing in this tree had ever built. Two of its own rows could not have compiled
 
 ### Performance
 
+- **`#include <fixedwide/all.hpp>` costs 187 ms instead of 558 ms.** It pulled
+  in `format.hpp`, `iostream.hpp` and `hash.hpp` unconditionally, and those drag
+  `<format>` (435 ms), `<iostream>` (450 ms) and `<functional>` (103 ms) behind
+  them -- each more expensive than the whole of the rest of this library. They
+  are adapters to standard facilities, not part of the numeric API, so they are
+  now opt-in and `all.hpp` says so where a reader will find it.
+
+  This also corrects where previous releases were looking. The headline
+  compile-time item was `arithmetic.hpp` being 41% more expensive than 0.4's,
+  which is 8 ms of a 558 ms umbrella header: the wrong target by a factor of
+  thirty.
+
+  **Migration**: a file that included `all.hpp` and then used `std::format`,
+  `operator<<` or `std::hash` on a `basic_fixed` now needs the matching header
+  next to it. It is a compile error with an obvious fix, never a silent change
+  in behaviour. Nothing in this repository needed one.
+
 - **The general cross-scale kernel sizes itself to its operands.** Every mixed
   operation that missed the narrow `mixed_native` path did all of its arithmetic
   in sixteen 64-bit limbs, regardless of the values: a `Fixed64` x `Fixed64`

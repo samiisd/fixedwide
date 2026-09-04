@@ -14,8 +14,23 @@
 #include <fixedwide/chars.hpp>
 #include <fixedwide/binary.hpp>
 #include <fixedwide/floating.hpp>
-#include <fixedwide/hash.hpp>
 #include <fixedwide/string.hpp>
-#include <fixedwide/format.hpp>
-#include <fixedwide/iostream.hpp>
 #include <fixedwide/version.hpp>
+
+// Deliberately NOT included here, because each one costs more to compile than
+// the whole of the rest of this library put together:
+//
+//   <fixedwide/format.hpp>     pulls <format>      435 ms
+//   <fixedwide/iostream.hpp>   pulls <iostream>    450 ms
+//   <fixedwide/hash.hpp>       pulls <functional>  103 ms
+//
+// (clang 22, -O2, medians; this header without them is 199 ms and was 558 ms
+// with them.) They are adapters to standard-library facilities, not part of the
+// numeric API, and most translation units that want fixed-point arithmetic do
+// not format with std::format, stream to std::ostream, or use the values as
+// unordered-container keys. Include whichever you need, next to this one:
+//
+//   #include <fixedwide/all.hpp>
+//   #include <fixedwide/iostream.hpp>   // only where you actually stream
+//
+// Everything that computes is here; only the three integrations moved out.

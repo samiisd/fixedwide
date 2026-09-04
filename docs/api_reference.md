@@ -17,10 +17,25 @@ build writes `build/compile_commands.json`, which is where `clangd` looks.
 | `<fixedwide/iostream.hpp>` | `operator<<` / `operator>>` |
 | `<fixedwide/hash.hpp>` | `std::hash`, for the unordered containers |
 | `<fixedwide/wide.hpp>` | `wide::int128`, `uint128`, `int256`, `uint256` |
-| `<fixedwide/all.hpp>` | All of the above |
+| `<fixedwide/all.hpp>` | Everything above **except** the three standard-library adapters |
 
-Include only what you use: `<fixedwide/iostream.hpp>` pulls in `<iostream>`,
-which is one of the heaviest headers in the standard library.
+`all.hpp` deliberately omits `format.hpp`, `iostream.hpp` and `hash.hpp`.
+Measured on clang 22 at `-O2`:
+
+| translation unit | |
+|---|---:|
+| `#include <fixedwide/all.hpp>` | **187 ms** |
+| the same, with the three adapters back | 558 ms |
+| `#include <fixedwide/arithmetic.hpp>` alone | 42 ms |
+
+`<format>` costs 435 ms on its own and `<iostream>` 450 ms — each more than
+everything else in this library put together. They are adapters to standard
+facilities rather than part of the numeric API, so you ask for them:
+
+```cpp
+#include <fixedwide/all.hpp>
+#include <fixedwide/iostream.hpp>   // only in the file that actually streams
+```
 
 ---
 

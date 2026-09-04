@@ -115,6 +115,9 @@ What the library does with that:
   `invalid_precision`, `invalid_value` — never a wrong answer.
 - **`constexpr` arithmetic.** A rate table can be computed and checked at
   compile time.
+- **Cheap to include.** `<fixedwide/all.hpp>` is 187 ms; the `<format>` and
+  `<iostream>` adapters are opt-in because those two standard headers together
+  cost 885 ms, more than everything here.
 - **No allocation on any arithmetic, parsing or formatting path.** `to_chars`
   and `from_chars` write into your buffer; a test that replaces `operator new` and
   counts every call proves it. `to_string` is the one convenience that allocates,

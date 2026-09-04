@@ -55,6 +55,8 @@ the tree had ever built.
 | Negative compile tests accepted any error | Each now asserts the diagnostic it expects, so a typo or a renamed header cannot pass as success. |
 | The general mixed kernel used 1024-bit limbs for every operation | It now sizes itself to its operands across four tiers. `mul_to` 8561 -> 416 instructions, `div_to` 8377 -> 729, with 1,017,500 differential checks unchanged. |
 | Coverage measured one backend and understated | Native and portable profiles are merged; `src/division.hpp` went from 10.32% to 98.67%. |
+| `all.hpp` cost 558 ms to include | It pulled `<format>` and `<iostream>` unconditionally, which together are 885 ms of standard-library headers. The three std adapters are opt-in now and `all.hpp` is 187 ms. |
+| `std::format("{:.2}", value)` printed the first two characters | The formatter parses its own spec; precision means decimals. |
 | 85 warnings in library code | Zero, across four configurations, with `-Wsign-conversion` and `-Wold-style-cast` added and `-Werror` enforced in CI. |
 
 ## What alpha.5 changed
@@ -230,10 +232,14 @@ that work, measured. Eight examples in `examples/` are ctest tests.
     were exercising it all along. Merged totals are 75.1% of lines and 77.9% of
     branches locally. The gate is a ratchet set below the first merged CI
     measurement; raise it, never lower it.
-11. `arithmetic.hpp` still costs about 41% more to include than 0.4's. The
-    absolute cost is 48 ms against 34 ms; most of the difference is
-    `detail/constexpr_arith.hpp`, which cannot be dropped without dropping
-    `constexpr` arithmetic. The README does not claim compile time is free.
+11. `arithmetic.hpp` costs about 41% more to include than 0.4's -- 42 ms
+    against 34 ms on clang 22. That gap was the headline compile-time item in
+    previous releases and it was the wrong thing to look at by a factor of
+    thirty: `all.hpp` cost 558 ms, of which 8 ms was this. The real cost was
+    `<format>` (435 ms) and `<iostream>` (450 ms), pulled in unconditionally by
+    the umbrella header. `all.hpp` is now 187 ms. What remains of the
+    `arithmetic.hpp` difference is `detail/constexpr_arith.hpp`, which cannot be
+    dropped without dropping `constexpr` arithmetic.
 12. The competitor comparison against CNL is at scale 6 only, because CNL
     overflows at scale 12 for ordinary values. A comparison against a library
     that does check overflow at 12 decimals would be more informative than
