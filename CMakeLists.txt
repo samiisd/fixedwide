@@ -11,6 +11,7 @@ endif()
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+include(CheckCXXSourceCompiles)
 
 option(FIXEDWIDE_BUILD_TESTS "Build deterministic unit tests" ${PROJECT_IS_TOP_LEVEL})
 option(FIXEDWIDE_BUILD_ORACLE_TESTS "Build Boost.Multiprecision differential oracle tests" OFF)
@@ -62,7 +63,31 @@ set_target_properties(fixedwide PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
-if(FIXEDWIDE_FORCE_PORTABLE)
+set(FIXEDWIDE_AUTO_FORCE_PORTABLE OFF)
+if(NOT FIXEDWIDE_FORCE_PORTABLE)
+    check_cxx_source_compiles("
+        int main() {
+        #if defined(__SIZEOF_INT128__)
+            volatile __int128 a = static_cast<__int128>(123456789ULL) << 64;
+            volatile __int128 b = static_cast<__int128>(97ULL);
+            volatile __int128 q = a / b;
+            volatile __int128 r = a % b;
+            volatile unsigned __int128 ua = static_cast<unsigned __int128>(a);
+            volatile unsigned __int128 ub = static_cast<unsigned __int128>(b);
+            volatile unsigned __int128 uq = ua / ub;
+            volatile unsigned __int128 ur = ua % ub;
+            (void)q; (void)r; (void)uq; (void)ur;
+        #endif
+            return 0;
+        }
+    " FIXEDWIDE_INT128_DIVISION_LINKS)
+    if(NOT FIXEDWIDE_INT128_DIVISION_LINKS)
+        set(FIXEDWIDE_AUTO_FORCE_PORTABLE ON)
+        message(STATUS "fixedwide: native __int128 division does not link; forcing portable backend")
+    endif()
+endif()
+
+if(FIXEDWIDE_FORCE_PORTABLE OR FIXEDWIDE_AUTO_FORCE_PORTABLE)
     target_compile_definitions(fixedwide PUBLIC FIXEDWIDE_FORCE_PORTABLE)
 endif()
 

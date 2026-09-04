@@ -62,8 +62,11 @@ several `std::string` symbols undefined. One standard library per binary.
 
 **MSVC** has no `__int128` and no GNU inline assembly, so it takes the portable
 multi-limb backend automatically — the same code path the `forced-portable` job
-exercises on Linux. It needs `/Zc:__cplusplus`, `/Zc:preprocessor` and `/utf-8`,
-which `CMakeLists.txt` adds.
+exercises on Linux. **clang-cl** does expose `__int128`, but on Windows its
+runtime may not provide the 128-bit division builtins; `CMakeLists.txt` probes
+that at configure time and auto-selects the portable backend when needed. MSVC
+also needs `/Zc:__cplusplus`, `/Zc:preprocessor` and `/utf-8`, which
+`CMakeLists.txt` adds.
 
 ## Running a job's work locally
 
