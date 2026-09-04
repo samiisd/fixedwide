@@ -79,6 +79,11 @@ if(FIXEDWIDE_BUILD_COMPETITOR_BENCH)
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}
         ${Boost_INCLUDE_DIRS})
+    # fpm's 64-bit representation uses __int128 as its intermediate and checks
+    # it with std::is_signed. libstdc++ exposes that extension trait only in GNU
+    # language mode. Keep fixedwide itself strict C++23; only this optional
+    # third-party comparison target needs gnu++23.
+    set_target_properties(fixedwide_competitor_bench PROPERTIES CXX_EXTENSIONS ON)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         target_compile_options(fixedwide_competitor_bench PRIVATE
             -fno-vectorize -fno-slp-vectorize -ffp-contract=off)
