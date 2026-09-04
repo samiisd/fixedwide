@@ -13,10 +13,7 @@ namespace fixedwide_competitor {
 std::uint64_t validations = 0;
 
 [[noreturn]] void fail(std::string_view what) {
-    std::fprintf(stderr,
-                 "VALIDATION FAILED: %.*s\n",
-                 static_cast<int>(what.size()),
-                 what.data());
+    std::fprintf(stderr, "VALIDATION FAILED: %.*s\n", static_cast<int>(what.size()), what.data());
     std::exit(1);
 }
 
@@ -32,9 +29,7 @@ std::uint64_t magnitude(std::int64_t value) {
     return static_cast<std::uint64_t>(-(value + 1)) + 1;
 }
 
-std::int64_t signed_value(std::uint64_t magnitude_value,
-                          std::size_t index,
-                          std::size_t period) {
+std::int64_t signed_value(std::uint64_t magnitude_value, std::size_t index, std::size_t period) {
     const auto value = static_cast<std::int64_t>(magnitude_value);
     return index % period == 0 ? -value : value;
 }
@@ -79,18 +74,12 @@ Fixtures make_exact_fixtures(std::uint64_t seed) {
             fail("addition fixture overflowed its oracle");
         }
         const auto add_expected = static_cast<std::int64_t>(add_full);
-        fixtures.add.push_back({add_lhs,
-                                add_rhs,
-                                add_expected,
-                                fixed_text(add_lhs, Decimals),
-                                fixed_text(add_rhs, Decimals),
-                                fixed_text(add_expected, Decimals)});
+        fixtures.add.push_back({add_lhs, add_rhs, add_expected, fixed_text(add_lhs, Decimals),
+                                fixed_text(add_rhs, Decimals), fixed_text(add_expected, Decimals)});
 
         // Trailing zero counts sum to Decimals, so no rounding policy is used.
-        const std::int64_t mul_lhs =
-            signed_value(quantized(left_step, 9), i, 3);
-        const std::int64_t mul_rhs =
-            signed_value(quantized(right_step, 4), i + 1, 5);
+        const std::int64_t mul_lhs = signed_value(quantized(left_step, 9), i, 3);
+        const std::int64_t mul_rhs = signed_value(quantized(right_step, 4), i + 1, 5);
         const __int128 product = static_cast<__int128>(mul_lhs) * mul_rhs;
         if (product % scale != 0) fail("multiplication fixture is not exact");
         const __int128 mul_full = product / scale;
@@ -99,20 +88,13 @@ Fixtures make_exact_fixtures(std::uint64_t seed) {
             fail("multiplication fixture overflowed its oracle");
         }
         const auto mul_expected = static_cast<std::int64_t>(mul_full);
-        fixtures.mul.push_back({mul_lhs,
-                                mul_rhs,
-                                mul_expected,
-                                fixed_text(mul_lhs, Decimals),
-                                fixed_text(mul_rhs, Decimals),
-                                fixed_text(mul_expected, Decimals)});
+        fixtures.mul.push_back({mul_lhs, mul_rhs, mul_expected, fixed_text(mul_lhs, Decimals),
+                                fixed_text(mul_rhs, Decimals), fixed_text(mul_expected, Decimals)});
 
         // Build a dividend from an exact quotient and divisor.
-        const std::int64_t div_expected =
-            signed_value(quantized(left_step, 9), i + 2, 3);
-        const std::int64_t div_rhs =
-            signed_value(quantized(right_step, 4), i + 3, 5);
-        const __int128 dividend_product =
-            static_cast<__int128>(div_expected) * div_rhs;
+        const std::int64_t div_expected = signed_value(quantized(left_step, 9), i + 2, 3);
+        const std::int64_t div_rhs = signed_value(quantized(right_step, 4), i + 3, 5);
+        const __int128 dividend_product = static_cast<__int128>(div_expected) * div_rhs;
         if (dividend_product % scale != 0) fail("division fixture is not exact");
         const __int128 div_lhs_full = dividend_product / scale;
         if (div_lhs_full < std::numeric_limits<std::int64_t>::min() ||
@@ -120,12 +102,8 @@ Fixtures make_exact_fixtures(std::uint64_t seed) {
             fail("division fixture overflowed its oracle");
         }
         const auto div_lhs = static_cast<std::int64_t>(div_lhs_full);
-        fixtures.div.push_back({div_lhs,
-                                div_rhs,
-                                div_expected,
-                                fixed_text(div_lhs, Decimals),
-                                fixed_text(div_rhs, Decimals),
-                                fixed_text(div_expected, Decimals)});
+        fixtures.div.push_back({div_lhs, div_rhs, div_expected, fixed_text(div_lhs, Decimals),
+                                fixed_text(div_rhs, Decimals), fixed_text(div_expected, Decimals)});
     }
 
     return fixtures;
@@ -151,13 +129,11 @@ std::string fixed_text(std::int64_t raw, unsigned decimals) {
     if (decimals != 0) {
         *cursor++ = '.';
         std::array<char, 32> digits{};
-        const auto fraction_result =
-            std::to_chars(digits.data(), digits.data() + digits.size(), fraction);
+        const auto fraction_result = std::to_chars(digits.data(), digits.data() + digits.size(), fraction);
         if (fraction_result.ec != std::errc{}) {
             fail("oracle fractional formatting failed");
         }
-        const std::size_t count =
-            static_cast<std::size_t>(fraction_result.ptr - digits.data());
+        const std::size_t count = static_cast<std::size_t>(fraction_result.ptr - digits.data());
         if (count > decimals) fail("oracle produced too many fractional digits");
         const std::size_t zeroes = decimals - count;
         if (static_cast<std::size_t>(last - cursor) < zeroes + count) {

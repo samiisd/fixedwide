@@ -16,8 +16,7 @@ using BoostDecimal = boost::decimal::decimal64_t;
 
 BoostDecimal parse_boost_decimal(std::string_view text) {
     BoostDecimal value{};
-    const auto result =
-        boost::decimal::from_chars(text.data(), text.data() + text.size(), value);
+    const auto result = boost::decimal::from_chars(text.data(), text.data() + text.size(), value);
     if (!result || result.ptr != text.data() + text.size()) {
         fail("Boost.Decimal could not parse an exact fixture");
     }
@@ -42,22 +41,16 @@ void benchmark_boost_decimal(const Fixtures& fixtures) {
         div_expected[i] = parse_boost_decimal(fixtures.div[i].expected_text);
         text_values[i] = parse_boost_decimal(fixtures.text[i].text);
 
-        expect(add_lhs[i] + add_rhs[i] == add_expected[i],
-               "Boost.Decimal addition disagrees with the decimal oracle");
+        expect(add_lhs[i] + add_rhs[i] == add_expected[i], "Boost.Decimal addition disagrees with the decimal oracle");
         expect(mul_lhs[i] * mul_rhs[i] == mul_expected[i],
                "Boost.Decimal multiplication disagrees with the decimal oracle");
-        expect(div_lhs[i] / div_rhs[i] == div_expected[i],
-               "Boost.Decimal division disagrees with the decimal oracle");
+        expect(div_lhs[i] / div_rhs[i] == div_expected[i], "Boost.Decimal division disagrees with the decimal oracle");
 
         std::array<char, 96> buffer{};
-        const auto formatted = boost::decimal::to_chars(
-            buffer.data(), buffer.data() + buffer.size(), text_values[i],
-            boost::decimal::chars_format::fixed, 4);
-        expect(formatted &&
-                   std::string_view(
-                       buffer.data(),
-                       static_cast<std::size_t>(formatted.ptr - buffer.data())) ==
-                       fixtures.text[i].text,
+        const auto formatted = boost::decimal::to_chars(buffer.data(), buffer.data() + buffer.size(), text_values[i],
+                                                        boost::decimal::chars_format::fixed, 4);
+        expect(formatted && std::string_view(buffer.data(), static_cast<std::size_t>(formatted.ptr - buffer.data())) ==
+                                fixtures.text[i].text,
                "Boost.Decimal formatting disagrees with canonical text");
     }
 
@@ -83,8 +76,7 @@ void benchmark_boost_decimal(const Fixtures& fixtures) {
         for (std::size_t i = 0; i < n; ++i) {
             BoostDecimal value{};
             const auto& text = fixtures.text[i & (data_size - 1)].text;
-            const auto result =
-                boost::decimal::from_chars(text.data(), text.data() + text.size(), value);
+            const auto result = boost::decimal::from_chars(text.data(), text.data() + text.size(), value);
             consume(value);
             consume(result);
         }
@@ -92,13 +84,11 @@ void benchmark_boost_decimal(const Fixtures& fixtures) {
     row("boost.decimal", "decimal64_t", "decimal_float_exact_4", "format_fixed", [&](std::size_t n) {
         std::array<char, 96> buffer{};
         for (std::size_t i = 0; i < n; ++i) {
-            const auto result = boost::decimal::to_chars(
-                buffer.data(), buffer.data() + buffer.size(),
-                text_values[i & (data_size - 1)],
-                boost::decimal::chars_format::fixed, 4);
+            const auto result =
+                boost::decimal::to_chars(buffer.data(), buffer.data() + buffer.size(), text_values[i & (data_size - 1)],
+                                         boost::decimal::chars_format::fixed, 4);
             consume(result);
-            consume_bytes(buffer.data(),
-                          result ? static_cast<std::size_t>(result.ptr - buffer.data()) : 0);
+            consume_bytes(buffer.data(), result ? static_cast<std::size_t>(result.ptr - buffer.data()) : 0);
         }
     });
 }
@@ -110,9 +100,8 @@ void benchmark_mpdecimal(const Fixtures& fixtures) {
     std::vector<T> mul_lhs, mul_rhs, mul_expected;
     std::vector<T> div_lhs, div_rhs, div_expected;
     std::vector<T> text_values;
-    for (auto* values : {&add_lhs, &add_rhs, &add_expected,
-                         &mul_lhs, &mul_rhs, &mul_expected,
-                         &div_lhs, &div_rhs, &div_expected, &text_values}) {
+    for (auto* values : {&add_lhs, &add_rhs, &add_expected, &mul_lhs, &mul_rhs, &mul_expected, &div_lhs, &div_rhs,
+                         &div_expected, &text_values}) {
         values->reserve(data_size);
     }
 
@@ -227,8 +216,7 @@ void benchmark_cpp_dec_float(const Fixtures& fixtures) {
     });
     row("boost.multiprecision", "cpp_dec_float_50", "arbitrary_decimal_exact_4", "format_fixed", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) {
-            const std::string result =
-                text_values[i & (data_size - 1)].str(4, std::ios_base::fixed);
+            const std::string result = text_values[i & (data_size - 1)].str(4, std::ios_base::fixed);
             consume(result);
             consume_bytes(result.data(), result.size());
         }

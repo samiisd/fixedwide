@@ -75,13 +75,8 @@ Fixtures make_scale4_fixtures();
 Fixtures make_scale12_fixtures();
 
 template<class F>
-void row(const char* library,
-         const char* type,
-         const char* semantic_class,
-         const char* operation,
-         F&& loop) {
-    fixedwide_bench::measure(std::string(library) + ",\"" + type + "\"," +
-                                 semantic_class + "," + operation,
+void row(const char* library, const char* type, const char* semantic_class, const char* operation, F&& loop) {
+    fixedwide_bench::measure(std::string(library) + ",\"" + type + "\"," + semantic_class + "," + operation,
                              std::forward<F>(loop));
 }
 

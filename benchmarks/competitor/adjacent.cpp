@@ -28,23 +28,17 @@ void benchmark_adjacent_types(const Fixtures& fixtures) {
         fpm_lhs[i] = FpmBinary{lhs[i]};
         fpm_rhs[i] = FpmBinary{rhs[i]};
 
-        expect(std::abs(static_cast<double>(cnl_lhs[i] + cnl_rhs[i]) -
-                        (lhs[i] + rhs[i])) < 1e-6,
+        expect(std::abs(static_cast<double>(cnl_lhs[i] + cnl_rhs[i]) - (lhs[i] + rhs[i])) < 1e-6,
                "CNL binary addition exceeded its declared tolerance");
-        expect(std::abs(static_cast<double>(cnl_lhs[i] * cnl_rhs[i]) -
-                        (lhs[i] * rhs[i])) < 1e-6,
+        expect(std::abs(static_cast<double>(cnl_lhs[i] * cnl_rhs[i]) - (lhs[i] * rhs[i])) < 1e-6,
                "CNL binary multiplication exceeded its declared tolerance");
-        expect(std::abs(static_cast<double>(cnl_lhs[i] / cnl_rhs[i]) -
-                        (lhs[i] / rhs[i])) < 1e-6,
+        expect(std::abs(static_cast<double>(cnl_lhs[i] / cnl_rhs[i]) - (lhs[i] / rhs[i])) < 1e-6,
                "CNL binary division exceeded its declared tolerance");
-        expect(std::abs(static_cast<double>(fpm_lhs[i] + fpm_rhs[i]) -
-                        (lhs[i] + rhs[i])) < 1e-6,
+        expect(std::abs(static_cast<double>(fpm_lhs[i] + fpm_rhs[i]) - (lhs[i] + rhs[i])) < 1e-6,
                "fpm addition exceeded its declared tolerance");
-        expect(std::abs(static_cast<double>(fpm_lhs[i] * fpm_rhs[i]) -
-                        (lhs[i] * rhs[i])) < 1e-6,
+        expect(std::abs(static_cast<double>(fpm_lhs[i] * fpm_rhs[i]) - (lhs[i] * rhs[i])) < 1e-6,
                "fpm multiplication exceeded its declared tolerance");
-        expect(std::abs(static_cast<double>(fpm_lhs[i] / fpm_rhs[i]) -
-                        (lhs[i] / rhs[i])) < 1e-6,
+        expect(std::abs(static_cast<double>(fpm_lhs[i] / fpm_rhs[i]) - (lhs[i] / rhs[i])) < 1e-6,
                "fpm division exceeded its declared tolerance");
     }
 
@@ -129,8 +123,7 @@ void benchmark_hardware_floors(const Fixtures& fixtures) {
         for (std::size_t i = 0; i < n; ++i) {
             const auto& text = fixtures.text[i & (data_size - 1)].text;
             double value = 0;
-            const auto result =
-                std::from_chars(text.data(), text.data() + text.size(), value);
+            const auto result = std::from_chars(text.data(), text.data() + text.size(), value);
             consume(value);
             consume(result);
         }
@@ -138,14 +131,11 @@ void benchmark_hardware_floors(const Fixtures& fixtures) {
     row("std", "double", "hardware_baseline", "format_fixed", [&](std::size_t n) {
         std::array<char, 96> buffer{};
         for (std::size_t i = 0; i < n; ++i) {
-            const auto result = std::to_chars(
-                buffer.data(), buffer.data() + buffer.size(),
-                text_values[i & (data_size - 1)], std::chars_format::fixed, 4);
+            const auto result = std::to_chars(buffer.data(), buffer.data() + buffer.size(),
+                                              text_values[i & (data_size - 1)], std::chars_format::fixed, 4);
             consume(result);
             consume_bytes(buffer.data(),
-                          result.ec == std::errc{}
-                              ? static_cast<std::size_t>(result.ptr - buffer.data())
-                              : 0);
+                          result.ec == std::errc{} ? static_cast<std::size_t>(result.ptr - buffer.data()) : 0);
         }
     });
     row("std", "int64_t", "hardware_baseline", "add_unchecked", [&](std::size_t n) {
@@ -195,16 +185,14 @@ void benchmark_serialization(const Fixtures& fixtures) {
     });
     row("fixedwide", "Fixed64<4>", "serialization", "to_bytes_little", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) {
-            const auto result =
-                fixedwide::to_bytes<fixedwide::endian::little>(values[i & (data_size - 1)]);
+            const auto result = fixedwide::to_bytes<fixedwide::endian::little>(values[i & (data_size - 1)]);
             consume(result);
         }
     });
     row("fixedwide", "Fixed64<4>", "serialization", "from_bytes_little", [&](std::size_t n) {
         const auto bytes = fixedwide::to_bytes<fixedwide::endian::little>(values[0]);
         for (std::size_t i = 0; i < n; ++i) {
-            const auto result =
-                fixedwide::from_bytes<T, fixedwide::endian::little>(bytes);
+            const auto result = fixedwide::from_bytes<T, fixedwide::endian::little>(bytes);
             consume(result);
         }
     });

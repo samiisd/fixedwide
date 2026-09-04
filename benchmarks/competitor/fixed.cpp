@@ -12,9 +12,7 @@ namespace fixedwide_competitor {
 namespace {
 
 template<unsigned Decimals>
-void benchmark_fixedwide(const Fixtures& fixtures,
-                         const char* type_name,
-                         const char* semantic_class) {
+void benchmark_fixedwide(const Fixtures& fixtures, const char* type_name, const char* semantic_class) {
     using T = fixedwide::basic_fixed<64, Decimals>;
     std::vector<T> add_lhs(data_size), add_rhs(data_size);
     std::vector<T> mul_lhs(data_size), mul_rhs(data_size);
@@ -40,12 +38,10 @@ void benchmark_fixedwide(const Fixtures& fixtures,
         expect(div_result && div_result->raw() == fixtures.div[i].expected_raw,
                "fixedwide division disagrees with the integer oracle");
         const auto parsed = fixedwide::parse<T>(fixtures.text[i].text);
-        expect(parsed && parsed->raw() == fixtures.text[i].raw,
-               "fixedwide parsing disagrees with the integer oracle");
+        expect(parsed && parsed->raw() == fixtures.text[i].raw, "fixedwide parsing disagrees with the integer oracle");
 
         std::array<char, 96> buffer{};
-        const auto formatted =
-            fixedwide::to_chars(buffer.data(), buffer.size(), text_values[i]);
+        const auto formatted = fixedwide::to_chars(buffer.data(), buffer.size(), text_values[i]);
         expect(formatted && *formatted == fixtures.text[i].text.size() &&
                    std::string_view(buffer.data(), *formatted) == fixtures.text[i].text,
                "fixedwide formatting disagrees with canonical text");
@@ -53,22 +49,19 @@ void benchmark_fixedwide(const Fixtures& fixtures,
 
     row("fixedwide", type_name, semantic_class, "add", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) {
-            const auto result =
-                fixedwide::add(add_lhs[i & (data_size - 1)], add_rhs[i & (data_size - 1)]);
+            const auto result = fixedwide::add(add_lhs[i & (data_size - 1)], add_rhs[i & (data_size - 1)]);
             consume(result);
         }
     });
     row("fixedwide", type_name, semantic_class, "mul", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) {
-            const auto result =
-                fixedwide::mul(mul_lhs[i & (data_size - 1)], mul_rhs[i & (data_size - 1)]);
+            const auto result = fixedwide::mul(mul_lhs[i & (data_size - 1)], mul_rhs[i & (data_size - 1)]);
             consume(result);
         }
     });
     row("fixedwide", type_name, semantic_class, "div", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) {
-            const auto result =
-                fixedwide::div(div_lhs[i & (data_size - 1)], div_rhs[i & (data_size - 1)]);
+            const auto result = fixedwide::div(div_lhs[i & (data_size - 1)], div_rhs[i & (data_size - 1)]);
             consume(result);
         }
     });
@@ -81,8 +74,7 @@ void benchmark_fixedwide(const Fixtures& fixtures,
     row("fixedwide", type_name, semantic_class, "format_fixed", [&](std::size_t n) {
         std::array<char, 96> buffer{};
         for (std::size_t i = 0; i < n; ++i) {
-            const auto result = fixedwide::to_chars(
-                buffer.data(), buffer.size(), text_values[i & (data_size - 1)]);
+            const auto result = fixedwide::to_chars(buffer.data(), buffer.size(), text_values[i & (data_size - 1)]);
             consume(result);
             consume_bytes(buffer.data(), result ? *result : 0);
         }
@@ -90,9 +82,7 @@ void benchmark_fixedwide(const Fixtures& fixtures,
 }
 
 template<unsigned Decimals>
-void benchmark_decimal_for_cpp(const Fixtures& fixtures,
-                               const char* type_name,
-                               const char* semantic_class) {
+void benchmark_decimal_for_cpp(const Fixtures& fixtures, const char* type_name, const char* semantic_class) {
     using T = dec::decimal<static_cast<int>(Decimals), dec::half_even_round_policy>;
     std::vector<T> add_lhs(data_size), add_rhs(data_size);
     std::vector<T> mul_lhs(data_size), mul_rhs(data_size);
@@ -204,15 +194,13 @@ void benchmark_cnl_decimal(const Fixtures& fixtures) {
 
 void benchmark_fixed_scale4(const Fixtures& fixtures) {
     benchmark_fixedwide<4>(fixtures, "Fixed64<4>", "decimal_fixed_exact_4");
-    benchmark_decimal_for_cpp<4>(
-        fixtures, "decimal<4,half_even>", "decimal_fixed_exact_4");
+    benchmark_decimal_for_cpp<4>(fixtures, "decimal<4,half_even>", "decimal_fixed_exact_4");
     benchmark_cnl_decimal(fixtures);
 }
 
 void benchmark_fixed_scale12(const Fixtures& fixtures) {
     benchmark_fixedwide<12>(fixtures, "Fixed64<12>", "decimal_fixed_exact_12");
-    benchmark_decimal_for_cpp<12>(
-        fixtures, "decimal<12,half_even>", "decimal_fixed_exact_12");
+    benchmark_decimal_for_cpp<12>(fixtures, "decimal<12,half_even>", "decimal_fixed_exact_12");
 }
 
 } // namespace fixedwide_competitor
