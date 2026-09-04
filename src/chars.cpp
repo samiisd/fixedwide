@@ -296,13 +296,15 @@ std::expected<wide::int256, ParseError> parse_fixed_kernel(std::string_view text
     template std::expected<wide::int256, ParseError> parse_fixed_kernel<B>(std::string_view, unsigned,                 \
                                                                            Rounding) noexcept;
 FIXEDWIDE_INSTANTIATE_PARSE(8)
-FIXEDWIDE_INSTANTIATE_PARSE(16) FIXEDWIDE_INSTANTIATE_PARSE(32) FIXEDWIDE_INSTANTIATE_PARSE(64)
-    FIXEDWIDE_INSTANTIATE_PARSE(128) FIXEDWIDE_INSTANTIATE_PARSE(256)
+FIXEDWIDE_INSTANTIATE_PARSE(16)
+FIXEDWIDE_INSTANTIATE_PARSE(32)
+FIXEDWIDE_INSTANTIATE_PARSE(64)
+FIXEDWIDE_INSTANTIATE_PARSE(128)
+FIXEDWIDE_INSTANTIATE_PARSE(256)
 #undef FIXEDWIDE_INSTANTIATE_PARSE
 
-        std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::size_t capacity,
-                                                                    std::int64_t raw, unsigned decimals,
-                                                                    FormatOptions options) noexcept {
+std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::size_t capacity, std::int64_t raw,
+                                                            unsigned decimals, FormatOptions options) noexcept {
     if (options.digits > decimals) return std::unexpected(FormatError::invalid_precision);
     const bool negative = raw < 0;
     const std::uint64_t mag_u64 = negative ? 0ULL - static_cast<std::uint64_t>(raw) : static_cast<std::uint64_t>(raw);

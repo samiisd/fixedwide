@@ -11,7 +11,10 @@ output is retained under `reports/` or in a CI run.
 ## The release gate
 
 The gate is **no regression against this library's own committed baseline**, and
-it passes. `.github/workflows/ci.yml` re-measures retired instructions per
+it passes. It is not the same thing as parity with 0.4, and this file does not
+claim it is: across 100 paired workloads the generalized implementation has a
+slightly faster median than 0.4, while 9 to 18 rows exceed a 5% regression
+depending on the Clang version, worst +24.5%. Those rows are itemised below. `.github/workflows/ci.yml` re-measures retired instructions per
 operation under Valgrind on every pull request and fails if any workload grows
 by more than 1%. Instruction counts are deterministic — two runs of
 `scripts/icount.sh` on the same binary are byte-identical — which is what makes
@@ -45,6 +48,12 @@ the tree had ever built.
 | No performance regression could be detected | `benchmarks/icount.cpp`, `scripts/icount.sh`, `scripts/compare_icount.py` and a committed baseline, gating every pull request. |
 | One example, not run by anything | Eight examples, each a ctest test that checks its own output. |
 | No Conan package | `conanfile.py` and `test_package/`, both built by CI, including the portable backend. |
+| The coverage job was false-green | `llvm-cov` failed on every run and the pipe through `tee` discarded its exit status. Fixed, with enforced thresholds. |
+| The release archive contained stale evidence | `SHA256SUMS` and the extraction log were tracked, so `git archive HEAD` embedded the previous release's. Generated in a staging directory now, and shipped as separate assets. |
+| The CNL benchmark was not measuring a decimal multiply | `scaled_integer::operator*` returns a wider scale rather than rescaling, so the timed expression was a bare 64-bit multiply. The reported 8x gap is 2.8x at a matched scale. |
+| Overflow and inexact were interchangeable in the audits | The precedence is now stated in `error.hpp` and asserted exactly, over 5.1 million checks and both backends. |
+| Negative compile tests accepted any error | Each now asserts the diagnostic it expects, so a typo or a renamed header cannot pass as success. |
+| 85 warnings in library code | Zero, across four configurations, with `-Wsign-conversion` and `-Wold-style-cast` added and `-Werror` enforced in CI. |
 
 ## What alpha.5 changed
 
@@ -205,3 +214,16 @@ that work, measured. Eight examples in `examples/` are ctest tests.
 9. On a platform whose `long double` is IEEE binary128, `from_float` keeps 64
    significand bits rather than 113. The cap is explicit in `src/floating.cpp`
    and is what the `std::uint64_t` accumulator can hold.
+10. **Coverage is 67.4% of lines and 78.3% of branches** on the CI
+    configuration, and the gate is set just under that as a ratchet. It is one
+    native build, so code only the portable backend reaches reads as uncovered
+    -- `src/division.hpp` shows 10% for that reason. Merging profiles from both
+    backends, and then raising the threshold, is the next step.
+11. `arithmetic.hpp` still costs about 41% more to include than 0.4's. The
+    absolute cost is 48 ms against 34 ms; most of the difference is
+    `detail/constexpr_arith.hpp`, which cannot be dropped without dropping
+    `constexpr` arithmetic. The README does not claim compile time is free.
+12. The competitor comparison against CNL is at scale 6 only, because CNL
+    overflows at scale 12 for ordinary values. A comparison against a library
+    that does check overflow at 12 decimals would be more informative than
+    either.

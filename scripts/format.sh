@@ -11,8 +11,20 @@ set -euo pipefail
 SRC=$(cd "$(dirname "$0")/.." && pwd)
 cd "$SRC"
 
+# Pinned, because clang-format major versions format the same file differently
+# and a mismatch turns this check into noise. CI installs exactly this version
+# from PyPI (`pip install clang-format==22.1.8`), which is the same binary on
+# every platform; set CLANG_FORMAT to override.
+readonly REQUIRED_VERSION=22
 CLANG_FORMAT=${CLANG_FORMAT:-clang-format}
-command -v "$CLANG_FORMAT" >/dev/null || { echo "clang-format not found" >&2; exit 1; }
+command -v "$CLANG_FORMAT" >/dev/null || { echo "clang-format not found; pip install clang-format==22.1.8" >&2; exit 1; }
+
+actual=$("$CLANG_FORMAT" --version | grep -oE '[0-9]+' | head -1)
+if [ "$actual" != "$REQUIRED_VERSION" ]; then
+    echo "clang-format $actual found, but this project is formatted with $REQUIRED_VERSION." >&2
+    echo "Different majors disagree; install it with: pip install clang-format==22.1.8" >&2
+    exit 1
+fi
 
 # Not formatted, and each for a reason:
 #

@@ -66,20 +66,35 @@ if(FIXEDWIDE_BUILD_TESTS)
     endforeach()
 
     # Negative compilation tests (must fail to compile)
+    # Each negative test names the diagnostic it expects, not merely that the
+    # build failed. WILL_FAIL alone accepted ANY compile error, so a typo, a
+    # renamed header or a missing include would have passed these silently while
+    # the rule they are meant to protect had stopped being enforced.
+    #
+    # PASS_REGULAR_EXPRESSION makes ctest ignore the exit code and pass only if
+    # the output matches, which asserts both that it failed and why. A build that
+    # unexpectedly SUCCEEDS produces no such message and therefore fails.
     set(NEGATIVE_TESTS
-        ambiguous_mixed_mul
-        invalid_bits
-        invalid_scale
-        runtime_scale
+        ambiguous_mixed_mul "call to deleted function 'mul'|use of deleted function"
+        invalid_bits        "Bits must be one of"
+        invalid_scale       "Decimals exceeds maximum capacity"
+        runtime_scale       "scale_member"
     )
 
-    foreach(NEG ${NEGATIVE_TESTS})
+    list(LENGTH NEGATIVE_TESTS _neg_count)
+    math(EXPR _neg_last "${_neg_count} - 1")
+    foreach(_i RANGE 0 ${_neg_last} 2)
+        list(GET NEGATIVE_TESTS ${_i} NEG)
+        math(EXPR _j "${_i} + 1")
+        list(GET NEGATIVE_TESTS ${_j} NEG_DIAGNOSTIC)
+
         add_library(neg_${NEG} EXCLUDE_FROM_ALL negative/${NEG}.cpp)
         target_link_libraries(neg_${NEG} PRIVATE fixedwide::fixedwide)
         add_test(NAME fixedwide.negative.${NEG}
             COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target neg_${NEG}
         )
-        set_tests_properties(fixedwide.negative.${NEG} PROPERTIES WILL_FAIL TRUE)
+        set_tests_properties(fixedwide.negative.${NEG} PROPERTIES
+            PASS_REGULAR_EXPRESSION "${NEG_DIAGNOSTIC}")
     endforeach()
 endif()
 

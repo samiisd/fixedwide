@@ -142,6 +142,13 @@ place of an error. Every failure is a `std::expected` you have to look at.
 
 `BinaryError`: `wrong_size`, `invalid_encoding`.
 
+**Precedence.** When more than one could apply, a result that does not fit the
+destination is `overflow` — even under `Rounding::exact`, and even when it is
+also inexact. Reporting `inexact` there would invite a retry with a rounding
+mode that cannot succeed. The full order is in `<fixedwide/error.hpp>`, and
+`tests/audit_mixed.cpp` asserts it exactly, with no substitution allowed, over
+both backends.
+
 Three of these are easy to confuse, and they are three different things:
 
 | | |

@@ -16,6 +16,24 @@
    19.3x, on x86-64 and AArch64, with the native and the portable backend.
    `docs/ci.md` records which combinations actually work and why some do not.
 
+## Formatting
+
+```bash
+pip install clang-format==22.1.8   # the exact version CI uses
+./scripts/format.sh                # rewrite
+./scripts/format.sh --check        # what CI runs
+```
+
+The version is pinned because clang-format majors format the same file
+differently; `scripts/format.sh` refuses to run with a different one rather than
+producing a diff nobody asked for. A few files are deliberately excluded and the
+script says why — most importantly `benchmarks/rounding_bench.cpp`, which the
+paired 0.4 comparison requires to stay byte-identical to 0.4's copy.
+
+Warnings are errors in CI over three toolchains and both backends. The library
+builds with `-Wall -Wextra -Wconversion -Wsign-conversion -Wshadow
+-Wold-style-cast` and is clean.
+
 ## Before opening a pull request
 
 ```bash

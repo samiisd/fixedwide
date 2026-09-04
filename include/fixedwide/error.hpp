@@ -23,6 +23,25 @@ enum class ArithmeticError : std::uint8_t {
     invalid_value,
 };
 
+// Precedence, when more than one of these could apply.
+//
+// A result that does not fit the destination is `overflow`, even under
+// `Rounding::exact` and even when it is also inexact. Reporting `inexact` there
+// would invite the caller to retry with a rounding mode, and that retry cannot
+// succeed -- no rounding makes an out-of-range value representable. The order
+// is:
+//
+//   1. division_by_zero   the divisor was zero; nothing else is evaluated
+//   2. invalid_value      the input was not a number (NaN, infinity)
+//   3. invalid_precision  the caller asked for more decimals than the type has
+//   4. overflow           the exact result is outside the destination's range
+//   5. inexact            the result fits, but `Rounding::exact` was asked for
+//                         and there was a remainder
+//   6. overflow           rounding pushed an in-range value out of range
+//
+// tests/audit_mixed.cpp asserts this exactly -- no substitution allowed --
+// against Boost.Multiprecision over both the native and the portable backend.
+
 // `inexact` and `too_precise` are not two names for one thing, and neither is
 // `too_precise` a spelling of `invalid_precision` below:
 //

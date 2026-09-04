@@ -391,10 +391,10 @@ int main(int argc, char** argv) {
             std::vector<CN> ca(data_size), cb(data_size);
             for (std::size_t i = 0; i < data_size; ++i) {
                 // Values in [1, 1000) and divisors in [1, 100), signs mixed.
-                std::int64_t ra = static_cast<std::int64_t>(rng() % 1000) * unit
-                                + static_cast<std::int64_t>(rng() % static_cast<std::uint64_t>(unit)) + unit;
-                std::int64_t rb = static_cast<std::int64_t>(rng() % 100) * unit
-                                + static_cast<std::int64_t>(rng() % static_cast<std::uint64_t>(unit)) + unit;
+                std::int64_t ra = static_cast<std::int64_t>(rng() % 1000) * unit +
+                                  static_cast<std::int64_t>(rng() % static_cast<std::uint64_t>(unit)) + unit;
+                std::int64_t rb = static_cast<std::int64_t>(rng() % 100) * unit +
+                                  static_cast<std::int64_t>(rng() % static_cast<std::uint64_t>(unit)) + unit;
                 if (i % 3 == 0) ra = -ra;
                 if (i % 5 == 0) rb = -rb;
 
@@ -413,7 +413,7 @@ int main(int argc, char** argv) {
                 const __int128 full = static_cast<__int128>(fa[i].raw()) * fb[i].raw();
                 __int128 scale = 1;
                 for (unsigned d = 0; d < Decimals; ++d) scale *= 10;
-                const CN rescaled = ca[i] * cb[i];   // the assignment IS the rescale
+                const CN rescaled = ca[i] * cb[i]; // the assignment IS the rescale
                 expect(cnl::_impl::to_rep(rescaled) == static_cast<std::int64_t>(full / scale),
                        "cnl decimal multiply disagrees with the exact integer oracle");
             }
@@ -451,8 +451,8 @@ int main(int argc, char** argv) {
         {
             using CN12 = cnl::scaled_integer<std::int64_t, cnl::power<-12, 10>>;
             using FW12 = fixedwide::Fixed64<12>;
-            constexpr std::int64_t ra = 123'456789012345LL;   // 123.456789012345
-            constexpr std::int64_t rb = 2'000000000000LL;     //   2.000000000000
+            constexpr std::int64_t ra = 123'456789012345LL; // 123.456789012345
+            constexpr std::int64_t rb = 2'000000000000LL;   //   2.000000000000
             constexpr std::int64_t exact = 246'913578024690LL;
 
             const CN12 cnl_product = cnl::_impl::from_rep<CN12>(ra) * cnl::_impl::from_rep<CN12>(rb);
@@ -460,8 +460,7 @@ int main(int argc, char** argv) {
 
             // CNL is wrong here, and wrong without saying so. fixedwide widens
             // to 128 bits for the intermediate and gets the exact answer.
-            expect(cnl::_impl::to_rep(cnl_product) != exact,
-                   "cnl scale-12 multiply was expected to overflow silently");
+            expect(cnl::_impl::to_rep(cnl_product) != exact, "cnl scale-12 multiply was expected to overflow silently");
             expect(fw_product.has_value() && fw_product->raw() == exact,
                    "fixedwide scale-12 multiply must be exact where cnl overflows");
 

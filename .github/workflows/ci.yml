@@ -29,16 +29,26 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - name: Install clang 20
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      # clang-format from PyPI, pinned exactly. Distro packages differ by major
+      # version and format the same file differently: this job first failed
+      # because CI had clang-format 20 and the tree had been formatted with 22.
+      # A pinned wheel is the same binary everywhere, including on a
+      # contributor's machine.
+      - name: Install the pinned clang-format
+        run: pip install "clang-format==22.1.8"
+      - name: Install compilers
         run: |
           wget -qO llvm.sh https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
           sudo ./llvm.sh 20
-          sudo apt-get install -y --no-install-recommends clang-format-20 libboost-dev cmake ninja-build
+          sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build
       # scripts/format.sh owns the exclusion list, because clang-format does not
       # honour .clang-format-ignore when handed an explicit path -- which is how
       # this script and every editor invoke it.
       - name: clang-format
-        run: CLANG_FORMAT=clang-format-20 ./scripts/format.sh --check
+        run: ./scripts/format.sh --check
       # Warnings are errors here and nowhere else, so a new warning fails a pull
       # request without making every other job brittle. Both backends, because
       # they compile different code.
@@ -57,7 +67,6 @@ jobs:
           cmake --build build-warn-portable
       - name: Warnings are errors (gcc)
         run: |
-          sudo apt-get install -y --no-install-recommends g++-14
           cmake -B build-warn-gcc -G Ninja -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER=g++-14 -DCMAKE_CXX_FLAGS=-Werror \
             -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
@@ -366,7 +375,9 @@ jobs:
           }' coverage.txt)
           echo "line coverage:   $lines%"
           echo "branch coverage: $branches%"
-          # Set from what this configuration actually reaches (72.1% / 77.5%),
+          # Set from what CI actually reaches (67.4% line, 78.3% branch on the
+          # runner's clang 20 -- a local clang 22 measures 72.1/77.5, which is
+          # why these are taken from a CI run and not a workstation),
           # with a small margin. They are a ratchet against regression, not an
           # aspiration -- raising them is a tracked open item in STATUS.md.
           #
@@ -375,7 +386,7 @@ jobs:
           # the native build never calls it. The portable and no-int128 jobs are
           # what cover it, and both run the whole suite.
           fail=0
-          awk -v v="$lines"    'BEGIN { exit (v+0 >= 70) ? 0 : 1 }' || { echo "line coverage below 70%" >&2; fail=1; }
+          awk -v v="$lines"    'BEGIN { exit (v+0 >= 65) ? 0 : 1 }' || { echo "line coverage below 65%" >&2; fail=1; }
           awk -v v="$branches" 'BEGIN { exit (v+0 >= 75) ? 0 : 1 }' || { echo "branch coverage below 75%" >&2; fail=1; }
           exit $fail
       - uses: actions/upload-artifact@v7

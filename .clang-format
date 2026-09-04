@@ -33,6 +33,16 @@ PackConstructorInitializers: NextLine
 ReflowComments: false
 SortIncludes: Never
 
+# Explicit-instantiation macros. Without these clang-format reads each as an
+# expression and re-indents them into a cascade -- and does it differently on
+# every run, so the formatting check never converged. Naming them makes each one
+# a statement on its own line.
+StatementMacros:
+  - FIXEDWIDE_INSTANTIATE_BOTH
+  - FIXEDWIDE_INSTANTIATE_128
+  - FIXEDWIDE_INSTANTIATE_64
+  - FIXEDWIDE_INSTANTIATE_PARSE
+
 SpaceAfterTemplateKeyword: false
 SpacesBeforeTrailingComments: 1
 IndentPPDirectives: None
