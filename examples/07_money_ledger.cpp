@@ -8,6 +8,7 @@
 
 #include <fixedwide/all.hpp>
 #include <cstdio>
+#include <cstdlib> // std::atof, for the double column
 
 int main() {
     using namespace fixedwide;
