@@ -51,19 +51,23 @@ jobs:
             >> "$GITHUB_ENV"
 
       - name: Configure and build
+        shell: bash
         run: |
-          cmake -B build-competitors -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER=clang++-22 \
-            -DCMAKE_CXX_FLAGS=-Werror \
-            -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
-            -DFIXEDWIDE_BUILD_COMPETITOR_BENCH=ON \
-            -DFIXEDWIDE_BUILD_TESTS=OFF \
-            -DFIXEDWIDE_BUILD_EXAMPLES=OFF \
-            -DFIXEDWIDE_MPDECIMAL_ROOT="$RUNNER_TEMP/mpdecimal" \
-            -DFIXEDWIDE_MPDECIMAL_VERSION=4.0.1 \
-            -DFIXEDWIDE_REQUIRE_MPDECIMAL=ON
-          cmake --build build-competitors --target fixedwide_competitor_bench
+          set -o pipefail
+          {
+            cmake -B build-competitors -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_CXX_COMPILER=clang++-22 \
+              -DCMAKE_CXX_FLAGS=-Werror \
+              -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
+              -DFIXEDWIDE_BUILD_COMPETITOR_BENCH=ON \
+              -DFIXEDWIDE_BUILD_TESTS=OFF \
+              -DFIXEDWIDE_BUILD_EXAMPLES=OFF \
+              -DFIXEDWIDE_MPDECIMAL_ROOT="$RUNNER_TEMP/mpdecimal" \
+              -DFIXEDWIDE_MPDECIMAL_VERSION=4.0.1 \
+              -DFIXEDWIDE_REQUIRE_MPDECIMAL=ON
+            cmake --build build-competitors --target fixedwide_competitor_bench
+          } 2>&1 | tee competitor-build.log
 
       - name: Run and validate retained schema
         shell: bash
@@ -84,7 +88,10 @@ jobs:
         if: always()
         with:
           name: competitor-benchmark-${{ github.sha }}
+          if-no-files-found: warn
           path: |
+            competitor-build.log
             competitors.csv
             competitors.stderr
+            build-competitors/CMakeFiles/CMakeConfigureLog.yaml
             build-competitors/benchmarks/competitor_versions.txt
