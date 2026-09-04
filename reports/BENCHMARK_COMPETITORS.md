@@ -13,7 +13,7 @@ Each number is the **median** of 11 timed repetitions of 262144
 operations. Minimum, median, p95, maximum and every raw sample are in
 `reports/raw/competitors.csv`. Every timed loop's output was validated against
 an independent oracle **outside** the timed region first; the run reports
-`validations=28672` and refuses to print results if any check fails.
+`validations=45057` and refuses to print results if any check fails.
 
 ## Reproducing it
 
@@ -45,14 +45,14 @@ Decimal fixed point: an integer scaled by a power of ten. The same numerical con
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| cnl | `scaled_integer<int64,power<-6,10>>` | mul_unchecked | 0.354 | no |
-| cnl | `scaled_integer<int64,power<-6,10>>` | div_unchecked | 1.093 | no |
-| fixedwide | `Fixed64<12>` | dependent_chain_mul | 2.069 | yes |
-| fixedwide | `Fixed64<12>` | div_nearest_even | 2.166 | yes |
-| fixedwide | `Fixed64<12>` | mul_div_one_rounding | 2.318 | yes |
-| fixedwide | `Fixed64<12>` | mul_nearest_even | 2.610 | yes |
-| fixedwide | `Fixed64<12>` | parse | 12.168 | yes |
-| fixedwide | `Fixed64<12>` | format | 13.966 | yes |
+| cnl | `scaled_integer<int64,power<-6,10>>` | mul_unchecked | 0.348 | no |
+| cnl | `scaled_integer<int64,power<-6,10>>` | div_unchecked | 1.101 | no |
+| fixedwide | `Fixed64<12>` | dependent_chain_mul | 2.074 | yes |
+| fixedwide | `Fixed64<12>` | div_nearest_even | 2.178 | yes |
+| fixedwide | `Fixed64<12>` | mul_div_one_rounding | 2.383 | yes |
+| fixedwide | `Fixed64<12>` | mul_nearest_even | 2.617 | yes |
+| fixedwide | `Fixed64<12>` | parse | 11.424 | yes |
+| fixedwide | `Fixed64<12>` | format | 13.965 | yes |
 
 ### binary fixed
 
@@ -60,9 +60,9 @@ Binary fixed point: an integer scaled by a power of two. Cannot represent 0.01 e
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| cnl | `scaled_integer<int64,power<-32>>` | mul_unchecked | 0.312 | no |
-| fpm | `fixed<int64,int128,32>` | mul_nearest_unchecked | 1.351 | no |
-| fpm | `fixed<int64,int128,32>` | div_nearest_unchecked | 1.937 | no |
+| cnl | `scaled_integer<int64,power<-32>>` | mul_unchecked | 0.313 | no |
+| fpm | `fixed<int64,int128,32>` | mul_nearest_unchecked | 1.364 | no |
+| fpm | `fixed<int64,int128,32>` | div_nearest_unchecked | 1.935 | no |
 
 ### decimal float
 
@@ -70,10 +70,10 @@ IEEE 754 decimal floating point: a decimal significand with a moving exponent.
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| boost.decimal | `decimal64_t` | mul | 3.534 | no |
-| boost.decimal | `decimal64_t` | div | 8.528 | no |
-| boost.decimal | `decimal64_t` | format | 12.357 | no |
-| boost.decimal | `decimal64_t` | parse | 14.172 | no |
+| boost.decimal | `decimal64_t` | mul | 3.540 | no |
+| boost.decimal | `decimal64_t` | div | 8.640 | no |
+| boost.decimal | `decimal64_t` | format | 12.416 | no |
+| boost.decimal | `decimal64_t` | parse | 13.772 | no |
 
 ### raw integer
 
@@ -81,7 +81,7 @@ Wide-integer arithmetic with no scale and no rounding. A floor, not a competitor
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| boost.multiprecision | `int128_t` | mul_unchecked | 0.891 | n/a |
+| boost.multiprecision | `int128_t` | mul_unchecked | 0.892 | no |
 
 ### binary float
 
@@ -89,10 +89,59 @@ IEEE 754 binary floating point. The cost of not being deterministic in decimal.
 
 | library | type | operation | median ns/op | checked |
 |---|---|---|---:|---|
-| std | `double` | mul | 0.229 | n/a |
+| std | `double` | mul | 0.222 | n/a |
 | std | `double` | div | 0.736 | n/a |
-| std | `double` | parse | 5.180 | n/a |
-| std | `double` | format | 28.298 | n/a |
+| std | `double` | parse | 5.280 | n/a |
+| std | `double` | format | 28.945 | n/a |
+
+### raw machine types
+
+Not competitors: the floor. What the hardware costs with no scale, no rounding mode,
+no overflow check and no decimal guarantee. The fixedwide rows are here so the two
+can be read against each other directly.
+
+| library | type | operation | median ns/op | checked |
+|---|---|---|---:|---|
+| std | `int64_t` | memcpy_load | 0.183 | n/a |
+| fixedwide | `Fixed64<12>` | from_bytes_little | 0.184 | yes |
+| std | `int64_t` | memcpy_store | 0.192 | n/a |
+| fixedwide | `Fixed64<12>` | to_bytes_little | 0.194 | yes |
+| std | `float` | add | 0.198 | n/a |
+| std | `float` | mul | 0.203 | n/a |
+| std | `double` | add | 0.217 | n/a |
+| std | `int64_t` | add_unchecked | 0.272 | n/a |
+| std | `int64_t` | mul_unchecked | 0.331 | n/a |
+| fixedwide | `Fixed64<12>` | add_checked | 0.388 | yes |
+| std | `int64_t` | div_unchecked | 1.101 | n/a |
+
+## The raw-type floor
+
+The `raw machine types` rows above exist because "fast for a checked decimal
+library" is not a claim anyone can act on. `std::int64_t`, `float` and `double`
+say what the hardware costs with no scale, no rounding mode and no overflow
+check, so the price of the contract is visible rather than argued:
+
+| | fixedwide `Fixed64<12>` | raw `int64_t` | `double` |
+|---|---:|---:|---:|
+| add | 0.388 | 0.272 | 0.217 |
+| store 8 bytes | 0.194 (`to_bytes`, byte order pinned) | 0.192 (`memcpy`, native order) | - |
+| load 8 bytes | 0.184 (`from_bytes`, validated) | 0.183 (`memcpy`) | - |
+
+Two things worth saying plainly about that table.
+
+**Serialization is at the floor.** `to_bytes` and `from_bytes` measure the same
+as a raw `memcpy` of the object representation, and they do strictly more: the
+byte order is named, so what one machine writes another reads, and `from_bytes`
+rejects a span of the wrong length. Under Valgrind the instruction counts are
+not equal — 110 against 54 per operation — so this is not "the same code". It is
+cheap ALU work that pipelines away at this size, and on a longer dependent chain
+the gap would show. The timed rows are what a caller feels; the instruction
+counts are in `benchmarks/baseline/`.
+
+**A checked add is close to a raw one, not equal to it.** 0.388 ns against
+0.272 ns, and exactly two extra instructions (4 marginal against 2, measured
+deterministically rather than timed). These rows are all a fraction of a
+nanosecond and throughput-bound, so read the ordering, not the ratio.
 
 ## Reading these numbers honestly
 

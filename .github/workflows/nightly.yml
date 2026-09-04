@@ -34,7 +34,7 @@ jobs:
           cmake --build build --target fixedwide_fuzz
       - run: ./build/fuzz/fixedwide_fuzz fuzz/corpus -max_total_time=$(( ${{ matrix.minutes }} * 60 )) -print_final_stats=1
       # A crash is only useful if the input that caused it survives the runner.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: fuzz-crashes
@@ -58,7 +58,7 @@ jobs:
             -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF
           cmake --build build --target fixedwide_competitor_bench
       - run: ./build/benchmarks/fixedwide_competitor_bench | tee competitors.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: competitor-benchmark
           path: competitors.log

@@ -199,7 +199,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: pip install "conan>=2.4"
@@ -238,7 +238,7 @@ jobs:
           cat current.csv
       - name: Compare against the committed baseline
         run: python3 scripts/compare_icount.py benchmarks/baseline/x86_64-gcc-14.csv current.csv
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: instruction-counts

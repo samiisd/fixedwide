@@ -63,31 +63,34 @@ set_target_properties(fixedwide PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
-set(FIXEDWIDE_AUTO_FORCE_PORTABLE OFF)
+# 128-bit division through __int128 is not an instruction: the compiler emits a
+# call to __divti3 / __udivti3 / __umodti3 in its runtime library. clang-cl
+# defines __SIZEOF_INT128__ but targets the MSVC CRT, which has no such symbols
+# and does not link compiler-rt's builtins by default -- so the native path
+# compiles there and then fails at link time with three undefined symbols.
+#
+# Test for it rather than naming the compiler: any toolchain that cannot divide
+# a 128-bit value without a runtime library it does not have gets the portable
+# multi-limb backend, which is differentially tested against the native one on
+# every CI run.
 if(NOT FIXEDWIDE_FORCE_PORTABLE)
+    set(CMAKE_REQUIRED_QUIET ON)
     check_cxx_source_compiles("
-        int main() {
-        #if defined(__SIZEOF_INT128__)
-            volatile __int128 a = static_cast<__int128>(123456789ULL) << 64;
-            volatile __int128 b = static_cast<__int128>(97ULL);
-            volatile __int128 q = a / b;
-            volatile __int128 r = a % b;
-            volatile unsigned __int128 ua = static_cast<unsigned __int128>(a);
-            volatile unsigned __int128 ub = static_cast<unsigned __int128>(b);
-            volatile unsigned __int128 uq = ua / ub;
-            volatile unsigned __int128 ur = ua % ub;
-            (void)q; (void)r; (void)uq; (void)ur;
+        #if !defined(__SIZEOF_INT128__)
+        #error no __int128
         #endif
-            return 0;
-        }
+        __int128 d(__int128 a, __int128 b) { return a / b; }
+        unsigned __int128 u(unsigned __int128 a, unsigned __int128 b) { return a / b + a % b; }
+        int main() { return (int)(d(3, 2) + u(3, 2)); }
     " FIXEDWIDE_INT128_DIVISION_LINKS)
+    unset(CMAKE_REQUIRED_QUIET)
     if(NOT FIXEDWIDE_INT128_DIVISION_LINKS)
-        set(FIXEDWIDE_AUTO_FORCE_PORTABLE ON)
-        message(STATUS "fixedwide: native __int128 division does not link; forcing portable backend")
+        message(STATUS "fixedwide: 128-bit division does not link here; using the portable backend")
+        set(FIXEDWIDE_FORCE_PORTABLE ON)
     endif()
 endif()
 
-if(FIXEDWIDE_FORCE_PORTABLE OR FIXEDWIDE_AUTO_FORCE_PORTABLE)
+if(FIXEDWIDE_FORCE_PORTABLE)
     target_compile_definitions(fixedwide PUBLIC FIXEDWIDE_FORCE_PORTABLE)
 endif()
 

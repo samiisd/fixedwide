@@ -17,6 +17,7 @@
 // loop.
 
 #include <fixedwide/arithmetic.hpp>
+#include <fixedwide/binary.hpp>
 #include <fixedwide/chars.hpp>
 #include <fixedwide/mixed.hpp>
 
@@ -90,6 +91,19 @@ std::array<Fixed, fixture_size> make_fixture(std::uint64_t seed, unsigned raw_bi
     return out;
 }
 
+// Plain int64 operands, for the raw-type floor rows. Divisors are forced
+// nonzero so the division rows measure division and not an early exit.
+std::array<std::int64_t, fixture_size> raw_int64_fixture(std::uint64_t seed) {
+    Splitmix rng{seed};
+    std::array<std::int64_t, fixture_size> out{};
+    for (auto& element : out) {
+        std::uint64_t bits = rng() >> (64 - 26);
+        if (bits == 0) bits = 1;
+        element = static_cast<std::int64_t>(bits);
+    }
+    return out;
+}
+
 // Every workload has this shape: two fixtures and a binary operation. The mask
 // index and the sink are identical across workloads, so their cost is common to
 // every row and mostly cancels between rows as well.
@@ -109,6 +123,20 @@ void run_unary(std::uint64_t iterations, const Fixture& a, Op op) {
     for (std::uint64_t i = 0; i < iterations; ++i) {
         const std::size_t index = static_cast<std::size_t>(i) & fixture_mask;
         accumulator ^= digest(op(a[index]));
+    }
+    sink = accumulator;
+}
+
+// Formatting writes into a caller's buffer, so it does not fit run()'s shape.
+template<typename Fixture>
+void run_format(std::uint64_t iterations, const Fixture& values) {
+    std::uint64_t accumulator = 0;
+    char buffer[fw::text_capacity];
+    for (std::uint64_t i = 0; i < iterations; ++i) {
+        const std::size_t index = static_cast<std::size_t>(i) & fixture_mask;
+        const auto written = fw::to_chars(buffer, sizeof buffer, values[index]);
+        accumulator ^= written ? *written : 0u;
+        accumulator ^= static_cast<unsigned char>(buffer[0]);
     }
     sink = accumulator;
 }
@@ -195,18 +223,52 @@ bool dispatch(std::string_view name, std::uint64_t n) {
         sink = accumulator;
         return true;
     }
-    if (name == "to_chars.Fixed64" || name == "to_chars.Fixed128") {
-        std::uint64_t accumulator = 0;
-        char buffer[fw::text_capacity];
-        for (std::uint64_t i = 0; i < n; ++i) {
-            const std::size_t index = static_cast<std::size_t>(i) & fixture_mask;
-            const auto written = (name == "to_chars.Fixed64")
-                ? fw::to_chars(buffer, sizeof buffer, a64[index])
-                : fw::to_chars(buffer, sizeof buffer, a128[index]);
-            accumulator ^= written ? *written : 0u;
-            accumulator ^= static_cast<unsigned char>(buffer[0]);
-        }
-        sink = accumulator;
+    // The which-type test is resolved before the loop, not inside it. A
+    // string_view comparison per iteration scales with n, so it survives the
+    // two-point subtraction and would be counted as part of to_chars.
+    if (name == "to_chars.Fixed64") { run_format(n, a64); return true; }
+    if (name == "to_chars.Fixed128") { run_format(n, a128); return true; }
+
+    // Raw machine types, as a floor. Wall-clock cannot separate these -- they
+    // are all a fraction of a nanosecond, below the resolution of a timed loop
+    // -- but instruction counts can, exactly. The difference between
+    // add.Fixed64 and add.int64_raw is precisely what the overflow check costs.
+    if (name == "add.int64_raw") {
+        static const auto x = raw_int64_fixture(11), y = raw_int64_fixture(12);
+        run(n, x, y, [](std::int64_t p, std::int64_t q) { return p + q; });
+        return true;
+    }
+    if (name == "mul.int64_raw") {
+        static const auto x = raw_int64_fixture(13), y = raw_int64_fixture(14);
+        run(n, x, y, [](std::int64_t p, std::int64_t q) { return p * q; });
+        return true;
+    }
+    if (name == "div.int64_raw") {
+        static const auto x = raw_int64_fixture(15), y = raw_int64_fixture(16);
+        run(n, x, y, [](std::int64_t p, std::int64_t q) { return p / q; });
+        return true;
+    }
+    // Serialization against the raw-copy floor. to_bytes pins the byte order;
+    // memcpy of the object representation does not, and is the fastest possible
+    // answer, so the gap is what a defined wire format costs.
+    if (name == "to_bytes.Fixed64") {
+        run_unary(n, a64, [](Money64 v) {
+            const auto bytes = fw::to_bytes<fw::endian::little>(v);
+            std::uint64_t folded = 0;
+            for (auto byte : bytes) folded = (folded << 8) ^ byte;
+            return static_cast<std::int64_t>(folded);
+        });
+        return true;
+    }
+    if (name == "memcpy.int64_raw") {
+        static const auto x = raw_int64_fixture(17);
+        run_unary(n, x, [](std::int64_t v) {
+            std::array<std::uint8_t, sizeof(std::int64_t)> bytes{};
+            std::memcpy(bytes.data(), &v, sizeof bytes);
+            std::uint64_t folded = 0;
+            for (auto byte : bytes) folded = (folded << 8) ^ byte;
+            return static_cast<std::int64_t>(folded);
+        });
         return true;
     }
 
@@ -235,6 +297,8 @@ constexpr const char* workloads[] = {
     "mul_to.general", "div_to.general",
     "compare.Price.Rate", "fixed_cast.Price.MixedFast",
     "parse.Fixed64", "to_chars.Fixed64", "to_chars.Fixed128",
+    "add.int64_raw", "mul.int64_raw", "div.int64_raw",
+    "to_bytes.Fixed64", "memcpy.int64_raw",
 };
 
 } // namespace

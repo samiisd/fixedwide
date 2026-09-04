@@ -24,8 +24,8 @@ Money in a hand-rolled `int64_t` of cents does not drift, but it wraps, and it
 wraps silently:
 
 ```cpp
-std::int64_t a = 9'000'000'000'000'000'00;  // 9e16 cents
-std::int64_t total = a + a;                 // undefined behaviour, no diagnostic
+std::int64_t a = 5'000'000'000'000'000'000;  // 5e18 cents
+std::int64_t total = a + a;                  // undefined behaviour, no diagnostic
 ```
 
 `fixedwide` gives you the integer, keeps the decimal point in the type, and
@@ -113,8 +113,10 @@ What the library does with that:
   `invalid_precision`, `invalid_value` — never a wrong answer.
 - **`constexpr` arithmetic.** A rate table can be computed and checked at
   compile time.
-- **No allocation anywhere**, including parsing and formatting. Works with
-  `-fno-exceptions` and `-fno-rtti`.
+- **No allocation on any arithmetic, parsing or formatting path.** `to_chars`
+  and `from_chars` write into your buffer; a test that replaces `operator new` and
+  counts every call proves it. `to_string` is the one convenience that allocates,
+  and is in its own header. Works with `-fno-exceptions` and `-fno-rtti`.
 
 ---
 
@@ -124,21 +126,46 @@ Median ns/op, Clang 22, `-O3`, pinned to one core, every timed result validated
 against an independent oracle outside the timed region. Full table, method and
 raw samples: [`reports/BENCHMARK_COMPETITORS.md`](reports/BENCHMARK_COMPETITORS.md).
 
+### Against other decimal libraries
+
 | | **fixedwide**<br>`Fixed64<12>` | Boost.Decimal<br>`decimal64_t` | CNL<br>`scaled_integer` | `double` |
 |---|---:|---:|---:|---:|
-| multiply | **2.61** | 3.53 | 0.35 | 0.23 |
-| divide | **2.17** | 8.53 | 1.09 | 0.74 |
-| parse | **12.17** | 14.17 | — | 5.18 |
-| format | 13.97 | **12.36** | — | 28.30 |
+| multiply | **2.62** | 3.54 | 0.35 | 0.22 |
+| divide | **2.18** | 8.64 | 1.10 | 0.74 |
+| parse | **11.42** | 13.77 | — | 5.28 |
+| format | 13.97 | **12.42** | — | 28.95 |
 | exact in decimal | yes | yes | yes | **no** |
 | overflow detected | **yes** | no | no | no |
 
-Read honestly:
+### Against the raw machine types
+
+"Fast for a checked decimal library" is not a claim you can act on. These are
+what the hardware costs with no scale, no rounding mode and no overflow check,
+so the price of the contract is visible instead of argued:
+
+| | **fixedwide**<br>`Fixed64<12>` | raw `int64_t` | `double` |
+|---|---:|---:|---:|
+| add | **0.39** | 0.27 | 0.22 |
+| store 8 bytes | **0.19** `to_bytes` | 0.19 `memcpy` | — |
+| load 8 bytes | **0.18** `from_bytes` | 0.18 `memcpy` | — |
+
+**Serialization runs at the `memcpy` floor** while doing strictly more: the byte
+order is named, so what one machine writes another reads, and `from_bytes`
+rejects a span of the wrong length. **A checked decimal add is within about
+0.12 ns of a raw `int64_t` add** — exactly two extra instructions, counted
+deterministically rather than timed.
+
+These rows are all a fraction of a nanosecond and throughput-bound. Read the
+ordering, not the ratio; and read
+[the honest version](reports/BENCHMARK_COMPETITORS.md#the-raw-type-floor),
+which says where the instruction counts and the timings disagree.
+
+### Reading the first table honestly
 
 - Against **Boost.Decimal**, the closest comparable contract here, multiply is
   faster, divide is about **four times** faster, and parsing is faster.
   Formatting is the row it loses, and that is an open item.
-- **CNL's decimal multiply is about 8x quicker**, because it is a raw `int64`
+- **CNL's decimal multiply is about 7x quicker**, because it is a raw `int64`
   multiply and a rescale with no overflow detection: on overflow it silently
   produces a wrong answer. Returning `std::expected` is what that row costs, and
   it is the trade this library exists to make.
@@ -151,12 +178,13 @@ Side by side, the same calculation three ways:
 
 ```cpp
 // double: fast, and wrong in the last place
-double notional = 123.4567 * 10.50;              // 1296.2953500000002
+double notional = 123.4567 * 10.50;              // 1296.2953499999999
 
-// hand-rolled int64 cents: right until it isn't
-int64_t notional = 1234567LL * 1050LL / 100;     // silently wraps at scale
+// hand-rolled int64: you now own the scale, the rounding and the overflow check
+int64_t notional = 1234567LL * 1050LL / 100;     // 12962953 -- but at which scale?
+                                                 // truncated, and unchecked
 
-// fixedwide: exact, one rounding, overflow reported
+// fixedwide: exact, one rounding, overflow reported, scale in the type
 auto notional = mul_to<Fixed128<6>>(price, qty); // 1296.295350, or an error
 ```
 
@@ -222,20 +250,31 @@ Anything else is marked `not-configured` in
 [`reports/EXECUTION_MATRIX.csv`](reports/EXECUTION_MATRIX.csv) and is not
 claimed.
 
-| Platform | Toolchain | Status |
-|---|---|---|
-| Linux x86-64 | GCC 14+ | Debug and Release, plus the Boost differential oracle |
-| Linux x86-64 | Clang 18 + libc++, Clang 20 + libstdc++ | Debug and Release |
-| Linux AArch64 | GCC 14 | Release |
-| macOS (Apple silicon) | AppleClang 15+ | Release |
-| Windows x64 | MSVC 19.3x, clang-cl | Release, portable backend |
-| Linux x86-64 | Forced-portable, and with `__SIZEOF_INT128__` undefined | Release |
-| Linux x86-64 | ASan + UBSan, both backends | Debug |
+Every row below is `executed-pass` in
+[the last CI run](https://github.com/Samiisd/fixedwide/actions/workflows/ci.yml).
 
-Also executed: shared library, `-fno-exceptions` / `-fno-rtti`, install plus an
-external `find_package` consumer, the Conan package, and AArch64 on real
-hardware (a Pixel 6, static cross build). Not configured, and so not claimed:
-Windows ARM64 and big-endian hardware.
+| Platform | Toolchain | Backend |
+|---|---|---|
+| Linux x86-64 | GCC 14, Debug and Release | native |
+| Linux x86-64 | Clang 18 + libc++, Debug and Release | native |
+| Linux x86-64 | Clang 20 + libstdc++ | native |
+| Linux AArch64 | GCC 14 | native |
+| macOS (Apple silicon) | AppleClang, macos-14 and macos-15 | native |
+| Windows x64 | MSVC | portable |
+| Windows x64 | clang-cl | portable |
+| Linux x86-64 | GCC 14, `FIXEDWIDE_FORCE_PORTABLE` | portable |
+| Linux x86-64 | GCC 14, `__SIZEOF_INT128__` undefined | portable |
+| Linux x86-64 | Clang 18, ASan + UBSan, both backends | both |
+
+Also executed on every push: the shared library, install plus an external
+`find_package` consumer, `conan create` with `test_package` in both backends,
+a libFuzzer smoke run, and the instruction-count gate. Executed on the
+maintainer's hardware and recorded in `reports/`: Clang 22 and GCC 16, a
+no-exceptions / no-RTTI build, and AArch64 on a real device.
+
+Not configured, and therefore not claimed: Windows ARM64, and big-endian
+hardware — `binary.hpp` implements both byte orders but only little-endian has
+ever been executed.
 
 Note on Clang: Clang 17 and 18 report `__cpp_concepts` as `201907`, and
 libstdc++ gates `<expected>` on `202002`, so **this library cannot compile with
