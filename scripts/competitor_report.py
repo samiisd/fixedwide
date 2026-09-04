@@ -25,7 +25,8 @@ def required_rows() -> set[tuple[str, str, str, str]]:
 
     add("fixedwide", "Fixed64<4>", "decimal_fixed_exact_4", all_ops)
     add("decimal_for_cpp", "decimal<4,half_even>", "decimal_fixed_exact_4", all_ops)
-    add("cnl", "scaled_integer<int64,power<-4,10>>", "decimal_fixed_exact_4", arithmetic)
+    add("cnl", "scaled_integer<int64,power<-4,10>>", "decimal_fixed_exact_4", ("add", "mul"))
+    add("cnl", "scaled_integer<int64,power<-4,10>>", "decimal_fixed_adjacent", ("div_same_type",))
     add("boost.decimal", "decimal64_t", "decimal_float_exact_4", all_ops)
     add("mpdecimal", "Decimal", "arbitrary_decimal_exact_4", all_ops)
     add("boost.multiprecision", "cpp_dec_float_50", "arbitrary_decimal_exact_4", all_ops)
