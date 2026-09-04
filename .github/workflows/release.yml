@@ -33,9 +33,13 @@ jobs:
           # The zip, its checksum and the verification log are three separate
           # assets. None of them lives inside the archive, so nothing describes
           # itself and no asset can be stale relative to another.
+          # awk, not a sed range: `sed -n '/^## \[/,/^## \[/p'` restarts after
+          # each range and so emitted every OTHER section too -- 295 lines
+          # covering four releases instead of the one being tagged.
+          awk '/^## \[/{if(n++)exit} n' CHANGELOG.md > /tmp/release-notes.md
           gh release create "${GITHUB_REF_NAME}" \
             --title "${GITHUB_REF_NAME}" \
-            --notes-file <(sed -n "/^## \[/,/^## \[/p" CHANGELOG.md | head -n -1) \
+            --notes-file /tmp/release-notes.md \
             dist/*
       - uses: actions/upload-artifact@v7
         if: always()
