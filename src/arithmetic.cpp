@@ -1,4 +1,5 @@
 #include <fixedwide/arithmetic.hpp>
+#include <fixedwide/detail/overflow.hpp>
 #include "detail.hpp"
 #include "division.hpp"
 #include "limbs.hpp"
@@ -71,7 +72,7 @@ std::expected<std::int64_t, ArithmeticError> quotient64_signed(
         auto val = div_signed64(high, low, divisor);
         if (rounding == Rounding::nearest_even && val.remainder != 0) {
             const auto adj = nearest_adjustment(val, divisor, (high < 0) != (divisor < 0));
-            if (__builtin_add_overflow(val.quotient, adj, &val.quotient)) {
+            if (add_overflow(val.quotient, adj, &val.quotient)) {
                 return quotient64_general(high, low, divisor, rounding);
             }
         }
@@ -194,7 +195,7 @@ quantize64_kernel(std::int64_t a, unsigned current_decimals, unsigned target_dec
     // Rescaling can overflow. Detect it with the multiply we have to do anyway
     // rather than a second runtime division by the same divisor.
     std::uint64_t res_mag;
-    if (__builtin_mul_overflow(*rounded, udiv, &res_mag) || res_mag > limit) {
+    if (mul_overflow(*rounded, udiv, &res_mag) || res_mag > limit) {
         return std::unexpected(ArithmeticError::overflow);
     }
     if (neg) {

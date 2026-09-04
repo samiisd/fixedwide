@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build unzip zip
+      # scripts/release.sh builds the archive with `git archive`, so it contains
+      # exactly what is committed, then proves it by extracting it elsewhere and
+      # verifying the manifest inside the extracted tree. Do not reimplement it
+      # here: the script is the thing that is tested locally.
+      - name: Build and verify the archive
+        run: ./scripts/release.sh
+      - name: Build and test the extracted archive
+        run: |
+          version=$(sed -n 's/.*FIXEDWIDE_VERSION_STRING "\(.*\)"/\1/p' include/fixedwide/version.hpp)
+          unzip -q "fixedwide-${version}-source.zip" -d /tmp/extracted
+          cmake -S "/tmp/extracted/fixedwide-${version}" -B /tmp/extracted/build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-14 \
+            -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
+          cmake --build /tmp/extracted/build
+          ctest --test-dir /tmp/extracted/build --output-on-failure
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file <(sed -n "/^## \[/,/^## \[/p" CHANGELOG.md | head -n -1) \
+            fixedwide-*-source.zip SHA256SUMS

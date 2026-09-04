@@ -1,6 +1,7 @@
 #pragma once
 #include "detail.hpp"
 #include <fixedwide/wide.hpp>
+#include <bit>
 
 namespace fixedwide::detail {
 

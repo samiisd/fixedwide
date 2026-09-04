@@ -54,4 +54,21 @@ template<signed_arithmetic T>
 #endif
 }
 
+// Unsigned multiply. The compiled sources need this on the narrow rescale path,
+// where the raw builtin was called unguarded and so did not compile on MSVC at
+// all -- the one remaining hard blocker after the public headers were cleaned
+// up. The portable branch is a division rather than a wider multiply, because
+// there is no type wider than 64 bits to widen into on a compiler without
+// __int128.
+template<typename T>
+    requires (!signed_arithmetic<T>)
+[[nodiscard]] constexpr bool mul_overflow(T a, T b, T* out) noexcept {
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(FIXEDWIDE_FORCE_PORTABLE)
+    return __builtin_mul_overflow(a, b, out);
+#else
+    *out = static_cast<T>(a * b);
+    return a != T(0) && b > static_cast<T>(static_cast<T>(~T(0)) / a);
+#endif
+}
+
 } // namespace fixedwide::detail

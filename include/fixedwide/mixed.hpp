@@ -14,8 +14,9 @@
 #include <fixedwide/detail/mixed_native.hpp>
 #include <fixedwide/error.hpp>
 #include <fixedwide/rounding.hpp>
-#include <expected>
+#include <array>
 #include <compare>
+#include <expected>
 
 namespace fixedwide {
 
@@ -54,6 +55,85 @@ mixed_compare_kernel(wide::int256 a_raw, unsigned a_decimals,
 
 
 
+// Exact cross-scale comparison during constant evaluation.
+//
+// The runtime path below is `mixed_compare_kernel`, which lives in the compiled
+// library and so cannot run in a constant expression. Without this, the
+// `constexpr` on the two comparison operators was only true for the narrow
+// `mixed_native` fast path -- any comparison involving a Fixed128 or Fixed256
+// failed to compile inside a `static_assert`, while advertising that it would
+// not. This is the same algorithm, written to run at compile time.
+//
+// Widths: a magnitude is under 2^255 and the largest scale gap is 10^76, which
+// is under 2^253, so an aligned value needs at most 508 bits. Nine limbs is 576.
+inline constexpr std::size_t compare_limbs = 9;
+using compare_magnitude = std::array<std::uint64_t, compare_limbs>;
+
+/// Magnitude of a 256-bit raw value, widened to the comparison width.
+[[nodiscard]] constexpr compare_magnitude to_compare_magnitude(wide::int256 v) noexcept {
+    compare_magnitude out{};
+    if (v.is_negative()) {
+        // Two's complement negation across the four limbs.
+        std::uint64_t borrow = 1;
+        for (std::size_t i = 0; i < 4; ++i) {
+            const std::uint64_t inverted = ~v.limbs[i];
+            out[i] = inverted + borrow;
+            borrow = (out[i] < borrow) ? 1u : 0u;
+        }
+    } else {
+        for (std::size_t i = 0; i < 4; ++i) out[i] = v.limbs[i];
+    }
+    return out;
+}
+
+/// Multiply in place by ten. Split into 32-bit halves so no 128-bit type and no
+/// compiler intrinsic is needed -- this has to work on MSVC and in constexpr.
+constexpr void multiply_by_ten(compare_magnitude& value) noexcept {
+    std::uint64_t carry = 0;
+    for (std::size_t i = 0; i < compare_limbs; ++i) {
+        const std::uint64_t low  = (value[i] & 0xFFFF'FFFFULL) * 10u + carry;
+        const std::uint64_t high = (value[i] >> 32) * 10u + (low >> 32);
+        value[i] = (high << 32) | (low & 0xFFFF'FFFFULL);
+        carry = high >> 32;
+    }
+}
+
+/// Compare two magnitudes, most significant limb first.
+[[nodiscard]] constexpr std::strong_ordering
+compare_magnitudes(const compare_magnitude& a, const compare_magnitude& b) noexcept {
+    for (std::size_t i = compare_limbs; i-- > 0;) {
+        if (a[i] != b[i]) return a[i] < b[i] ? std::strong_ordering::less
+                                             : std::strong_ordering::greater;
+    }
+    return std::strong_ordering::equal;
+}
+
+[[nodiscard]] constexpr std::strong_ordering
+constexpr_mixed_compare(wide::int256 a_raw, unsigned a_decimals,
+                        wide::int256 b_raw, unsigned b_decimals) noexcept {
+    const bool a_negative = a_raw.is_negative();
+    const bool b_negative = b_raw.is_negative();
+    if (a_negative != b_negative) {
+        return a_negative ? std::strong_ordering::less : std::strong_ordering::greater;
+    }
+    if (a_raw.is_zero() && b_raw.is_zero()) return std::strong_ordering::equal;
+
+    // Lift both sides to the coarser of the two scales. No division, so nothing
+    // is rounded and the answer is exact.
+    const unsigned common = a_decimals < b_decimals ? a_decimals : b_decimals;
+    compare_magnitude a_magnitude = to_compare_magnitude(a_raw);
+    compare_magnitude b_magnitude = to_compare_magnitude(b_raw);
+    for (unsigned i = 0; i < b_decimals - common; ++i) multiply_by_ten(a_magnitude);
+    for (unsigned i = 0; i < a_decimals - common; ++i) multiply_by_ten(b_magnitude);
+
+    const auto ordering = compare_magnitudes(a_magnitude, b_magnitude);
+    if (!a_negative) return ordering;
+    // Both are negative, so the larger magnitude is the smaller value.
+    if (ordering == std::strong_ordering::less) return std::strong_ordering::greater;
+    if (ordering == std::strong_ordering::greater) return std::strong_ordering::less;
+    return std::strong_ordering::equal;
+}
+
 } // namespace detail
 
 /// Exact equality across widths and scales.
@@ -82,6 +162,11 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
         return detail::mixed_native::compare<BitsA, Da, BitsB, Db>(a.raw(), b.raw());
     }
 #endif
+    if consteval {
+        // The general kernel is compiled into the library and cannot run here.
+        return detail::constexpr_mixed_compare(detail::to_int256_raw(a.raw()), Da,
+                                               detail::to_int256_raw(b.raw()), Db);
+    }
     return detail::mixed_compare_kernel(detail::to_int256_raw(a.raw()), Da,
                                         detail::to_int256_raw(b.raw()), Db);
 }

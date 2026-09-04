@@ -4,6 +4,7 @@
 #include <fixedwide/rounding.hpp>
 #include <fixedwide/wide.hpp>
 #include <array>
+#include <bit>
 #include <cstdint>
 #include <expected>
 #include <type_traits>

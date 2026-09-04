@@ -13,6 +13,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         overflow
         constexpr
         mixed_native
+        format
     )
 
     foreach(NAME ${TEST_NAMES})

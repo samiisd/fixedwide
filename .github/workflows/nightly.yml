@@ -1,0 +1,58 @@
+name: Nightly
+
+# The long-running checks. They are too slow for a pull request but too useful
+# to skip, so they run once a day against main and can be started by hand.
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: fuzz ${{ matrix.minutes }} minutes
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        minutes: [ 30 ]
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-18 libc++-18-dev libc++abi-18-dev cmake ninja-build
+      - run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_COMPILER=clang++-18 \
+            -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ \
+            -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_FUZZER=ON -DFIXEDWIDE_BUILD_TESTS=OFF
+          cmake --build build --target fixedwide_fuzz
+      - run: ./build/fuzz/fixedwide_fuzz fuzz/corpus -max_total_time=$(( ${{ matrix.minutes }} * 60 )) -print_final_stats=1
+      # A crash is only useful if the input that caused it survives the runner.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fuzz-crashes
+          path: |
+            crash-*
+            leak-*
+            timeout-*
+
+  competitors:
+    name: competitor benchmark
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build git
+      # CNL and fpm are fetched at pinned tags, so this also catches the day one
+      # of them stops building against a current compiler -- which would quietly
+      # invalidate the comparison table in README.md.
+      - run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-14 \
+            -DFIXEDWIDE_BUILD_BENCHMARKS=ON -DFIXEDWIDE_BUILD_COMPETITOR_BENCH=ON \
+            -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF
+          cmake --build build --target fixedwide_competitor_bench
+      - run: ./build/benchmarks/fixedwide_competitor_bench | tee competitors.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: competitor-benchmark
+          path: competitors.log

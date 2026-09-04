@@ -2,67 +2,102 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
-# Every platform the README claims is built and run here. A job that does not
-# appear in this file must be reported as not-configured in the execution
-# matrix, never as supported.
+# A superseded run tells you nothing, so do not pay for it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Every platform README.md claims is built and RUN here. A configuration that
+# does not appear in this file must be reported as not-configured in
+# reports/EXECUTION_MATRIX.csv, never as supported.
+#
+# On the Clang rows: Clang 17 and 18 report __cpp_concepts as 201907, and
+# libstdc++ gates <expected> on 202002, so those compilers cannot see
+# std::expected with the system standard library at all -- this library will not
+# compile there. They are paired with libc++, which has no such gate. That was
+# measured, not assumed; see docs/ci.md.
 jobs:
   linux:
-    name: ${{ matrix.compiler.cxx }} ${{ matrix.build_type }}
+    name: linux ${{ matrix.toolchain.name }} ${{ matrix.build_type }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        compiler:
-          - { cc: clang-17, cxx: clang++-17, pkg: clang-17 }
-          - { cc: clang-18, cxx: clang++-18, pkg: clang-18 }
-          - { cc: gcc-14,   cxx: g++-14,     pkg: g++-14 }
+        toolchain:
+          - name: gcc-14
+            packages: g++-14
+            cmake_args: -DCMAKE_CXX_COMPILER=g++-14
+          - name: clang-18-libc++
+            packages: clang-18 libc++-18-dev libc++abi-18-dev
+            cmake_args: >-
+              -DCMAKE_CXX_COMPILER=clang++-18
+              -DCMAKE_CXX_FLAGS=-stdlib=libc++
+              -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++
         build_type: [ Debug, Release ]
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y ${{ matrix.compiler.pkg }} libboost-dev cmake ninja-build
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ${{ matrix.toolchain.packages }} libboost-dev cmake ninja-build
       - name: Configure
-        env: { CC: "${{ matrix.compiler.cc }}", CXX: "${{ matrix.compiler.cxx }}" }
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-             -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            ${{ matrix.toolchain.cmake_args }} \
+            -DFIXEDWIDE_BUILD_TESTS=ON \
+            -DFIXEDWIDE_BUILD_EXAMPLES=ON \
+            -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
       - run: cmake --build build
+      # Examples are ctest tests, so this is also the check that every example
+      # in the README still compiles and still prints the right answer.
       - run: ctest --test-dir build --output-on-failure
 
   linux-arm64:
-    name: Linux AArch64 (${{ matrix.cxx }})
+    name: linux arm64 ${{ matrix.cxx }}
     runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
-        cxx: [ g++-14, clang++-18 ]
+        cxx: [ g++-14 ]
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y g++-14 clang-18 libboost-dev cmake ninja-build
-      - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
-             -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build
+      - run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON \
+            -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
       - run: cmake --build build
       - run: ctest --test-dir build --output-on-failure
 
   macos:
-    name: macOS ${{ matrix.runner }}
+    name: macos ${{ matrix.runner }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        runner: [ macos-14, macos-13 ]   # arm64 and x86-64
+        runner: [ macos-14, macos-15 ]
     steps:
       - uses: actions/checkout@v4
       - run: brew install ninja boost
-      - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-             -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
+      - run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON \
+            -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON
       - run: cmake --build build
       - run: ctest --test-dir build --output-on-failure
 
   windows:
-    name: Windows ${{ matrix.toolset }}
+    name: windows ${{ matrix.toolset }}
     runs-on: windows-2022
     strategy:
       fail-fast: false
@@ -71,34 +106,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ilammy/msvc-dev-cmd@v1
-      - name: Configure (MSVC)
-        if: matrix.toolset == 'msvc'
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFIXEDWIDE_BUILD_TESTS=ON
-      - name: Configure (clang-cl)
-        if: matrix.toolset == 'clang-cl'
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang-cl -DFIXEDWIDE_BUILD_TESTS=ON
+      # MSVC has no __int128 and no GNU inline asm, so it takes the portable
+      # multi-limb backend automatically. Boost is not installed: the two
+      # Boost-backed audit suites skip themselves and the rest still run.
+      - name: Configure
+        run: >
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          ${{ matrix.toolset == 'clang-cl' && '-DCMAKE_CXX_COMPILER=clang-cl' || '' }}
+          -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
       - run: cmake --build build
       - run: ctest --test-dir build --output-on-failure
 
   portable-backend:
-    name: Portable backend and no-int128 simulation
+    name: ${{ matrix.config.name }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         config:
-          - { name: forced-portable, flags: "-DFIXEDWIDE_FORCE_PORTABLE=ON" }
-          - { name: no-int128,       flags: "-DCMAKE_CXX_FLAGS=-U__SIZEOF_INT128__ -DFIXEDWIDE_FORCE_PORTABLE=ON" }
+          - name: forced-portable
+            flags: -DFIXEDWIDE_FORCE_PORTABLE=ON
+          - name: no-int128
+            flags: -DFIXEDWIDE_FORCE_PORTABLE=ON "-DCMAKE_CXX_FLAGS=-U__SIZEOF_INT128__"
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y clang-18 libboost-dev cmake ninja-build
-      - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-18
-             -DFIXEDWIDE_BUILD_TESTS=ON ${{ matrix.config.flags }}
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build
+      - run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=g++-14 \
+            -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON \
+            ${{ matrix.config.flags }}
       - run: cmake --build build
       - run: ctest --test-dir build --output-on-failure
 
   sanitizers:
-    name: ASan + UBSan (${{ matrix.backend }})
+    name: asan+ubsan ${{ matrix.backend }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -106,22 +148,125 @@ jobs:
         backend: [ native, portable ]
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y clang-18 libboost-dev cmake ninja-build
-      - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-18
-             -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_TESTS=ON
-             ${{ matrix.backend == 'portable' && '-DFIXEDWIDE_FORCE_PORTABLE=ON' || '' }}
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-18 libc++-18-dev libc++abi-18-dev libboost-dev cmake ninja-build
+      - run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_COMPILER=clang++-18 \
+            -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ \
+            -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON \
+            ${{ matrix.backend == 'portable' && '-DFIXEDWIDE_FORCE_PORTABLE=ON' || '' }}
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure
+
+  shared-library:
+    name: shared library
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build
+      - run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_CXX_COMPILER=g++-14 -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
       - run: cmake --build build
       - run: ctest --test-dir build --output-on-failure
 
   packaging:
-    name: Install and consume via find_package
+    name: install + find_package consumer
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y clang-18 libboost-dev cmake ninja-build
-      - run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-18 \
-                -DCMAKE_INSTALL_PREFIX="$PWD/stage" -DFIXEDWIDE_BUILD_TESTS=OFF
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 cmake ninja-build
+      - name: Build and install
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=g++-14 \
+            -DCMAKE_INSTALL_PREFIX="$PWD/stage" \
+            -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF
           cmake --build build --target install
-      - run: cmake -S examples/consumer -B build-consumer -DCMAKE_PREFIX_PATH="$PWD/stage" &&
-             cmake --build build-consumer && ./build-consumer/consumer
+      # The consumer sees nothing but the install tree: if the exported package
+      # is wrong, this is where it shows.
+      - name: Consume it
+        run: |
+          cmake -S examples/consumer -B build-consumer -DCMAKE_PREFIX_PATH="$PWD/stage" \
+            -DCMAKE_CXX_COMPILER=g++-14
+          cmake --build build-consumer
+          ./build-consumer/consumer
+
+  conan:
+    name: conan create
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install "conan>=2.4"
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 cmake ninja-build
+      - run: conan profile detect --force
+      # test_package links the package and checks the number it prints, so a
+      # recipe that packages nothing usable fails here rather than downstream.
+      - run: conan create . --build=missing -s compiler.cppstd=23 -s compiler.version=14
+      - name: The portable backend must package too
+        run: conan create . --build=missing -s compiler.cppstd=23 -s compiler.version=14 -o "&:force_portable=True"
+
+  benchmark:
+    name: instruction-count regression gate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 cmake ninja-build valgrind
+      # Deterministic: the gate counts retired instructions under Valgrind, not
+      # wall-clock, because a shared runner's timing noise is larger than the
+      # regression worth catching. See docs/benchmarks.md.
+      - name: Measure
+        env: { CXX: g++-14 }
+        run: |
+          cmake -B build_icount -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=g++-14 -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
+            -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF
+          cmake --build build_icount --target fixedwide_icount
+          ./scripts/icount.sh --binary build_icount/benchmarks/fixedwide_icount > current.csv
+          cat current.csv
+      - name: Compare against the committed baseline
+        run: python3 scripts/compare_icount.py benchmarks/baseline/x86_64-gcc-14.csv current.csv
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: instruction-counts
+          path: current.csv
+
+  fuzz:
+    name: fuzz smoke
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-18 libc++-18-dev libc++abi-18-dev cmake ninja-build
+      - run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_COMPILER=clang++-18 \
+            -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ \
+            -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_FUZZER=ON -DFIXEDWIDE_BUILD_TESTS=OFF
+          cmake --build build --target fixedwide_fuzz
+      # Short on a pull request; the nightly workflow runs it for much longer.
+      - run: ./build/fuzz/fixedwide_fuzz fuzz/corpus -max_total_time=90 -print_final_stats=1
+
+  coverage:
+    name: coverage
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang-18 llvm-18 libc++-18-dev libc++abi-18-dev libboost-dev cmake ninja-build
+      - run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_COMPILER=clang++-18 \
+            -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ \
+            -DFIXEDWIDE_COVERAGE=ON -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON
+          cmake --build build
+      - run: |
+          cd build
+          LLVM_PROFILE_FILE="%p.profraw" ctest --output-on-failure
+          llvm-profdata-18 merge -sparse *.profraw -o merged.profdata
+          llvm-cov-18 report ./tests/test_core -instr-profile=merged.profdata \
+            $(ls tests/test_* tests/audit_* | sed 's/^/-object /') \
+            /home/runner/work/fixedwide/fixedwide/src /home/runner/work/fixedwide/fixedwide/include \
+            | tee "$GITHUB_STEP_SUMMARY"

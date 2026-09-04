@@ -1,6 +1,7 @@
 #include <fixedwide/mixed.hpp>
 #include "detail.hpp"
 #include "limbs.hpp"
+#include <algorithm>
 
 namespace fixedwide::detail {
 

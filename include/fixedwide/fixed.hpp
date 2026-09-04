@@ -277,7 +277,7 @@ constexpr wide::uint256 to_uint256_raw(T val) noexcept {
 }
 
 template<std::size_t Bits, unsigned Decimals>
-consteval wide::uint256 max_integer_allowed(bool negative) noexcept {
+constexpr wide::uint256 max_integer_allowed_for_sign(bool negative) noexcept {
     auto lim = limit_magnitude_u256<Bits>(negative);
     if constexpr (Decimals == 0) {
         return lim;
@@ -300,6 +300,22 @@ consteval wide::uint256 max_integer_allowed(bool negative) noexcept {
         }
         return q;
     }
+}
+
+// The sign is a runtime fact, but there are only two possible answers and both
+// are compile-time constants, so the 256-bit long division above still runs
+// during compilation and the runtime cost is a select.
+//
+// This used to be one `consteval` function taking `negative`. Because callers
+// pass a runtime bool, C++23's immediate-escalation rules (P2564) promoted the
+// caller -- the whole of the public `from_integer` -- into an immediate
+// function, so `from_integer(some_runtime_int)` did not compile at all under
+// GCC. Regression-tested by tests/test_core.cpp.
+template<std::size_t Bits, unsigned Decimals>
+[[nodiscard]] constexpr wide::uint256 max_integer_allowed(bool negative) noexcept {
+    constexpr wide::uint256 positive_limit = max_integer_allowed_for_sign<Bits, Decimals>(false);
+    constexpr wide::uint256 negative_limit = max_integer_allowed_for_sign<Bits, Decimals>(true);
+    return negative ? negative_limit : positive_limit;
 }
 
 template<class Dest>

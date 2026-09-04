@@ -1,5 +1,6 @@
 #include "check.hpp"
 #include <fixedwide/all.hpp>
+#include <random>
 
 using namespace fixedwide;
 
@@ -63,10 +64,50 @@ void test_mixed_arithmetic() {
     CHECK(md_res.has_value() && md_res->raw() == wide::int128(52'500000000000LL));
 }
 
+// The constexpr comparison path is a SECOND implementation of the same
+// algorithm as detail::mixed_compare_kernel -- one runs during compilation, one
+// in the compiled library. A differential sweep is the only thing that keeps
+// them from drifting apart, so every scale pair and both signs are exercised.
+void test_constexpr_compare_matches_kernel() {
+    std::mt19937_64 rng(20260904);
+    const unsigned scales[] = {0, 1, 2, 6, 12, 18, 19, 38, 76};
+
+    auto random_raw = [&rng](unsigned magnitude_limbs) {
+        wide::int256 v{};
+        for (unsigned i = 0; i < magnitude_limbs; ++i) v.limbs[i] = rng();
+        // Keep it in range for a signed 256-bit value and let the sign vary.
+        v.limbs[3] &= 0x7FFF'FFFF'FFFF'FFFFULL;
+        if (rng() & 1u) {
+            wide::uint256 u(v.limbs[0], v.limbs[1], v.limbs[2], v.limbs[3]);
+            const wide::uint256 negated = ~u + wide::uint256(1ULL);
+            v = wide::int256(negated.limbs[0], negated.limbs[1], negated.limbs[2], negated.limbs[3]);
+        }
+        return v;
+    };
+
+    for (unsigned da : scales) {
+        for (unsigned db : scales) {
+            for (int trial = 0; trial < 64; ++trial) {
+                const unsigned limbs = 1u + static_cast<unsigned>(trial % 4);
+                const wide::int256 a = random_raw(limbs);
+                const wide::int256 b = (trial % 8 == 0) ? a : random_raw(limbs);
+
+                const auto from_constexpr = detail::constexpr_mixed_compare(a, da, b, db);
+                const auto from_kernel = detail::mixed_compare_kernel(a, da, b, db);
+                CHECK(from_constexpr == from_kernel);
+            }
+            // Zeros and the identity case, which the random sweep rarely hits.
+            CHECK(detail::constexpr_mixed_compare(wide::int256(), da, wide::int256(), db)
+                  == std::strong_ordering::equal);
+        }
+    }
+}
+
 int main() {
     test_mixed_compare();
     test_mixed_cast();
     test_mixed_arithmetic();
+    test_constexpr_compare_matches_kernel();
     std::printf("test_mixed passed (%lu checks)\n", checks);
     return 0;
 }

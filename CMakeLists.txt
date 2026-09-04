@@ -47,7 +47,11 @@ target_include_directories(fixedwide PRIVATE
 )
 
 if(MSVC)
-    target_compile_options(fixedwide PRIVATE /W4 /permissive-)
+    # /utf-8 and /Zc:preprocessor are needed by the sources; /Zc:__cplusplus is
+    # PUBLIC because a consumer that checks the macro should see the truth when
+    # it includes these headers, and MSVC reports C++98 without it.
+    target_compile_options(fixedwide PRIVATE /W4 /permissive- /utf-8 /Zc:preprocessor)
+    target_compile_options(fixedwide PUBLIC /Zc:__cplusplus)
 else()
     target_compile_options(fixedwide PRIVATE -Wall -Wextra -Wconversion -Wshadow)
 endif()
@@ -81,8 +85,13 @@ if(FIXEDWIDE_COVERAGE)
     endif()
 endif()
 
-if(FIXEDWIDE_BUILD_TESTS OR FIXEDWIDE_BUILD_ORACLE_TESTS)
+# Examples register ctest tests too, so testing has to be enabled before either
+# subdirectory is added -- not inside the tests block.
+if(FIXEDWIDE_BUILD_TESTS OR FIXEDWIDE_BUILD_ORACLE_TESTS OR FIXEDWIDE_BUILD_EXAMPLES)
     enable_testing()
+endif()
+
+if(FIXEDWIDE_BUILD_TESTS OR FIXEDWIDE_BUILD_ORACLE_TESTS)
     add_subdirectory(tests)
 endif()
 

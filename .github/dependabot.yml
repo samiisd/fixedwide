@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # Actions pinned by major version still move underneath you; this is the only
+  # dependency this repository has that is not vendored or fetched at a tag.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "ci"

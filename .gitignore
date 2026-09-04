@@ -10,3 +10,7 @@ leak-*
 timeout-*
 competitors/
 *.zip
+
+# Conan writes these into the source tree
+CMakeUserPresets.json
+test_package/build/

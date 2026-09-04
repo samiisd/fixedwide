@@ -7,6 +7,7 @@
 // including the same error -- across every rounding mode, every width, and the
 // boundary values where they are most likely to diverge.
 #include <fixedwide/arithmetic.hpp>
+#include <fixedwide/mixed.hpp>
 #include "check.hpp"
 #include <cstdio>
 #include <random>
@@ -75,6 +76,41 @@ void sweep(const std::vector<Raw>& values) {
 }
 
 } // namespace
+
+// Regression: cross-scale comparison is advertised as constexpr, so it must
+// actually work in a constant expression for EVERY width -- not only the
+// narrow mixed_native fast path. Before detail::constexpr_mixed_compare these
+// static_asserts did not compile: the operator fell through to
+// mixed_compare_kernel, which lives in the compiled library.
+namespace mixed_constexpr_compare {
+using namespace fixedwide;
+
+// Same value, different scales and widths.
+static_assert(Fixed64<4>::from_raw(1'000'000) == Fixed128<8>::from_raw(10'000'000'000LL));
+static_assert(Fixed32<2>::from_raw(150) == Fixed256<12>::from_raw(wide::int256(1'500'000'000'000ULL)));
+static_assert(Fixed128<0>::from_raw(wide::int128(7)) == Fixed64<6>::from_raw(7'000'000));
+
+// Ordering, including across the sign.
+static_assert(Fixed64<4>::from_raw(1'000'000) < Fixed128<8>::from_raw(10'000'000'001LL));
+static_assert(Fixed64<4>::from_raw(1'000'000) > Fixed128<8>::from_raw(9'999'999'999LL));
+static_assert(Fixed128<2>::from_raw(wide::int128(-1)) < Fixed64<4>::from_raw(0));
+static_assert(Fixed128<2>::from_raw(wide::int128(-1)) < Fixed32<6>::from_raw(1));
+static_assert(Fixed64<2>::from_raw(-100) > Fixed128<4>::from_raw(wide::int128(-20'000)));
+static_assert(Fixed64<2>::from_raw(-100) == Fixed128<4>::from_raw(wide::int128(-10'000)));
+
+// Both zero, reached by different scales.
+static_assert(Fixed8<2>::from_raw(0) == Fixed256<76>::from_raw(wide::int256()));
+
+// The extremes, where the aligned magnitudes are widest: comparing a scale-0
+// 256-bit value against an 18-decimal one lifts the latter by 10^18, so the
+// aligned magnitude needs about 315 bits.
+static_assert(Fixed256<0>::max() > Fixed64<18>::max());
+// Fixed256<76>::min() is about -5.79, because all 76 of its digits are
+// fractional; Fixed64<0>::min() is -9223372036854775808. Aligning them lifts
+// the latter by 10^76, to about 316 bits.
+static_assert(Fixed256<76>::min() > Fixed64<0>::min());
+static_assert(Fixed256<76>::max() < Fixed64<0>::max());
+} // namespace mixed_constexpr_compare
 
 int main() {
     // --- usable in a constant expression at all -------------------------

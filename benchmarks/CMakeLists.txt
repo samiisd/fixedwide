@@ -1,4 +1,21 @@
-find_package(Boost REQUIRED)
+# The instruction-count gate must configure on a bare CI runner, so it comes
+# first and depends on nothing but the library itself. Everything below it
+# differential-tests against Boost.Multiprecision and needs Boost headers.
+add_executable(fixedwide_icount icount.cpp)
+target_link_libraries(fixedwide_icount PRIVATE fixedwide::fixedwide)
+# Same vectorisation discipline as the timed benchmarks: a vectorised fixture
+# loop would count the compiler's unrolling, not the operation under test.
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(fixedwide_icount PRIVATE -fno-vectorize -fno-slp-vectorize)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_compile_options(fixedwide_icount PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize)
+endif()
+
+find_package(Boost)
+if(NOT Boost_FOUND)
+    message(STATUS "fixedwide: Boost headers not found; building fixedwide_icount only")
+    return()
+endif()
 
 add_executable(fixedwide_bench benchmark.cpp baselines.cpp)
 target_link_libraries(fixedwide_bench PRIVATE fixedwide::fixedwide)

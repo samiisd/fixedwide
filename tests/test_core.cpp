@@ -90,6 +90,42 @@ void test_fixed256() {
     CHECK(q == b);
 }
 
+// Regression: from_integer must be callable with a RUNTIME integer.
+//
+// detail::max_integer_allowed was `consteval` and took the sign as an argument.
+// Because callers pass a runtime bool, C++23 immediate escalation (P2564)
+// promoted from_integer itself into an immediate function, so this whole
+// function failed to compile under GCC. Every call below is deliberately opaque
+// to the optimiser's constant folding.
+void test_from_integer_runtime() {
+    volatile int runtime_amount = 250;
+    volatile long long runtime_big = -1'000'000LL;
+
+    const auto a = from_integer<Fixed64<4>>(static_cast<int>(runtime_amount));
+    CHECK(a.has_value());
+    CHECK(a->raw() == 2'500'000);
+
+    const auto b = from_integer<Fixed128<12>>(static_cast<long long>(runtime_big));
+    CHECK(b.has_value());
+
+    const auto c = from_integer<Fixed32<2>>(static_cast<int>(runtime_amount));
+    CHECK(c.has_value());
+    CHECK(c->raw() == 25'000);
+
+    // Scale 0 and the overflow edge, still with runtime operands.
+    const auto d = from_integer<Fixed16<0>>(static_cast<int>(runtime_amount));
+    CHECK(d.has_value());
+    volatile int too_big = 400'000;
+    const auto e = from_integer<Fixed32<4>>(static_cast<int>(too_big));
+    CHECK(!e.has_value());
+    CHECK(e.error() == ArithmeticError::overflow);
+
+    // The negative limit is one larger in magnitude than the positive one, and
+    // the two are selected by a runtime bool.
+    CHECK(from_integer<Fixed8<0>>(static_cast<int>(-128)).has_value());
+    CHECK(!from_integer<Fixed8<0>>(static_cast<int>(128)).has_value());
+}
+
 int main() {
     test_fixed8();
     test_fixed16();
@@ -97,6 +133,7 @@ int main() {
     test_fixed64();
     test_fixed128();
     test_fixed256();
+    test_from_integer_runtime();
     std::printf("test_core passed (%lu checks)\n", checks);
     return 0;
 }
