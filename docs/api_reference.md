@@ -176,9 +176,19 @@ In `<fixedwide/chars.hpp>`; `to_string` is in `<fixedwide/string.hpp>`.
 `FormatOptions`: `digits` (decimals to print; `0` means *all of them* unless
 `explicit_digits` is set), `trim_trailing_zeros`, `rounding`, `explicit_digits`.
 
-`std::format("{}", v)` works after including `<fixedwide/format.hpp>`, and
-inherits every width, fill and alignment spec from
-`std::formatter<std::string_view>`.
+`std::format("{}", v)` works after including `<fixedwide/format.hpp>`. The spec
+is `[[fill]align][width][.precision][f]`, and **precision means decimals**:
+
+| | |
+|---|---|
+| `{}` | every decimal the type carries |
+| `{:.2}` / `{:.2f}` | two decimals, rounded nearest-even |
+| `{:>12}` | right-aligned in a field of twelve (numbers right-align by default) |
+| `{:*^14.2}` | fill, centre, width and decimals together |
+
+A precision larger than the type's own decimals is a `std::format_error`, not a
+padded lie. This formatter used to inherit `std::formatter<std::string_view>`,
+which made `{:.2}` truncate the *string*: `123.4567` printed as `12`.
 
 > See [`examples/05_text_io.cpp`](../examples/05_text_io.cpp).
 

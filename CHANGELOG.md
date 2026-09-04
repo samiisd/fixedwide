@@ -149,6 +149,19 @@ nothing in this tree had ever built. Two of its own rows could not have compiled
   so `123.456789012345 * 2` gives `-0.000002` where fixedwide returns
   `246.913578024690`. The benchmark asserts this on every run.
 
+### Fixed (continued)
+
+- **`std::format("{:.2}", value)` printed the first two characters, not two
+  decimals.** The formatter inherited `std::formatter<std::string_view>`, so
+  precision meant "truncate the string": `123.4567` formatted as `12`. For a
+  decimal type that is a silently wrong number, which is the one failure mode
+  this library exists to prevent, and `{:.2}` is what anyone formatting money
+  types first. The formatter now parses its own spec --
+  `[[fill]align][width][.precision][f]` -- where precision means decimals and
+  rounds nearest-even, matching `to_chars`. A precision wider than the type
+  carries is a `std::format_error` rather than a padded lie, and numbers
+  right-align by default as every arithmetic type does.
+
 ### Performance
 
 - **The general cross-scale kernel sizes itself to its operands.** Every mixed

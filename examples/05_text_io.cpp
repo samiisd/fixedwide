@@ -43,7 +43,13 @@ int main() {
     if (refused || refused.error() != FormatError::inexact) return 1;
 
     // std::format and std::ostream, for when you are not in a hot loop.
+    // Precision is DECIMALS, not characters, and rounds the same way to_chars
+    // does -- `{:.2}` on 1234.567890 is 1234.57, never the first two letters.
     if (std::format("{}", v) != "1234.567890") return 1;
+    if (std::format("{:.2}", v) != "1234.57") return 1;
+    if (std::format("{:.2f}", v) != "1234.57") return 1;
+    if (std::format("{:>12.2}", v) != "     1234.57") return 1;
+    std::cout << "format {:.2}       " << std::format("{:.2}", v) << "\n";
     std::cout << "operator<<          " << v << "\n";
 
     // Parsing rejects what it cannot represent exactly, by default.

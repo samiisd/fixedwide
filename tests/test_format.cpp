@@ -9,6 +9,7 @@
 #include <fixedwide/iostream.hpp>
 
 #include <format>
+#include <stdexcept>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -32,12 +33,45 @@ void test_format() {
 
     CHECK(std::format("{}", value) == "-1234.5000");
 
-    // Inherited from std::formatter<std::string_view>: width, alignment, fill
-    // and precision all have to keep working.
+    // Width, alignment and fill.
     CHECK(std::format("{:>15}", value) == "     -1234.5000");
     CHECK(std::format("{:<15}|", value) == "-1234.5000     |");
     CHECK(std::format("{:*^14}", value) == "**-1234.5000**");
     CHECK(std::format("[{}] [{}]", value, Fixed32<2>::from_raw(150)) == "[-1234.5000] [1.50]");
+
+    // Numbers right-align by default, as every arithmetic type does.
+    CHECK(std::format("{:15}", value) == "     -1234.5000");
+
+    // PRECISION MEANS DECIMALS, not characters.
+    //
+    // This formatter used to inherit std::formatter<std::string_view>, which
+    // made `{:.2}` truncate the STRING: 123.4567 printed as "12". For a decimal
+    // type that is a silently wrong number, so it is asserted here in both
+    // directions -- the right answer, and specifically not the truncation.
+    const auto price = parse<Fixed64<4>>("123.4567").value();
+    CHECK(std::format("{:.2}", price) == "123.46");
+    CHECK(std::format("{:.2}", price) != "12");
+    CHECK(std::format("{:.2f}", price) == "123.46"); // 'f' accepted
+    CHECK(std::format("{:.0}", price) == "123");
+    CHECK(std::format("{:.4}", price) == "123.4567");
+
+    // Rounding is nearest-even, the same as to_chars, not truncation.
+    CHECK(std::format("{:.3}", parse<Fixed64<4>>("1.0005").value()) == "1.000");
+    CHECK(std::format("{:.3}", parse<Fixed64<4>>("1.0015").value()) == "1.002");
+    CHECK(std::format("{:.2}", parse<Fixed64<4>>("-7.5000").value()) == "-7.50");
+
+    // Precision combines with fill, alignment and width.
+    CHECK(std::format("{:*^14.2}", price) == "****123.46****");
+    CHECK(std::format("{:10.2}", parse<Fixed64<4>>("-7.5000").value()) == "     -7.50");
+
+    // A precision the type cannot honour is a format_error, not a wrong number.
+    bool threw = false;
+    try {
+        (void)std::vformat("{:.6}", std::make_format_args(price));
+    } catch (const std::format_error&) {
+        threw = true;
+    }
+    CHECK(threw);
 
     // The widest and narrowest types, and the extremes of each.
     CHECK(std::format("{}", Fixed8<2>::from_raw(-128)) == "-1.28");
