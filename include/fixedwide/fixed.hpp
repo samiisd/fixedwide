@@ -266,17 +266,22 @@ constexpr Dest from_int256_raw(wide::int256 val) noexcept {
 } // namespace detail
 
 
-// Backward compatibility aliases for 0.4
-using FP64 = Fixed64<12>;
-using FP128 = Fixed128<12>;
-inline constexpr auto fp64_min = FP64::min();
-inline constexpr auto fp64_max = FP64::max();
+// --- 0.4 compatibility surface -------------------------------------------
+// Everything below fixes the scale at 12 digits, which is what 0.4's API did:
+// it had no scale parameter, only FP64 and FP128. It is kept for one reason --
+// the paired benchmark compiles 0.4's byte-identical source against this
+// library, so these names have to exist for the comparison to mean anything --
+// and it is not the API this library is for. The generic replacement for each
+// is named beside it. Nothing here is used by the rest of the library.
+using FP64 = Fixed64<12>;                    // Fixed64<D>
+using FP128 = Fixed128<12>;                  // Fixed128<D>
+inline constexpr auto fp64_min = FP64::min();    // basic_fixed<Bits, D>::min()
+inline constexpr auto fp64_max = FP64::max();    // basic_fixed<Bits, D>::max()
 inline constexpr auto fp128_min = FP128::min();
 inline constexpr auto fp128_max = FP128::max();
-
-// Backward compatibility constants for 0.4
-inline constexpr unsigned fractional_digits = 12;
-inline constexpr std::int64_t scale = 1'000'000'000'000LL;
+inline constexpr unsigned fractional_digits = 12;             // Fixed::fractional_digits
+inline constexpr std::int64_t scale = 1'000'000'000'000LL;    // Fixed::scale()
+// --- end of the 0.4 compatibility surface --------------------------------
 
 template<class T>
 [[nodiscard]] constexpr T from_raw(typename T::raw_type raw) noexcept {

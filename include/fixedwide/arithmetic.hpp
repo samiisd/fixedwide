@@ -5,9 +5,11 @@
 #include <fixedwide/detail/overflow.hpp>
 #include <fixedwide/detail/constexpr_arith.hpp>
 #include <expected>
-#include <concepts>
-#include <limits>
 #include <type_traits>
+// <concepts> and <limits> are not included: `std::same_as` and `std::integral`
+// are one line each over <type_traits>, and the two raw bounds this header
+// needs are a shift. Together those two standard headers cost about 12 ms of
+// parse time in every translation unit -- the same trade wide.hpp already made.
 
 namespace fixedwide {
 
@@ -105,8 +107,9 @@ template<typename Fixed, typename Truncating>
 [[nodiscard]] constexpr std::expected<Fixed, ArithmeticError>
 narrow_checked(std::expected<std::int64_t, ArithmeticError> result, Truncating truncating) noexcept {
     using Raw = typename Fixed::raw_type;
-    constexpr auto low = static_cast<std::int64_t>(std::numeric_limits<Raw>::min());
-    constexpr auto high = static_cast<std::int64_t>(std::numeric_limits<Raw>::max());
+    constexpr int bits = static_cast<int>(sizeof(Raw)) * 8;
+    constexpr std::int64_t high = (std::int64_t{1} << (bits - 1)) - 1;
+    constexpr std::int64_t low = -high - 1;
     if (!result) {
         if (result.error() == ArithmeticError::inexact) {
             const auto truncated = truncating();
@@ -124,7 +127,7 @@ narrow_checked(std::expected<std::int64_t, ArithmeticError> result, Truncating t
 
 // Construction from integer
 template<typename Target, typename Integer>
-    requires (std::integral<Integer>
+    requires (std::is_integral_v<Integer>
 #if defined(__SIZEOF_INT128__)
               || std::is_same_v<Integer, __int128> || std::is_same_v<Integer, unsigned __int128>
 #endif
@@ -734,27 +737,28 @@ quantize(basic_fixed<Bits, D> a, unsigned digits, Rounding rounding = Rounding::
 
 // Disallow mixed same-name arithmetic without explicit result type
 template<typename T, typename U>
-    requires (!std::same_as<T, U>)
+    requires (!std::is_same_v<T, U>)
 void add(T, U) = delete;
 
 template<typename T, typename U>
-    requires (!std::same_as<T, U>)
+    requires (!std::is_same_v<T, U>)
 void sub(T, U) = delete;
 
 template<typename T, typename U>
-    requires (!std::same_as<T, U>)
+    requires (!std::is_same_v<T, U>)
 void mul(T, U) = delete;
 
 template<typename T, typename U>
-    requires (!std::same_as<T, U>)
+    requires (!std::is_same_v<T, U>)
 void div(T, U) = delete;
 
 template<typename T, typename U, typename V>
-    requires (!std::same_as<T, U> || !std::same_as<T, V>)
+    requires (!std::is_same_v<T, U> || !std::is_same_v<T, V>)
 void mul_div(T, U, V) = delete;
 
 
-// Backward compatibility mul_wide
+// 0.4 compatibility surface: fixed at 12 digits. Generic replacement:
+// mul_to<Dest>(a, b) in <fixedwide/mixed.hpp>. See fixed.hpp.
 [[nodiscard]] inline std::expected<basic_fixed<128, 12>, ArithmeticError>
 mul_wide(basic_fixed<64, 12> a, basic_fixed<64, 12> b, Rounding rounding = Rounding::nearest_even) noexcept {
 #if defined(FIXEDWIDE_HAS_X86_64_ASM)
@@ -821,6 +825,8 @@ mul_wide(basic_fixed<64, 12> a, basic_fixed<64, 12> b, Rounding rounding = Round
 #endif
 }
 
+// 0.4 compatibility surface: fixed at 12 digits. Generic replacement:
+// fixed_cast<Dest>(value) in <fixedwide/mixed.hpp>. See fixed.hpp.
 [[nodiscard]] constexpr std::expected<FP64, ArithmeticError> narrow(FP128 value) noexcept {
     auto r = value.raw();
     if (r.high == 0 && (r.low >> 63) == 0) {

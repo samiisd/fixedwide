@@ -109,6 +109,8 @@ to_chars(char* first, char* last, basic_fixed<Bits, D> value, FormatOptions opti
 [[nodiscard]] std::expected<std::size_t, FormatError> to_chars(char* output, std::size_t capacity, wide::uint256 value) noexcept;
 
 
+// 0.4 compatibility surface: fixed at 12 digits. Generic replacement:
+// parse<T>(text, rounding). See fixed.hpp.
 [[nodiscard]] inline std::expected<Fixed64<12>, ParseError> parse64(std::string_view s, Rounding r = Rounding::exact) noexcept {
     return parse<Fixed64<12>>(s, r);
 }

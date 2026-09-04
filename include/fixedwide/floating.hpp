@@ -40,6 +40,8 @@ to_float(basic_fixed<Bits, D> value) noexcept {
     return detail::to_float_kernel(detail::to_int256_raw(value.raw()), D, Float{});
 }
 
+// 0.4 compatibility surface: fixed at 12 digits. Generic replacement:
+// from_float<Target>(value, rounding). See fixed.hpp.
 [[nodiscard]] inline std::expected<FP64, ArithmeticError> from_double64(double value, Rounding rounding = Rounding::nearest_even) noexcept {
     return from_float<FP64>(value, rounding);
 }

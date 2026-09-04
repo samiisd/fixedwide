@@ -73,6 +73,37 @@ template<std::size_t Bits>
     return positive + static_cast<u128>(negative);
 }
 
+struct Divided { u128 quotient; u128 remainder; };
+
+// Every divisor that reaches here is a power of ten, and the ones a mixed
+// operation actually uses fit 64 bits. A generic 128-by-128 divide is a
+// __udivti3 call out to libgcc, and it was the whole cost of a mixed rescale:
+// one or two hardware divisions do the same work. The generic form stays for a
+// divisor past 2^64 and for constant evaluation, where no instruction runs.
+[[nodiscard]] constexpr Divided divide_magnitude(u128 magnitude, u128 denominator) noexcept {
+#if defined(FIXEDWIDE_HAS_X86_64_ASM)
+    if !consteval {
+        if ((denominator >> 64) == 0) {
+            const auto d = static_cast<std::uint64_t>(denominator);
+            const auto high = static_cast<std::uint64_t>(magnitude >> 64);
+            const auto low = static_cast<std::uint64_t>(magnitude);
+            if (high == 0) return {u128{low / d}, u128{low % d}};
+            // Reduce the high limb first so the quotient of the divq below is
+            // proven to fit 64 bits; it faults otherwise.
+            const std::uint64_t quotient_high = high / d;
+            const std::uint64_t partial = high % d;
+            std::uint64_t quotient_low, remainder;
+            __asm__("divq %[divisor]"
+                    : "=a"(quotient_low), "=d"(remainder)
+                    : "a"(low), "d"(partial), [divisor] "r"(d) : "cc");
+            return {(static_cast<u128>(quotient_high) << 64) | quotient_low, u128{remainder}};
+        }
+    }
+#endif
+    const u128 quotient = magnitude / denominator;
+    return {quotient, magnitude - quotient * denominator};
+}
+
 // Divide and round to the requested mode, with the destination's range applied
 // in the SAME ORDER as round_magnitude: the range test comes before the rounding
 // decision, so a result that cannot be represented is an overflow whatever the
@@ -83,8 +114,9 @@ divide_rounded(i128 value, i128 divisor, Rounding rounding, u128 limit) noexcept
     const bool negative = value < 0;
     const u128 magnitude = negative ? (u128{0} - static_cast<u128>(value)) : static_cast<u128>(value);
     const u128 denominator = static_cast<u128>(divisor);
-    u128 quotient = magnitude / denominator;
-    const u128 remainder = magnitude - quotient * denominator;
+    const auto divided = divide_magnitude(magnitude, denominator);
+    u128 quotient = divided.quotient;
+    const u128 remainder = divided.remainder;
 
     if (quotient > limit) return std::unexpected(ArithmeticError::overflow);
     if (remainder != 0) {

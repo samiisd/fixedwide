@@ -5,7 +5,6 @@
 #include <fixedwide/rounding.hpp>
 #include <expected>
 #include <compare>
-#include <concepts>
 
 namespace fixedwide {
 

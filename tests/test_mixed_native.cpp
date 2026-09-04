@@ -91,7 +91,36 @@ void sweep(const char* label, const std::vector<RawA>& xs, const std::vector<Raw
 
 } // namespace
 
+#if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+// divide_magnitude has a hardware path for a divisor that fits 64 bits, and
+// divq faults rather than wraps when its quotient does not fit one limb. Sweep
+// every magnitude and divisor width against the compiler's own division.
+void check_divide_magnitude() {
+    using u128 = unsigned __int128;
+    std::mt19937_64 rng(0x0D17);
+    for (unsigned magnitude_bits = 0; magnitude_bits <= 128; ++magnitude_bits) {
+        for (unsigned divisor_bits = 1; divisor_bits <= 128; ++divisor_bits) {
+            for (int repeat = 0; repeat < 4; ++repeat) {
+                const auto mask = [](unsigned bits) {
+                    return bits >= 128 ? ~u128{0} : ((u128{1} << bits) - 1);
+                };
+                u128 magnitude = ((static_cast<u128>(rng()) << 64) | rng()) & mask(magnitude_bits);
+                u128 divisor = (((static_cast<u128>(rng()) << 64) | rng()) & mask(divisor_bits)) | 1;
+                const auto got = detail::mixed_native::divide_magnitude(magnitude, divisor);
+                CHECK(got.quotient == magnitude / divisor);
+                CHECK(got.remainder == magnitude % divisor);
+            }
+        }
+    }
+}
+static_assert(detail::mixed_native::divide_magnitude(
+                  static_cast<unsigned __int128>(1'000'000), static_cast<unsigned __int128>(7)).quotient == 142857);
+#else
+void check_divide_magnitude() {}
+#endif
+
 int main() {
+    check_divide_magnitude();
     using Price = fixedwide::Fixed64<8>;
     using Rate  = fixedwide::Fixed64<12>;
     using Money = fixedwide::Fixed128<12>;
