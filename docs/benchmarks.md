@@ -124,6 +124,39 @@ still keeps you on the native side, and
 boundary is. All three tiers are in the baseline above, so none of them can
 regress unnoticed.
 
+## Build flags: do not reach for `-march=native`
+
+Measured, because it is the opposite of what most people assume.
+
+| `Fixed256<38>`, GCC 14 | `mul` | `div` |
+|---|---:|---:|
+| `-march=x86-64` (default) | **53.4 ns** | **50.5 ns** |
+| `-march=x86-64-v3` (BMI2 + AVX2) | 59.1 ns | 54.5 ns |
+| `-march=x86-64-v3`, vectoriser off | 57.2 ns | 54.4 ns |
+| `-march=x86-64`, vectoriser off | 58.6 ns | 59.4 ns |
+
+Raising `-march` makes wide arithmetic about **10% slower**, reproducibly
+(run-to-run spread is under 0.2 ns against a 5.6 ns effect). GCC does emit
+`mulx`, `adcx` and `adox` at `-march=x86-64-v3` — 173 of them, against none at
+the default — and the instruction count does fall slightly, from 697 to 675 per
+`Fixed256` multiply. It still runs slower.
+
+About half of the loss is the auto-vectoriser: AVX2's 256-bit lanes are a poor
+fit for a four-limb loop, where the shuffling costs more than the parallelism
+returns. The other half appears to be scheduling and register pressure around
+the wider instruction forms.
+
+The last row is the useful control: at the default `-march`, turning the
+vectoriser **off** is worse still. SSE2's two lanes do fit a four-limb loop. So
+the library does not disable vectorisation for its own sources, even though the
+benchmark harnesses disable it for their measurement loops — those are different
+questions and the answers differ.
+
+**This is why there is no hand-written BMI2/ADX path.** The compiler already
+emits those instructions when permitted, and permitting it makes this library
+slower. Hand-writing them would be a large amount of unsafe code chasing a
+number that measurement says goes the wrong way.
+
 ## Wall-clock, against the 0.4 release
 
 The paired benchmark builds the byte-identical `benchmarks/rounding_bench.cpp`

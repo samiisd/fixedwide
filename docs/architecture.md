@@ -30,6 +30,7 @@ Boost.Multiprecision on every CI run, so they cannot drift apart.
 | Backend | When | What it uses |
 |---|---|---|
 | x86-64 assembly | GCC or Clang on x86-64 | `mulq` / `divq` with exact remainder analysis; for 128-bit values whose scale fits 64 bits, paired `divq` instead of multi-precision division |
+
 | `__int128` | Any compiler with `__SIZEOF_INT128__` whose 128-bit division links | The compiler's own 128-bit type |
 | Portable multi-limb | Everything else, or `FIXEDWIDE_FORCE_PORTABLE=ON` | Knuth Algorithm D over `std::uint64_t` limbs; no extensions, no assembly |
 
@@ -82,6 +83,15 @@ table.
 
 The bound must never under-estimate, so `pow10_bits` uses `e * 10 / 3 + 1`,
 which is above `log2(10)` for every `e`.
+
+## Instruction sets beyond the baseline
+
+There is hand-written assembly for `mulq` and `divq`, and nothing for BMI2, ADX
+or any vector extension. That is a measured decision, not an omission: GCC emits
+`mulx`/`adcx`/`adox` on its own at `-march=x86-64-v3`, and doing so makes wide
+arithmetic about 10% *slower*.
+[benchmarks.md](benchmarks.md#build-flags-do-not-reach-for--marchnative) has the
+table.
 
 Comparison is the exception: `==` and `<=>` need no destination and cannot lose
 anything, because both sides are lifted to a common exponent and the integers
