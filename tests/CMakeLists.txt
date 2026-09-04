@@ -24,6 +24,28 @@ if(FIXEDWIDE_BUILD_TESTS)
         add_test(NAME fixedwide.${NAME} COMMAND test_${NAME})
     endforeach()
 
+    # test_format asserts that an impossible precision throws std::format_error,
+    # which is what the standard requires formatter::parse to do. Throwing and
+    # catching that exception aborts under AddressSanitizer with libc++, and it
+    # is not this library's bug -- this whole program reproduces it:
+    #
+    #     #include <format>
+    #     int main() {
+    #         try { throw std::format_error("boom"); }
+    #         catch (const std::format_error&) {}
+    #     }
+    #
+    #     AddressSanitizer: alloc-dealloc-mismatch (operator new vs free)
+    #       in std::range_error::~range_error()  [libc++abi.so.1]
+    #
+    # libc++ constructs the exception through an inline header path that uses
+    # the program's operator new, and destroys it through libc++abi, which
+    # frees. Only that one check is turned off, only for this one test; every
+    # other AddressSanitizer check stays on here, and every other test keeps all
+    # of them.
+    set_tests_properties(fixedwide.format PROPERTIES
+        ENVIRONMENT "ASAN_OPTIONS=alloc_dealloc_mismatch=0")
+
     set(AUDIT_TESTS
         audit_same_domain
         audit_mixed
