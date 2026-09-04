@@ -24,8 +24,8 @@ Money in a hand-rolled `int64_t` of cents does not drift, but it wraps, and it
 wraps silently:
 
 ```cpp
-std::int64_t a = 9'000'000'000'000'000'00;  // 9e16 cents
-std::int64_t total = a + a;                 // undefined behaviour, no diagnostic
+std::int64_t a = 5'000'000'000'000'000'000;  // 5e18 cents
+std::int64_t total = a + a;                  // undefined behaviour, no diagnostic
 ```
 
 `fixedwide` gives you the integer, keeps the decimal point in the type, and
@@ -113,8 +113,10 @@ What the library does with that:
   `invalid_precision`, `invalid_value` — never a wrong answer.
 - **`constexpr` arithmetic.** A rate table can be computed and checked at
   compile time.
-- **No allocation anywhere**, including parsing and formatting. Works with
-  `-fno-exceptions` and `-fno-rtti`.
+- **No allocation on any arithmetic, parsing or formatting path.** `to_chars`
+  and `from_chars` write into your buffer; a test that replaces `operator new` and
+  counts every call proves it. `to_string` is the one convenience that allocates,
+  and is in its own header. Works with `-fno-exceptions` and `-fno-rtti`.
 
 ---
 
@@ -151,12 +153,13 @@ Side by side, the same calculation three ways:
 
 ```cpp
 // double: fast, and wrong in the last place
-double notional = 123.4567 * 10.50;              // 1296.2953500000002
+double notional = 123.4567 * 10.50;              // 1296.2953499999999
 
-// hand-rolled int64 cents: right until it isn't
-int64_t notional = 1234567LL * 1050LL / 100;     // silently wraps at scale
+// hand-rolled int64: you now own the scale, the rounding and the overflow check
+int64_t notional = 1234567LL * 1050LL / 100;     // 12962953 -- but at which scale?
+                                                 // truncated, and unchecked
 
-// fixedwide: exact, one rounding, overflow reported
+// fixedwide: exact, one rounding, overflow reported, scale in the type
 auto notional = mul_to<Fixed128<6>>(price, qty); // 1296.295350, or an error
 ```
 
