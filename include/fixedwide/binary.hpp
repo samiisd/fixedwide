@@ -1,4 +1,10 @@
 #pragma once
+
+/// \file
+/// Explicit-endian, zero-copy binary encoding. The byte order is named in the
+/// call, never taken from the host, so a record written on one machine reads
+/// the same on another.
+
 #include <fixedwide/fixed.hpp>
 #include <fixedwide/error.hpp>
 #include <array>
@@ -8,8 +14,12 @@
 
 namespace fixedwide {
 
+/// Byte order for the binary encodings below. Named rather than taken from the
+/// host, so a wire format stays the same wherever it is built.
 enum class endian {
+    /// Least significant byte first.
     little,
+    /// Most significant byte first.
     big,
 };
 
@@ -92,6 +102,13 @@ void decode_limbs(std::uint64_t* limbs, const std::uint8_t* in, std::size_t num_
 
 } // namespace detail
 
+/// Encode the raw scaled integer as exactly `Bits / 8` bytes, two's complement,
+/// in the named byte order.
+///
+/// The scale is not encoded: it is in the type. Both ends must agree on it, the
+/// same way they agree on the width.
+///
+/// \tparam Endian byte order; little by default.
 template<endian Endian = endian::little, std::size_t Bits, unsigned D>
 [[nodiscard]] inline std::array<std::uint8_t, Bits / 8>
 to_bytes(basic_fixed<Bits, D> value) noexcept {
@@ -110,6 +127,12 @@ to_bytes(basic_fixed<Bits, D> value) noexcept {
     return res;
 }
 
+/// Decode bytes written by `to_bytes`.
+///
+/// \tparam Target the fixed-point type the bytes encode.
+/// \tparam Endian the byte order they were written in.
+/// \return the value, or `BinaryError::wrong_size` when the span is not
+///         exactly `Target::bits / 8` bytes.
 template<typename Target, endian Endian = endian::little>
 [[nodiscard]] inline std::expected<Target, BinaryError>
 from_bytes(std::span<const std::uint8_t> bytes) noexcept {
@@ -131,6 +154,9 @@ from_bytes(std::span<const std::uint8_t> bytes) noexcept {
 }
 
 // Unaligned load/store
+/// Read a value straight out of a packet or a memory-mapped record at any
+/// alignment. Unchecked: the caller guarantees `Target::bits / 8` readable
+/// bytes at `ptr`. Use `from_bytes` when the size should be validated.
 template<typename Target, endian Endian = endian::little>
 [[nodiscard]] inline Target load_unaligned(const void* ptr) noexcept {
     constexpr std::size_t N = Target::bits / 8;
@@ -150,6 +176,8 @@ template<typename Target, endian Endian = endian::little>
     }
 }
 
+/// Write a value straight into a packet or record at any alignment. Unchecked:
+/// the caller guarantees enough writable bytes at `ptr`.
 template<endian Endian = endian::little, typename T>
 inline void store_unaligned(void* ptr, T value) noexcept {
     auto b = to_bytes<Endian>(value);
@@ -157,6 +185,7 @@ inline void store_unaligned(void* ptr, T value) noexcept {
 }
 
 // Wide integers support
+/// Encode a wide integer as bytes, two's complement, in the named byte order.
 template<endian Endian = endian::little>
 [[nodiscard]] inline std::array<std::uint8_t, 16> to_bytes(wide::uint128 value) noexcept {
     std::array<std::uint8_t, 16> res;

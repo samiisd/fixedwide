@@ -1,4 +1,11 @@
 #pragma once
+
+/// \file
+/// Checked arithmetic on one fixed-point type. Every operation returns
+/// `std::expected` and reports overflow, division by zero and refused rounding
+/// instead of producing a wrong answer. Nothing here allocates or throws, and
+/// all of it is usable in a constant expression.
+
 #include <fixedwide/fixed.hpp>
 #include <fixedwide/error.hpp>
 #include <fixedwide/rounding.hpp>
@@ -125,7 +132,15 @@ narrow_checked(std::expected<std::int64_t, ArithmeticError> result, Truncating t
 
 } // namespace detail
 
-// Construction from integer. There is deliberately no `to_integer`: going the
+/// Build a fixed-point value from a whole number, checked.
+///
+/// `from_integer<Fixed64<2>>(19)` is 19.00. The integer is scaled by
+/// `Target::scale()`, so a value that would not fit is reported rather than
+/// wrapped. Accepts every built-in integer type and `__int128` where available.
+///
+/// \tparam Target the fixed-point type to build.
+/// \return the value, or `ArithmeticError::overflow`.
+// There is deliberately no `to_integer`: going the
 // other way has to choose a rounding, which is `quantize(value, 0)` followed by
 // `.raw()`, or `fixed_cast<FixedN<0>>(value, rounding)` across widths. Naming a
 // third spelling for one of those would hide the rounding decision.
@@ -244,7 +259,6 @@ template<typename Target, typename Integer>
     }
 }
 
-// 1. ADD
 
 namespace detail_arith {
 template<class UQ, class UR, class UD>
@@ -291,6 +305,10 @@ inline bool round_inc_u64(std::uint64_t q_lo, std::uint64_t rem, std::uint64_t d
 }
 }
 
+/// `a + b`, exactly. Both operands and the result share one type, so no
+/// rounding is possible and the only failure is overflow.
+/// \return the sum, or `ArithmeticError::overflow`.
+/// \see add_to for operands of different widths or scales.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 add(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
@@ -336,7 +354,9 @@ add(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
     }
 }
 
-// 2. SUB
+/// `a - b`, exactly. No rounding is possible; the only failure is overflow.
+/// \return the difference, or `ArithmeticError::overflow`.
+/// \see sub_to for operands of different widths or scales.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 sub(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
@@ -382,7 +402,8 @@ sub(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
     }
 }
 
-// 3. NEGATE
+/// `-a`. Fails only for `min()`, whose negation is one past `max()`.
+/// \return the negated value, or `ArithmeticError::overflow`.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 negate(basic_fixed<Bits, D> a) noexcept {
@@ -391,7 +412,8 @@ negate(basic_fixed<Bits, D> a) noexcept {
     return sub(Fixed{}, a);
 }
 
-// 4. ABS
+/// `|a|`. Fails only for `min()`, whose magnitude is one past `max()`.
+/// \return the magnitude, or `ArithmeticError::overflow`.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 abs(basic_fixed<Bits, D> a) noexcept {
@@ -405,7 +427,17 @@ abs(basic_fixed<Bits, D> a) noexcept {
     }
 }
 
-// 5. MUL
+/// `a * b`, rounded once to the shared scale.
+///
+/// The product is formed at twice the width before it is rescaled, so no
+/// intermediate precision is lost: `mul` on a `Fixed64<12>` multiplies into 128
+/// bits and divides by 10^12 exactly once.
+///
+/// \param rounding how to resolve the single rounding. `Rounding::exact`
+///                 returns `ArithmeticError::inexact` rather than round.
+/// \return the product, or `ArithmeticError::overflow` / `inexact`.
+/// \see mul_to for operands of different widths or scales, and mul_div to
+///      multiply and divide with only one rounding in between.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding::nearest_even) noexcept {
@@ -522,7 +554,16 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
     }
 }
 
-// 6. DIV
+/// `a / b`, rounded once to the shared scale.
+///
+/// The numerator is scaled up at twice the width before the division, so the
+/// quotient carries every digit the type can hold.
+///
+/// \param rounding how to resolve the single rounding. `Rounding::exact`
+///                 returns `ArithmeticError::inexact` rather than round.
+/// \return the quotient, or `ArithmeticError::division_by_zero` / `overflow`
+///         / `inexact`.
+/// \see div_to for operands of different widths or scales.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding::nearest_even) noexcept {
@@ -594,7 +635,16 @@ div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
     }
 }
 
-// 7. MUL_DIV
+/// `a * b / c` with **one** rounding, not two.
+///
+/// `mul(a, b)` followed by `div(..., c)` rounds twice and can be off by a unit
+/// in the last place; this forms the full-width product and divides it once.
+/// The natural spelling for a rate applied to an amount.
+///
+/// \param rounding how to resolve the single rounding.
+/// \return the result, or `ArithmeticError::division_by_zero` / `overflow`
+///         / `inexact`.
+/// \see mul_div_to when the three operands are not the same type.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 mul_div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, basic_fixed<Bits, D> c, Rounding rounding = Rounding::nearest_even) noexcept {
@@ -680,7 +730,9 @@ mul_div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, basic_fixed<Bits, D> c, 
     }
 }
 
-// 8. REMAINDER
+/// `a % b`: what is left of `a` after removing whole multiples of `b`, with the
+/// sign of `a`. Exact, so no rounding mode is taken.
+/// \return the remainder, or `ArithmeticError::division_by_zero`.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 remainder(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
@@ -707,7 +759,15 @@ remainder(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
     }
 }
 
-// 9. QUANTIZE
+/// Round `a` to `decimals` places, keeping the same type.
+///
+/// The result still has `D` decimals -- it is the same type -- but its value
+/// lands on a coarser grid: `quantize(Fixed64<4>(1.2345), 2)` is 1.2300.
+///
+/// \param decimals how many decimals to keep, at most `D`.
+/// \param rounding how to resolve the rounding.
+/// \return the rounded value, or `ArithmeticError::invalid_precision` when
+///         `decimals > D`, or `overflow` / `inexact`.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
 quantize(basic_fixed<Bits, D> a, unsigned decimals, Rounding rounding = Rounding::nearest_even) noexcept {
@@ -740,7 +800,12 @@ quantize(basic_fixed<Bits, D> a, unsigned decimals, Rounding rounding = Rounding
     }
 }
 
-// Disallow mixed same-name arithmetic without explicit result type
+// Disallow mixed same-name arithmetic without explicit result type.
+/// Deleted on purpose: `add`, `sub`, `mul`, `div` and `mul_div` take two
+/// operands of the SAME type. Mixing scales or widths has no single obvious
+/// result type, so it must be spelled with a destination -- `add_to<Dest>`,
+/// `mul_to<Dest>`, … from `<fixedwide/mixed.hpp>`. Calling one of these is a
+/// compile error naming this overload, not a silent conversion.
 template<typename T, typename U>
     requires (!std::is_same_v<T, U>)
 void add(T, U) = delete;

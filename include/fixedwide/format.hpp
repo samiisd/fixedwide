@@ -1,4 +1,10 @@
 #pragma once
+
+/// \file
+/// `std::format` support: `std::format("{}", value)` prints all decimals with
+/// nearest-even rounding. A value that cannot be formatted renders as empty
+/// rather than throwing.
+
 #include <fixedwide/chars.hpp>
 #include <format>
 

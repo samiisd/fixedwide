@@ -78,6 +78,25 @@ above 25%. Full per-row output in `reports/BENCHMARK_VS_0_4.md`.
   performance work above costs no build time, and dropping two standard headers
   bought some back.
 
+### Documentation
+- Every public declaration now carries a `///` doc comment: what it does, what
+  each parameter means, and which errors it can return. Enums document each
+  enumerator, so `Rounding::nearest_even` and `ParseError::too_precise` explain
+  themselves at the call site instead of in a separate document. Verified over
+  the language-server protocol rather than assumed: `clangd --check` parses the
+  headers with 0 errors and a `textDocument/hover` request returns the text.
+- The numbered section markers (`// 1. ADD`, `// 5. MUL`) were the first line of
+  every hover popup, above the description. Removed; the brief leads now.
+- `\copydoc` and `\copydetails` are written out. Doxygen expands them, clangd
+  does not, so a reader in VS Code or Neovim saw the literal command and nothing
+  else. Thirteen of them.
+- The top-level build sets `CMAKE_EXPORT_COMPILE_COMMANDS`, so `build/` carries
+  the `compile_commands.json` that clangd needs to know the include paths and
+  the standard. Only at top level: depending on this library does not change a
+  consumer's build.
+- The comments cost no build time. Compiled against an identical translation
+  unit, the tree with and without them takes the same 47 ms.
+
 ### Naming
 An audit of every public name, and the fixes.
 

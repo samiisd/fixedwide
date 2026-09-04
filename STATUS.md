@@ -22,7 +22,7 @@ the benchmark's own oracle validates 363,520 cases per run.
 | `format_2digits.FP128` +40% on Clang 17 and 18 | The 128-bit formatting kernel rounded through `wide::uint128` even when quotient, remainder and divisor all fit 64 bits. Now rounds narrow values in 64 bits: that row is 26% *faster* than 0.4 on Clang 17. |
 | `mul`/`mul_div`'s 64-bit range test | Two paired equality tests and a branch each, replaced by one addition. |
 | The mixed-scale rescale was a `__udivti3` call | Every divisor a mixed operation reaches is a power of ten that fits 64 bits; the value is 128 bits. One or two hardware divisions replace the libgcc call. `mul_to.Money.from.Price.Rate` 7.69 ns -> 2.48 ns, against 3.50 ns in alpha.4. |
-| (checked, not assumed) `arithmetic.hpp` compile time | Measured 33 ms against 0.4's 48 ms per include, +45.5%, where alpha.4 measured +55.9%. The performance work costs nothing here -- compiled against the identical translation unit, alpha.4's headers and these take the same time -- and dropping `<concepts>` and `<limits>`, which this header did not need, took 4 ms off. |
+| (checked, not assumed) `arithmetic.hpp` compile time | Measured 34 ms against 0.4's 48 ms per include, +41.2%, where alpha.4 measured +55.9%. The performance work costs nothing here -- compiled against the identical translation unit, alpha.4's headers and these take the same time -- and dropping `<concepts>` and `<limits>`, which this header did not need, took 4 ms off. |
 
 ## What alpha.4 changed
 
@@ -98,6 +98,16 @@ The previous release called the wide gap a scheduling difference it could not
 explain. That was measurable after all: sampling retired instructions rather than
 cycles put 79% of them on two `movups` in a wrapper that does no arithmetic.
 
+## Documentation
+
+Every public declaration carries a `///` doc comment: what it does, what each
+parameter means, and which errors it can return. `clangd` shows them on hover,
+which was verified over the language-server protocol rather than assumed, and
+the top-level build now exports `compile_commands.json` so an editor can find
+the flags without being configured by hand. The comments cost no build time --
+compiled against an identical translation unit, the tree with and without them
+takes the same 47 ms.
+
 ## Naming
 
 Every public name was audited against four rules, now stated in README.md:
@@ -137,7 +147,7 @@ tied to a particular width or scale.
    on a decimal grid.
 3. Formatting is faster than 0.4 and than `std::to_chars` on a `double`, but
    slower than Boost.Decimal (14.0 ns against 12.4 ns).
-4. `arithmetic.hpp` costs 46.9% more to include than 0.4's, down from 55.9% in
+4. `arithmetic.hpp` costs 41.2% more to include than 0.4's, down from 55.9% in
    alpha.4. Most of what remains is `detail/constexpr_arith.hpp`, the
    compile-time evaluation path: 9 ms of the 15 ms gap, measured by including it
    alone. It cannot be dropped without dropping `constexpr` arithmetic.

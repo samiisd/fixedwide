@@ -1,4 +1,9 @@
 #pragma once
+
+/// \file
+/// The core type: `basic_fixed<Bits, Decimals>`, its width aliases, and nothing
+/// that can fail. Include `<fixedwide/arithmetic.hpp>` for the operations.
+
 #include <fixedwide/wide.hpp>
 #include <cstdint>
 #include <cstddef>
@@ -107,6 +112,26 @@ consteval unsigned max_decimals_for_bits() noexcept {
     return 0;
 }
 
+/// A fixed-point decimal: a signed integer of `Bits` bits, scaled by
+/// 10^`Decimals`.
+///
+/// The scale is part of the type, so `Fixed64<2>` and `Fixed64<4>` are distinct
+/// types and cannot be mixed by accident. Arithmetic between two of the same
+/// type lives in `<fixedwide/arithmetic.hpp>`; arithmetic across scales or
+/// widths needs an explicit destination and lives in `<fixedwide/mixed.hpp>`.
+///
+/// The type is trivially copyable, holds nothing but its raw integer, allocates
+/// nothing, and has no runtime scale field: `sizeof(Fixed64<12>) == 8`.
+///
+/// ```
+/// using Money = fixedwide::Fixed64<2>;            // cents
+/// auto price  = Money::from_raw(1999);            // 19.99
+/// auto twice  = fixedwide::add(price, price);     // std::expected<Money, ...>
+/// ```
+///
+/// \tparam Bits    storage width: 8, 16, 32, 64, 128 or 256.
+/// \tparam Decimals digits after the decimal point, up to what `Bits` allows
+///                  (2, 4, 9, 18, 38, 76 respectively).
 template<std::size_t Bits, unsigned Decimals>
 struct basic_fixed {
     static_assert(Bits == 8 || Bits == 16 || Bits == 32 || Bits == 64 || Bits == 128 || Bits == 256,
@@ -114,21 +139,31 @@ struct basic_fixed {
     static_assert(Decimals <= max_decimals_for_bits<Bits>(),
                   "Decimals exceeds maximum capacity for given bit width");
 
+    /// The underlying signed integer type: `std::int8_t` … `wide::int256`.
     using raw_type = raw_type_t<Bits>;
-    // Each mirrors the type of its template parameter, so `T::bits` and
-    // `basic_fixed<Bits, D>` agree without a cast.
+
+    /// Storage width in bits. Mirrors the type of its template parameter, so
+    /// `T::bits` and `basic_fixed<Bits, D>` agree without a cast.
     static constexpr std::size_t bits = Bits;
-    // The same quantity the rest of the library calls `decimals`, spelled out
-    // here because a member is read far more often than it is written. There is
-    // one word for it everywhere else: `decimals`.
+
+    /// Digits after the decimal point. The same quantity the rest of the library
+    /// calls `decimals`, spelled out because a member is read far more often
+    /// than it is written.
     static constexpr unsigned fractional_digits = Decimals;
 
+    /// 10^`Decimals`, the factor between the raw integer and the value it
+    /// represents. A compile-time constant, never a runtime lookup.
     static constexpr raw_type scale() noexcept {
         return compute_pow10<raw_type>(Decimals);
     }
 
+    /// Zero.
     constexpr basic_fixed() noexcept : m_raw(0) {}
 
+    /// Widening conversion at the same scale: every value of the narrower type
+    /// is representable, so this cannot fail. Explicit, because widening is a
+    /// change of type the reader should see. Use `fixed_cast` from
+    /// `<fixedwide/mixed.hpp>` to change scale, or to narrow.
     template<std::size_t OtherBits>
         requires (OtherBits < Bits)
     explicit constexpr basic_fixed(basic_fixed<OtherBits, Decimals> other) noexcept
@@ -148,16 +183,21 @@ struct basic_fixed {
         }
     }
 
+    /// Wrap a raw scaled integer without touching it: `from_raw(1999)` on a
+    /// `Fixed64<2>` is 19.99. The inverse of `raw()`.
+    /// \param r the value already multiplied by `scale()`.
     [[nodiscard]] static constexpr basic_fixed from_raw(raw_type r) noexcept {
         basic_fixed f;
         f.m_raw = r;
         return f;
     }
 
+    /// The underlying scaled integer, unchanged. The inverse of `from_raw()`.
     [[nodiscard]] constexpr raw_type raw() const noexcept {
         return m_raw;
     }
 
+    /// The most negative representable value.
     [[nodiscard]] static constexpr basic_fixed min() noexcept {
         if constexpr (Bits == 8)   return from_raw(INT8_MIN);
         if constexpr (Bits == 16)  return from_raw(INT16_MIN);
@@ -167,6 +207,7 @@ struct basic_fixed {
         if constexpr (Bits == 256) return from_raw(wide::int256::min());
     }
 
+    /// The largest representable value.
     [[nodiscard]] static constexpr basic_fixed max() noexcept {
         if constexpr (Bits == 8)   return from_raw(INT8_MAX);
         if constexpr (Bits == 16)  return from_raw(INT16_MAX);
@@ -176,19 +217,27 @@ struct basic_fixed {
         if constexpr (Bits == 256) return from_raw(wide::int256::max());
     }
 
+    /// Exact comparison against the same type. Comparison across scales or
+    /// widths is in `<fixedwide/mixed.hpp>` and is also exact.
     constexpr bool operator==(const basic_fixed&) const noexcept = default;
+    /// Exact ordering against the same type.
     constexpr auto operator<=>(const basic_fixed&) const noexcept = default;
 
 private:
     raw_type m_raw{0};
 };
 
-// Aliases
+/// 8-bit storage, up to 2 decimals. 1 byte.
 template<unsigned D> using Fixed8   = basic_fixed<8, D>;
+/// 16-bit storage, up to 4 decimals. 2 bytes.
 template<unsigned D> using Fixed16  = basic_fixed<16, D>;
+/// 32-bit storage, up to 9 decimals. 4 bytes.
 template<unsigned D> using Fixed32  = basic_fixed<32, D>;
+/// 64-bit storage, up to 18 decimals. 8 bytes. The common choice for money.
 template<unsigned D> using Fixed64  = basic_fixed<64, D>;
+/// 128-bit storage, up to 38 decimals. 16 bytes.
 template<unsigned D> using Fixed128 = basic_fixed<128, D>;
+/// 256-bit storage, up to 76 decimals. 32 bytes.
 template<unsigned D> using Fixed256 = basic_fixed<256, D>;
 
 // Size and alignment invariants
@@ -290,6 +339,8 @@ inline constexpr unsigned fractional_digits = 12;             // Fixed::fraction
 inline constexpr std::int64_t scale = 1'000'000'000'000LL;    // Fixed::scale()
 // --- end of the 0.4 compatibility surface --------------------------------
 
+/// Free-function spelling of `T::from_raw`, for call sites that already have
+/// the type in a variable.
 template<class T>
 [[nodiscard]] constexpr T from_raw(typename T::raw_type raw) noexcept {
     return T::from_raw(raw);

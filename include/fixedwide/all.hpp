@@ -1,4 +1,10 @@
 #pragma once
+
+/// \file
+/// Every public header at once. Convenient, and the most expensive way to use
+/// the library: each header below stands alone, so include only what a
+/// translation unit needs when build time matters.
+
 #include <fixedwide/fixed.hpp>
 #include <fixedwide/rounding.hpp>
 #include <fixedwide/error.hpp>

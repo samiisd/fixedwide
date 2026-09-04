@@ -36,6 +36,18 @@ marked in the header with its generic replacement:
 
 Everything else in the public API is parameterised on width and scale.
 
+### Editor and IDE support
+
+Every public declaration carries a `///` doc comment -- purpose, parameters and
+the errors it can return -- so hover works without leaving the editor. A
+top-level build writes `build/compile_commands.json`, which is where `clangd`
+looks by default, so VS Code, Neovim, CLion and Qt Creator pick the project up
+with no configuration:
+
+```
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+```
+
 ### Naming rules
 
 The API follows four rules, and every name in it obeys them:

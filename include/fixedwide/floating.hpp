@@ -1,4 +1,10 @@
 #pragma once
+
+/// \file
+/// Explicit conversions between fixed point and binary floating point. Every
+/// one is spelled out, because this is the boundary where decimal exactness is
+/// lost and it should be visible at the call site.
+
 #include <fixedwide/fixed.hpp>
 #include <fixedwide/error.hpp>
 #include <fixedwide/rounding.hpp>
@@ -25,6 +31,15 @@ long double to_float_kernel(wide::int256 raw, unsigned decimals, long double) no
 
 } // namespace detail
 
+/// Convert a binary floating-point value to fixed point, checked.
+///
+/// The conversion is explicit because it is where decimal exactness is lost:
+/// `0.1` as a `double` is not 0.1, and this reports what that actually rounds
+/// to on the destination's grid rather than pretending.
+///
+/// \tparam Target the fixed-point type to produce.
+/// \return the value, or `ArithmeticError::invalid_value` for NaN or infinity,
+///         or `overflow` / `inexact`.
 template<typename Target, std::floating_point Float>
 [[nodiscard]] inline std::expected<Target, ArithmeticError>
 from_float(Float value, Rounding rounding = Rounding::nearest_even) noexcept {
@@ -34,6 +49,11 @@ from_float(Float value, Rounding rounding = Rounding::nearest_even) noexcept {
     return detail::from_int256_raw<Target>(*res);
 }
 
+/// Convert fixed point to binary floating point.
+///
+/// Cannot fail, and is not exact: the result is the nearest `Float` to the
+/// value. Explicit for the same reason as `from_float`.
+/// \tparam Float `float`, `double` or `long double`.
 template<std::floating_point Float, std::size_t Bits, unsigned D>
 [[nodiscard]] inline Float
 to_float(basic_fixed<Bits, D> value) noexcept {
@@ -53,12 +73,17 @@ to_float(basic_fixed<Bits, D> value) noexcept {
 // The pair of to_double below. Both are conveniences for the Float-generic
 // from_float / to_float above; `double` is spelled out because it is the one
 // callers ask for by name.
+/// `from_float<Target>` with the source type fixed to `double`. Reports NaN
+/// and infinity as `ArithmeticError::invalid_value`; rounds on the
+/// destination's decimal grid otherwise.
 template<typename Target>
 [[nodiscard]] inline std::expected<Target, ArithmeticError>
 from_double(double value, Rounding rounding = Rounding::nearest_even) noexcept {
     return from_float<Target>(value, rounding);
 }
 
+/// `to_float<double>`. Cannot fail, and is not exact: the result is the
+/// nearest `double` to the value.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] inline double to_double(basic_fixed<Bits, D> value) noexcept {
     return to_float<double>(value);

@@ -1,4 +1,15 @@
 #pragma once
+
+/// \file
+/// Portable 128- and 256-bit integers, `wide::uint128` … `wide::int256`.
+///
+/// These are the storage types behind `Fixed128` and `Fixed256`, and they are
+/// usable on their own. Each is a plain struct of `std::uint64_t` limbs with no
+/// compiler extension in its object representation, so a value keeps its
+/// meaning across compilers and across a file. They wrap on overflow, exactly
+/// like the built-in integer types; the checked operations live in
+/// `<fixedwide/arithmetic.hpp>` and `<fixedwide/bigint.hpp>`.
+
 #include <cstdint>
 #include <compare>
 #include <type_traits>
@@ -11,6 +22,8 @@ namespace fixedwide::wide {
 template<typename T>
 concept integral = std::is_integral_v<T>;
 
+/// Leading zero bits in a 64-bit value; 64 for zero. Spelled out rather than
+/// taken from `<bit>`, which costs more to include than it saves here.
 [[nodiscard]] constexpr int countl_zero64(std::uint64_t v) noexcept {
     if (v == 0) return 64;
 #if defined(__GNUC__) || defined(__clang__)
@@ -35,9 +48,17 @@ struct alignas(8) int128;
 struct alignas(8) uint256;
 struct alignas(8) int256;
 
-// 128-bit unsigned integer composed of two 64-bit limbs.
+/// 128-bit unsigned integer, two 64-bit limbs, wrapping like a built-in
+/// unsigned type.
+///
+/// A plain struct of two `std::uint64_t`: trivially copyable, standard layout,
+/// no compiler extension in its object representation, so it can be memcpy'd,
+/// written to a file and read back on a different compiler. The library
+/// computes in `__int128` where the target has one; this is what it *stores*.
 struct alignas(8) uint128 {
+    /// Least significant 64 bits.
     std::uint64_t low{0};
+    /// Most significant 64 bits.
     std::uint64_t high{0};
 
     constexpr uint128() noexcept = default;
@@ -68,12 +89,15 @@ struct alignas(8) uint128 {
         }
     }
 
+    /// The smallest representable value.
     [[nodiscard]] static constexpr uint128 min() noexcept { return {0ULL, 0ULL}; }
+    /// The largest representable value.
     [[nodiscard]] static constexpr uint128 max() noexcept { return {~0ULL, ~0ULL}; }
 
     template<narrow_int64 T>
     constexpr explicit operator T() const noexcept { return static_cast<T>(low); }
     constexpr explicit operator int128() const noexcept;
+    /// True when every limb is zero.
     [[nodiscard]] constexpr bool is_zero() const noexcept { return low == 0 && high == 0; }
 
     constexpr bool operator==(const uint128&) const noexcept = default;
@@ -155,9 +179,15 @@ struct alignas(8) uint128 {
     constexpr uint128& operator-=(const uint128& o) noexcept { *this = *this - o; return *this; }
 };
 
-// 128-bit signed integer in two's complement.
+/// 128-bit signed integer, two's complement, wrapping like a built-in signed
+/// type. The storage type behind `Fixed128<D>`.
+///
+/// A plain struct of two `std::uint64_t`: trivially copyable, standard layout,
+/// no compiler extension in its object representation.
 struct alignas(8) int128 {
+    /// Least significant 64 bits.
     std::uint64_t low{0};
+    /// Most significant 64 bits, sign bit included.
     std::uint64_t high{0};
 
     constexpr int128() noexcept = default;
@@ -189,15 +219,19 @@ struct alignas(8) int128 {
         }
     }
 
+    /// The smallest representable value.
     [[nodiscard]] static constexpr int128 min() noexcept { return {0ULL, 0x8000'0000'0000'0000ULL}; }
+    /// The largest representable value.
     [[nodiscard]] static constexpr int128 max() noexcept { return {~0ULL, 0x7FFF'FFFF'FFFF'FFFFULL}; }
 
+    /// True when the sign bit is set.
     [[nodiscard]] constexpr bool is_negative() const noexcept {
         return static_cast<std::int64_t>(high) < 0;
     }
     template<narrow_int64 T>
     constexpr explicit operator T() const noexcept { return static_cast<T>(low); }
     constexpr explicit operator uint128() const noexcept { return uint128(low, high); }
+    /// True when every limb is zero.
     [[nodiscard]] constexpr bool is_zero() const noexcept { return low == 0 && high == 0; }
 
     constexpr bool operator==(const int128&) const noexcept = default;
@@ -251,7 +285,12 @@ struct alignas(8) int128 {
 };
 
 // 256-bit unsigned integer composed of four 64-bit limbs (least-significant first).
+/// 256-bit unsigned integer, four 64-bit limbs, least significant first.
+///
+/// A plain struct of `std::uint64_t`: trivially copyable, standard layout, no
+/// compiler extension in its object representation.
 struct alignas(8) uint256 {
+    /// Limbs in increasing significance: `limbs[0]` is the low 64 bits.
     std::uint64_t limbs[4]{0, 0, 0, 0};
 
     constexpr uint256() noexcept = default;
@@ -284,9 +323,12 @@ struct alignas(8) uint256 {
         }
     }
 
+    /// The smallest representable value.
     [[nodiscard]] static constexpr uint256 min() noexcept { return {0ULL, 0ULL, 0ULL, 0ULL}; }
+    /// The largest representable value.
     [[nodiscard]] static constexpr uint256 max() noexcept { return {~0ULL, ~0ULL, ~0ULL, ~0ULL}; }
 
+    /// True when every limb is zero.
     [[nodiscard]] constexpr bool is_zero() const noexcept {
         return limbs[0] == 0 && limbs[1] == 0 && limbs[2] == 0 && limbs[3] == 0;
     }
@@ -413,7 +455,14 @@ struct alignas(8) uint256 {
 };
 
 // 256-bit signed integer in two's complement.
+/// 256-bit signed integer, two's complement, four 64-bit limbs. The storage
+/// type behind `Fixed256<D>`.
+///
+/// A plain struct of `std::uint64_t`: trivially copyable, standard layout, no
+/// compiler extension in its object representation.
 struct alignas(8) int256 {
+    /// Limbs in increasing significance: `limbs[0]` is the low 64 bits, and the
+    /// sign bit is the top bit of `limbs[3]`.
     std::uint64_t limbs[4]{0, 0, 0, 0};
 
     constexpr int256() noexcept = default;
@@ -450,16 +499,20 @@ struct alignas(8) int256 {
                 v.is_negative() ? ~0ULL : 0ULL,
                 v.is_negative() ? ~0ULL : 0ULL} {}
 
+    /// The smallest representable value.
     [[nodiscard]] static constexpr int256 min() noexcept {
         return {0ULL, 0ULL, 0ULL, 0x8000'0000'0000'0000ULL};
     }
+    /// The largest representable value.
     [[nodiscard]] static constexpr int256 max() noexcept {
         return {~0ULL, ~0ULL, ~0ULL, 0x7FFF'FFFF'FFFF'FFFFULL};
     }
 
+    /// True when the sign bit is set.
     [[nodiscard]] constexpr bool is_negative() const noexcept {
         return static_cast<std::int64_t>(limbs[3]) < 0;
     }
+    /// True when every limb is zero.
     [[nodiscard]] constexpr bool is_zero() const noexcept {
         return limbs[0] == 0 && limbs[1] == 0 && limbs[2] == 0 && limbs[3] == 0;
     }
@@ -540,6 +593,8 @@ struct alignas(8) int256 {
     }
 };
 
+/// `|v|` as an unsigned value. Correct for `min()`, whose magnitude has no
+/// signed representation.
 [[nodiscard]] constexpr uint128 magnitude(int128 v) noexcept {
     if (v.is_negative()) {
         return ~uint128(v.low, v.high) + uint128(1ULL, 0ULL);
@@ -547,6 +602,8 @@ struct alignas(8) int256 {
     return {v.low, v.high};
 }
 
+/// `|v|` as an unsigned value. Correct for `min()`, whose magnitude has no
+/// signed representation.
 [[nodiscard]] constexpr uint256 magnitude(int256 v) noexcept {
     if (v.is_negative()) {
         return ~uint256(v.limbs[0], v.limbs[1], v.limbs[2], v.limbs[3]) + uint256(1ULL, 0ULL, 0ULL, 0ULL);
@@ -554,12 +611,15 @@ struct alignas(8) int256 {
     return {v.limbs[0], v.limbs[1], v.limbs[2], v.limbs[3]};
 }
 
+/// Bits needed to represent `v`; 0 for zero. The only `bit_width` in the
+/// library -- see the note at the end of this header.
 [[nodiscard]] constexpr int bit_width(uint128 v) noexcept {
     if (v.high != 0) return 128 - countl_zero64(v.high);
     if (v.low != 0) return 64 - countl_zero64(v.low);
     return 0;
 }
 
+/// Bits needed to represent `v`; 0 for zero.
 [[nodiscard]] constexpr int bit_width(uint256 v) noexcept {
     for (int i = 3; i >= 0; --i) {
         if (v.limbs[i] != 0) return (i + 1) * 64 - countl_zero64(v.limbs[i]);

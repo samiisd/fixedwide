@@ -1,4 +1,9 @@
 #pragma once
+
+/// \file
+/// `std::hash` for `basic_fixed` and the wide integers, so they work as keys in
+/// the unordered containers. Two values that compare equal hash equal.
+
 #include <fixedwide/fixed.hpp>
 #include <functional>
 
@@ -61,6 +66,8 @@ struct std::hash<fixedwide::wide::int256> {
 };
 
 namespace fixedwide {
+/// Free-function spelling of `std::hash`, for generic code and for Boost-style
+/// containers that look for `hash_value` by argument-dependent lookup.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] inline std::size_t hash_value(basic_fixed<Bits, D> v) noexcept {
     return std::hash<basic_fixed<Bits, D>>{}(v);

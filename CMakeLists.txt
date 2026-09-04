@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.25)
 project(fixedwide VERSION 0.5.0 LANGUAGES CXX)
 
+# clangd -- and every editor built on it -- needs a compile database to know the
+# include paths and the standard, without which hover, go-to-definition and the
+# doc comments in the public headers all degrade. Only when this is the top-level
+# project, so a consumer's build is not changed by depending on us.
+if(PROJECT_IS_TOP_LEVEL)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
