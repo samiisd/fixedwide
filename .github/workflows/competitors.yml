@@ -1,0 +1,90 @@
+name: Competitor benchmark
+
+# The benchmark changes rarely, but a green general CI run is not evidence that
+# its optional dependencies still build or that its exact-result checks pass.
+# Run the full suite on every relevant pull request and once a day on main.
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/competitors.yml'
+      - 'benchmarks/**'
+      - 'scripts/build_mpdecimal.sh'
+      - 'scripts/competitor_report.py'
+      - 'reports/BENCHMARK_COMPETITORS.md'
+      - 'reports/raw/competitors.csv'
+      - 'README.md'
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: competitors-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: exact-contract competitor suite
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Clang 22 and build tools
+        run: |
+          wget -qO llvm.sh https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22
+          sudo apt-get install -y --no-install-recommends \
+            g++-14 libboost-dev cmake ninja-build curl make
+
+      - name: Build pinned mpdecimal 4.0.1
+        env:
+          CC: clang-22
+          CXX: clang++-22
+          MPDECIMAL_CHECK: '1'
+        run: |
+          scripts/build_mpdecimal.sh "$RUNNER_TEMP/mpdecimal"
+          echo "LD_LIBRARY_PATH=$RUNNER_TEMP/mpdecimal/lib:$RUNNER_TEMP/mpdecimal/lib64:${LD_LIBRARY_PATH:-}" \
+            >> "$GITHUB_ENV"
+
+      - name: Configure and build
+        run: |
+          cmake -B build-competitors -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=clang++-22 \
+            -DCMAKE_CXX_FLAGS=-Werror \
+            -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
+            -DFIXEDWIDE_BUILD_COMPETITOR_BENCH=ON \
+            -DFIXEDWIDE_BUILD_TESTS=OFF \
+            -DFIXEDWIDE_BUILD_EXAMPLES=OFF \
+            -DFIXEDWIDE_MPDECIMAL_ROOT="$RUNNER_TEMP/mpdecimal" \
+            -DFIXEDWIDE_MPDECIMAL_VERSION=4.0.1 \
+            -DFIXEDWIDE_REQUIRE_MPDECIMAL=ON
+          cmake --build build-competitors --target fixedwide_competitor_bench
+
+      - name: Run and validate retained schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          cpu=$(python3 -c 'import os; print(min(os.sched_getaffinity(0)))')
+          taskset -c "$cpu" \
+            ./build-competitors/benchmarks/fixedwide_competitor_bench \
+              --iterations 262144 --repetitions 11 \
+              > competitors.csv 2> competitors.stderr
+          cat competitors.stderr
+          grep -q '^PASSED validations=' competitors.stderr
+          python3 scripts/competitor_report.py \
+            --input competitors.csv --validate-only
+
+      - name: Upload raw evidence
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: competitor-benchmark-${{ github.sha }}
+          path: |
+            competitors.csv
+            competitors.stderr
+            build-competitors/benchmarks/competitor_versions.txt

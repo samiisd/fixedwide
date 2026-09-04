@@ -62,16 +62,28 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_compile_options(fixedwide_rounding_bench PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off)
 endif()
 
-option(FIXEDWIDE_BUILD_COMPETITOR_BENCH "Fetch CNL/fpm and build the competitor benchmark" OFF)
+option(FIXEDWIDE_BUILD_COMPETITOR_BENCH
+    "Build the pinned decimal and fixed-point competitor benchmark" OFF)
 if(FIXEDWIDE_BUILD_COMPETITOR_BENCH)
     include(${CMAKE_CURRENT_SOURCE_DIR}/competitors.cmake)
-    add_executable(fixedwide_competitor_bench competitor_bench.cpp)
-    target_link_libraries(fixedwide_competitor_bench PRIVATE fixedwide::fixedwide fixedwide_competitor_deps)
+    add_executable(fixedwide_competitor_bench
+        competitor/main.cpp
+        competitor/common.cpp
+        competitor/fixed.cpp
+        competitor/decimal.cpp
+        competitor/adjacent.cpp
+    )
+    target_link_libraries(fixedwide_competitor_bench PRIVATE
+        fixedwide::fixedwide fixedwide_competitor_deps)
     target_include_directories(fixedwide_competitor_bench PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR} ${Boost_INCLUDE_DIRS})
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${Boost_INCLUDE_DIRS})
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        target_compile_options(fixedwide_competitor_bench PRIVATE -fno-vectorize -fno-slp-vectorize -ffp-contract=off)
-    else()
-        target_compile_options(fixedwide_competitor_bench PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off)
+        target_compile_options(fixedwide_competitor_bench PRIVATE
+            -fno-vectorize -fno-slp-vectorize -ffp-contract=off)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        target_compile_options(fixedwide_competitor_bench PRIVATE
+            -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off)
     endif()
 endif()
