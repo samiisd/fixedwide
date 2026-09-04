@@ -1,11 +1,27 @@
-# fixedwide 0.5.0-alpha.4 — status
+# fixedwide 0.5.0-alpha.5 — status
 
-**Version**: 0.5.0-alpha.4
+**Version**: 0.5.0-alpha.5
 **Standard**: C++23
 **Disposition**: pre-1.0. The performance gate does not pass; see below.
 
 This file records what has been executed. Nothing here is claimed unless a
 command in `scripts/` produced it and the output is retained under `reports/`.
+
+## What alpha.5 changed
+
+alpha.5 is a performance pass. No public type, signature or semantic changed;
+the internal `detail::` entry points changed shape, so headers and library must
+be rebuilt together. All 25 tests pass in all ten executed configurations, and
+the benchmark's own oracle validates 363,520 cases per run.
+
+| Finding | What was done |
+|---|---|
+| The wide `Fixed128` gap the previous release could not explain | Root-caused: a 16-byte struct passed in memory is copied through a temporary with a vector move over two scalar stores, which does not forward in the store buffer. Fixed by not crossing the ABI boundary with a struct. |
+| `inexact_chain.FP128.mul` +64% | The 128-bit multiply's fast path rounded with a branch on a coin flip. Made branchless, like the paths beside it. |
+| `native_by128.FP128.div` +41% | `divide_native_n` was `noinline`; 0.4 marks the same function `always_inline`. Restored, with 0.4's toward-zero shortcut. |
+| `format_2digits.FP128` +40% on Clang 17 and 18 | The 128-bit formatting kernel rounded through `wide::uint128` even when quotient, remainder and divisor all fit 64 bits. Now rounds narrow values in 64 bits: that row is 26% *faster* than 0.4 on Clang 17. |
+| `mul`/`mul_div`'s 64-bit range test | Two paired equality tests and a branch each, replaced by one addition. |
+| (cost) `arithmetic.hpp` compile time | Up from +38% to +62% over 0.4. The scale-specialised kernels now return the caller's own type so the callee writes the caller's return slot; that is more instantiation for less runtime. |
 
 ## What alpha.4 changed
 
@@ -54,42 +70,58 @@ Paired against the untouched 0.4 release, byte-identical benchmark source,
 core-pinned and interleaved, medians of 27 samples. Full per-row output in
 `reports/BENCHMARK_VS_0_4.md` and `reports/raw/`.
 
-| Clang 17, versus 0.4 | alpha.3 | alpha.4 |
-|---|---:|---:|
-| rows faster than 0.4 | 42 | 48 |
-| rows >5% slower | 32 | 21 |
-| rows >10% slower | 22 | 12 |
-| rows >25% slower | 15 | 9 |
-| worst row | +161.0% | +63.8% |
-| median row | +0.9% | +0.4% |
+| Clang 17, versus 0.4 | alpha.3 | alpha.4 | alpha.5 |
+|---|---:|---:|---:|
+| rows faster than 0.4 | 42 | 48 | 62 |
+| rows >5% slower | 32 | 21 | 7 |
+| rows >10% slower | 22 | 12 | 3 |
+| rows >25% slower | 15 | 9 | 0 |
+| worst row | +161.0% | +63.8% | +13.1% |
+| median row | +0.9% | +0.4% | -1.22% |
 
-**This does not meet the release gate.** What remains is the wide `Fixed128`
-paths, chiefly `mul_div`, whose divisor is a runtime value and so offers the
-kernel no constant to fold.
+Across all three compilers:
 
-An earlier draft of this file called the gap *structural*, on the grounds that a
-generalized `basic_fixed<Bits, D>` cannot hand a compiled kernel a constant
-scale. That was wrong: `D` is a compile-time constant at every call site. The
-kernels are templated on it and explicitly instantiated per decimal count.
+| compiler | rows faster | >3% | >5% | >10% | >25% | worst row | median row |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Clang 17 | 62 | 14 | 7 | 3 | 0 | +13.1% | -1.22% |
+| Clang 18 | 60 | 14 | 12 | 5 | 0 | +19.7% | -1.20% |
+| Clang 22 | 49 | 26 | 18 | 11 | 0 | +24.1% | +0.06% |
 
-What remains has been investigated until this host ran out of measurable
-mechanisms. On the worst row, against 0.4: the same divider occupancy, no extra
-branch misses, fewer frontend stalls, 8% more instructions -- and 44% more
-cycles. That is scheduling, not work. The full counter comparison is in
-`reports/BENCHMARK_VS_0_4.md`.
+**This still does not meet the 3% release gate**: 14 rows exceed it on Clang 17.
+It is no longer the wide `Fixed128` paths -- those are at parity or faster. What
+remains is 2.4 ns 64-bit rows where the gap is four instructions per operation,
+none of them arithmetic. `reports/BENCHMARK_VS_0_4.md` counts them and says where
+they come from.
+
+The previous release called the wide gap a scheduling difference it could not
+explain. That was measurable after all: sampling retired instructions rather than
+cycles put 79% of them on two `movups` in a wrapper that does no arithmetic.
 
 ## Known open items
 
-1. Wide `Fixed128` `mul_div` and some `div` rows remain up to +64% on Clang 17.
+1. Fourteen rows still exceed the 3% gate on Clang 17, worst +13.1%. They are
+   the 2.4 ns 64-bit `div` and `mul_div` rows; the cost is the caller's
+   stack-protector prologue, paid because this library inlines its narrow fast
+   path where 0.4 keeps it behind a call. Removing the inline path was measured
+   and is worse.
 2. Decimal parsing is about 2x slower than `std::from_chars` on a `double`. It is
    now 17-19% faster than 0.4 and faster than Boost.Decimal, which does the
    comparable job; `std::from_chars` produces a binary float and rejects nothing
    on a decimal grid.
 3. Formatting is faster than 0.4 and than `std::to_chars` on a `double`, but
    slower than Boost.Decimal (14.9 ns against 12.4 ns).
-4. `arithmetic.hpp` costs about 56% more to include than 0.4's, of which roughly
-   20 points is the compile-time evaluation path added in alpha.4.
+4. `arithmetic.hpp` costs 62% more to include than 0.4's, up from 38% in
+   alpha.4. The scale-specialised kernels are now instantiated per decimal count
+   against the caller's own return type, which is what removes the return-path
+   copy at runtime. Traded deliberately.
 5. `Fixed256::quantize` is unchanged at about 27 ns and is the slowest
-   `Fixed256` operation.
-6. Windows and macOS are configured in CI but have never been executed.
-7. Big-endian byte order is implemented in `binary.hpp` but never executed.
+   `Fixed256` operation. Its divisor always fits one limb, and both its division
+   and its multiply-back still run the general four-limb routines.
+6. `mul_to.Money.from.Price.Rate` measures 7.69 ns, against 3.50 ns in alpha.4.
+   The generated code for that operation is unchanged: compiled into an isolated
+   translation unit, both trees produce 7.47 ns for the same loop. The move is
+   code placement inside the benchmark's own translation unit, not the library.
+   The underlying cost is real either way -- the mixed multiply's rescale is a
+   `__udivti3` call, and the divisor always fits 64 bits.
+7. Windows and macOS are configured in CI but have never been executed.
+8. Big-endian byte order is implemented in `binary.hpp` but never executed.

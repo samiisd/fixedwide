@@ -5,6 +5,69 @@ All notable changes to the `fixedwide` library are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0-alpha.5] - 2026-09-04
+
+A performance pass. No public type, signature or semantic changed. The internal
+`detail::` entry points changed shape, so headers and library must be rebuilt
+together.
+
+Against the untouched 0.4 release on Clang 17, the audit's compiler: 62 of 100
+rows faster (was 48), no row more than 25% slower (was 9), worst row +13.1% (was
++63.8%), median row -1.22% (was +0.4%). Clang 18 and Clang 22 also have zero rows
+above 25%. Full per-row output in `reports/BENCHMARK_VS_0_4.md`.
+
+### Fixed
+- A 16-byte operand passed in memory cost about twenty cycles per call. Three
+  128-bit operands plus a returned `std::expected` do not fit the argument
+  registers, so `mul_div`'s divisor went on the stack -- and Clang materialises a
+  struct argument in a temporary and copies it there with a 16-byte vector move
+  over two 8-byte stores, which does not forward in the store buffer. 0.4's
+  `FP128` holds a scalar `__int128` and is pushed from the registers it is
+  already in. `detail::mul_div128_impl` now takes the divisor as its two limbs.
+  `wide_product.FP128.mul_div` went from +56% to +3%.
+- The same mismatch on the return path: a kernel writes two 8-byte halves into
+  the caller's return buffer and the caller reloads them 16 bytes wide.
+  `mul128_scaled` and `div128_scaled` now return the caller's own return type, so
+  the callee writes the caller's return slot and there is no copy.
+  `wide_product.FP128.mul` went from +30% to +5%.
+- The 128-bit multiply's inline fast path rounded to nearest-even with a branch
+  on a coin flip, where the 64-bit and `mul_div` paths beside it were already
+  branchless. On a serially dependent chain that mispredict cost more than the
+  division: `inexact_chain.FP128.mul` went from +64% to parity.
+- `divide_native_n` was `noinline`, so a division whose operands were already in
+  registers paid a call to reach two instructions; 0.4 marks the same function
+  `always_inline`. Restored, together with 0.4's toward-zero shortcut.
+  `native_by128.FP128.div` went from +41% to parity.
+- The 128-bit formatting kernel rounded through `wide::uint128` even when the
+  quotient, remainder and divisor all fit 64 bits, which is every value a
+  `Fixed128` shares with a `Fixed64`. Every comparison, shift and subtraction ran
+  as a member function on two limbs. Clang 22 undid that; Clang 17 and 18 did
+  not, and it was the whole of `format_2digits.FP128` at +40%. That row is now
+  26% faster than 0.4 on Clang 17.
+- The 64-bit range test in `mul` and `mul_div` was two paired equality tests per
+  operand, each with a branch. Replaced by one addition.
+
+### Changed
+- The 256-bit entry points take their operands by reference. A 32-byte struct is
+  passed in memory by value, so each call copied three of them onto the stack.
+  Measured effect under 2%; kept because it is strictly less work.
+- `arithmetic.hpp` now costs 62% more to include than 0.4's, up from 38%. The
+  scale-specialised kernels are instantiated per decimal count against the
+  caller's own return type, which is what removes the return-path copy. Traded
+  deliberately: this release optimises runtime, not build time.
+
+### Known open
+- Fourteen rows still exceed the 3% gate on Clang 17, worst +13.1%. They are the
+  2.4 ns 64-bit `div` and `mul_div` rows, and the gap is four instructions per
+  operation, none of them arithmetic: this library inlines its narrow fast path
+  into the caller, which makes the calling function large enough for Clang to
+  give it a stack frame and `-fstack-protector-strong` to put a canary on it.
+  Removing the inline path restores 0.4's call shape and measures worse.
+- `Fixed256::quantize` is still about 27 ns. Its divisor always fits one limb,
+  and both its division and its multiply-back still run the four-limb routines.
+- The mixed-scale multiply rescales with a `__udivti3` call although its divisor
+  always fits 64 bits.
+
 ## [0.5.0-alpha.4] - 2026-09-03
 
 A narrow performance, portability and reproducibility pass on alpha.4's

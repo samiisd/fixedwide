@@ -120,7 +120,7 @@ evidence "Clang libFuzzer under ASan+UBSan" executed-pass \
 evidence "Competitor benchmark from a clean checkout" executed-pass \
     "CNL 1.1.7 and fpm 1.1.0 fetched at pinned tags; 28,672 output validations passed" "reports/raw/competitors.csv"
 evidence "Compile-time measurement versus 0.4" executed-pass \
-    "fixed.hpp +28.6%, arithmetic.hpp +37.5%, chars.hpp +14.5% on Clang 22" "reports/COMPILE_TIME.md"
+    "fixed.hpp +30.4%, arithmetic.hpp +61.8%, chars.hpp +15.4% on Clang 22" "reports/COMPILE_TIME.md"
 record "Linux AArch64 CI (ubuntu-24.04-arm)" configured-not-executed "job in .github/workflows/ci.yml; runs on push"
 record "macOS arm64 (macos-14)" configured-not-executed "job in .github/workflows/ci.yml; runs on push"
 record "macOS x86-64 (macos-13)" configured-not-executed "job in .github/workflows/ci.yml; runs on push"
