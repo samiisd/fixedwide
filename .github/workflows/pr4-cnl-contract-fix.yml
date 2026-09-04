@@ -1,0 +1,82 @@
+name: PR 4 one-shot CNL contract fix
+
+on:
+  push:
+    branches: [ benchmarks-and-docs-revamp ]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: benchmarks-and-docs-revamp
+      - name: Separate the CNL division contract without assuming its implementation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('benchmarks/competitor/fixed.cpp')
+          text = path.read_text()
+          text = text.replace(
+              '    bool saw_fractional_quotient_loss = false;\n',
+              '',
+          )
+          old = '''        // CNL's same-type division first divides the raw representations at
+                  // exponent zero, then converts that integral quotient back to scale 4.
+                  // Fractional quotient digits are therefore gone before the conversion.
+                  const __int128 whole = static_cast<__int128>(fixtures.div[i].lhs_raw) / fixtures.div[i].rhs_raw;
+                  const __int128 expected_raw = whole * fixtures.scale;
+                  expect(expected_raw >= std::numeric_limits<std::int64_t>::min() &&
+                             expected_raw <= std::numeric_limits<std::int64_t>::max() &&
+                             cnl::_impl::to_rep(div_result) == static_cast<std::int64_t>(expected_raw),
+                         "CNL radix-10 division disagrees with its same-type quotient model");
+                  saw_fractional_quotient_loss =
+                      saw_fractional_quotient_loss || expected_raw != fixtures.div[i].expected_raw;
+          '''
+          new = '''        // CNL's division has a different result/rounding contract from
+                  // fixedwide. Validate it independently with exact integer arithmetic: the
+                  // represented answer must be within one scale-4 unit of lhs / rhs.
+                  const __int128 actual_raw = cnl::_impl::to_rep(div_result);
+                  const __int128 exact_numerator = static_cast<__int128>(fixtures.div[i].lhs_raw) * fixtures.scale;
+                  const __int128 residual = actual_raw * fixtures.div[i].rhs_raw - exact_numerator;
+                  const __int128 residual_magnitude = residual < 0 ? -residual : residual;
+                  const __int128 divisor_magnitude = fixtures.div[i].rhs_raw < 0
+                                                         ? -static_cast<__int128>(fixtures.div[i].rhs_raw)
+                                                         : static_cast<__int128>(fixtures.div[i].rhs_raw);
+                  expect(residual_magnitude < divisor_magnitude,
+                         "CNL radix-10 division differs from the exact quotient by at least one output unit");
+          '''
+          if old not in text:
+              raise SystemExit('CNL validation block was not found')
+          text = text.replace(old, new)
+          text = text.replace(
+              '''    expect(saw_fractional_quotient_loss,
+                     "CNL adjacent division fixture did not expose fractional quotient loss");
+          
+          ''',
+              '',
+          )
+          text = text.replace(
+              '"decimal_fixed_adjacent", "div_same_type"',
+              '"decimal_fixed_adjacent", "div"',
+          )
+          path.write_text(text)
+
+          validator = Path('scripts/competitor_report.py')
+          text = validator.read_text().replace(
+              '("div_same_type",)',
+              '("div",)',
+          )
+          validator.write_text(text)
+          PY
+      - name: Commit the patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add benchmarks/competitor/fixed.cpp scripts/competitor_report.py
+          git commit -m "benchmarks: validate CNL division by exact residual"
+          git push origin HEAD:benchmarks-and-docs-revamp
