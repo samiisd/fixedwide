@@ -65,6 +65,18 @@ multi-limb backend automatically — the same code path the `forced-portable` jo
 exercises on Linux. It needs `/Zc:__cplusplus`, `/Zc:preprocessor` and `/utf-8`,
 which `CMakeLists.txt` adds.
 
+**clang-cl does have `__int128`, and that is the problem.** 128-bit division is
+not an instruction: the compiler emits a call to `__divti3`, `__udivti3` or
+`__umodti3` in its runtime library. clang-cl targets the MSVC CRT, which has no
+such symbols, and does not link compiler-rt's builtins by default — so
+`__SIZEOF_INT128__` is defined, the native path is taken, and the build fails at
+link time with three undefined symbols.
+
+`CMakeLists.txt` therefore *tests* whether 128-bit division links, rather than
+naming compilers, and falls back to the portable backend when it does not. Any
+toolchain in the same position gets the same treatment without needing to be
+recognised first.
+
 ## Running a job's work locally
 
 Every job runs commands that work on a workstation too:

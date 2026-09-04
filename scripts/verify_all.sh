@@ -121,11 +121,53 @@ evidence "Competitor benchmark from a clean checkout" executed-pass \
     "CNL 1.1.7 and fpm 1.1.0 fetched at pinned tags; 28,672 output validations passed" "reports/raw/competitors.csv"
 evidence "Compile-time measurement versus 0.4" executed-pass \
     "fixed.hpp +28.6%, arithmetic.hpp +41.2%, chars.hpp +14.3% on Clang 22" "reports/COMPILE_TIME.md"
-record "Linux AArch64 CI (ubuntu-24.04-arm)" configured-not-executed "job in .github/workflows/ci.yml; runs on push"
-record "macOS arm64 (macos-14)" configured-not-executed "job in .github/workflows/ci.yml; runs on push"
-record "macOS x86-64 (macos-13)" configured-not-executed "job in .github/workflows/ci.yml; runs on push"
-record "Windows x64 MSVC" configured-not-executed "job in .github/workflows/ci.yml; the header-level blockers are removed but no MSVC build has been executed"
-record "Windows x64 clang-cl" configured-not-executed "job in .github/workflows/ci.yml; not executed"
+# Rows this host cannot run, but CI can. Read the real outcome out of the most
+# recent completed run on the default branch rather than asserting it here:
+# these rows previously said configured-not-executed forever, because nothing
+# ever went back to change them. If gh is missing or not logged in, they go back
+# to saying they were not executed -- never to claiming they passed.
+CI_JOBS_JSON=""
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    ci_run=$(gh run list --workflow=ci.yml --branch main --status completed --limit 1 \
+             --json databaseId,url --jq '.[0]' 2>/dev/null || true)
+    if [ -n "$ci_run" ]; then
+        CI_RUN_URL=$(echo "$ci_run" | python3 -c 'import json,sys; print(json.load(sys.stdin)["url"])')
+        CI_JOBS_JSON=$(gh run view "$(echo "$ci_run" | python3 -c 'import json,sys; print(json.load(sys.stdin)["databaseId"])')" \
+                       --json jobs 2>/dev/null || true)
+    fi
+fi
+
+ci_row() { # matrix-name ci-job-name
+    if [ -z "$CI_JOBS_JSON" ]; then
+        record "$1" "configured-not-executed" "job \"$2\" in .github/workflows/ci.yml; no CI result available here"
+        return
+    fi
+    local verdict
+    verdict=$(echo "$CI_JOBS_JSON" | python3 -c '
+import json, sys
+name = sys.argv[1]
+jobs = json.load(sys.stdin)["jobs"]
+match = next((j for j in jobs if j["name"] == name), None)
+print(match["conclusion"] if match else "absent")' "$2")
+    case "$verdict" in
+        success) record "$1" "executed-pass" "CI job \"$2\": $CI_RUN_URL" ;;
+        absent)  record "$1" "not-configured" "no job named \"$2\" in the last CI run" ;;
+        *)       record "$1" "executed-fail" "CI job \"$2\" concluded $verdict: $CI_RUN_URL" ;;
+    esac
+}
+
+ci_row "Linux x86-64 GCC 14 CI (Release)"                  "linux gcc-14 Release"
+ci_row "Linux x86-64 GCC 14 CI (Debug)"                    "linux gcc-14 Debug"
+ci_row "Linux x86-64 Clang 18 + libc++ CI (Release)"       "linux clang-18-libc++ Release"
+ci_row "Linux AArch64 CI (ubuntu-24.04-arm)"               "linux arm64 g++-14"
+ci_row "macOS arm64 (macos-14)"                            "macos macos-14"
+ci_row "macOS arm64 (macos-15)"                            "macos macos-15"
+ci_row "Windows x64 MSVC"                                  "windows msvc"
+ci_row "Windows x64 clang-cl"                              "windows clang-cl"
+ci_row "Conan package + test_package"                      "conan create"
+ci_row "Instruction-count regression gate"                 "instruction-count regression gate"
+ci_row "Clang libFuzzer smoke run (CI)"                    "fuzz smoke"
+ci_row "Coverage instrumentation (CI)"                     "coverage"
 record "Windows ARM64" not-configured "no runner configured; not claimed as supported"
 record "Big-endian hardware" not-configured "no host available; binary.hpp defines both byte orders but only little-endian has been executed"
 

@@ -5,6 +5,113 @@ All notable changes to the `fixedwide` library are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-09-04
+
+The release that makes the repository publishable: continuous integration that
+actually runs, a Conan package, examples that are tested, and a regression gate.
+
+`.github/workflows/ci.yml` had never executed — there was no remote. Running it
+for the first time found eight defects, every one of them in a configuration
+nothing in this tree had ever built. Two of its own rows could not have compiled.
+
+### Fixed
+
+- **`from_integer` could not be called with a runtime integer under GCC.**
+  `detail::max_integer_allowed` was `consteval` and took the sign as a
+  parameter. Because every caller passes a runtime `bool`, C++23's
+  immediate-escalation rules (P2564) promoted `from_integer` itself into an
+  immediate function, so passing it an ordinary `int` did not compile. The two
+  possible limits are still computed during compilation; only the select
+  between them is not.
+- **`std::formatter<basic_fixed>` was rejected by libc++.** Its `format` member
+  hard-coded `std::format_context&`, but an implementation may instantiate a
+  formatter with its own context type, and libc++ does — it uses a
+  `back_insert_iterator` where `std::format_context` has a `char*`. Every
+  `basic_fixed` was therefore non-formattable there, while compiling fine under
+  libstdc++. `format`, `iostream` and `hash` had no test at all; the new
+  `tests/test_format.cpp` asserts `std::formattable` rather than only calling
+  `std::format`.
+- **MSVC could not compile `src/arithmetic.cpp`.** Two `__builtin_add_overflow`
+  / `__builtin_mul_overflow` calls were outside any guard. Both now go through
+  `detail/overflow.hpp`, which gained an unsigned `mul_overflow` whose portable
+  branch the forced-portable CI job exercises.
+- **GCC 13 could not compile `src/floating.cpp`.** libstdc++ did not put
+  `frexpl` and `ldexpl` in namespace `std` until GCC 14. The C++ `<cmath>`
+  overloads of `std::frexp` and `std::ldexp` take `long double` and work
+  everywhere, so the `l` suffixes were never needed.
+- **The significand width was an x86 assumption.** It came from `sizeof(Float)`,
+  which claims 64 bits for any 16-byte `long double` — wrong for IEEE binary128
+  — and silently changes meaning where `long double` is `double`. It is now
+  `std::numeric_limits<Float>::digits`, capped at the 64 bits the accumulator
+  holds.
+- **Cross-scale `operator<=>` and `operator==` claimed `constexpr` and were
+  not.** Outside the narrow `mixed_native` fast path they fell through to a
+  kernel compiled into the library, so any comparison involving a `Fixed128` or
+  `Fixed256` failed inside a `static_assert`. Added a constant-evaluation path
+  and differential-tested it against the runtime kernel across every scale pair
+  and both signs.
+- `std::countl_zero` and `std::min` were used without including `<bit>` and
+  `<algorithm>`; that only worked because libstdc++ includes them transitively.
+- `tests/CMakeLists.txt` passed `${Boost_INCLUDE_DIRS}` to the audit targets
+  unconditionally. Without Boost that expands to `Boost_INCLUDE_DIR-NOTFOUND`,
+  which CMake rejects at generate time — both Windows jobs died there before
+  compiling a file.
+- `tests/audit_floating.cpp` perturbed a `long double` by 2^-60, which needs 61
+  significand bits. On Apple silicon `long double` *is* `double`, so the test
+  asserted a precision the platform does not have. It now scales the
+  perturbation to the platform and still checks the 18th decimal moves.
+- `enable_testing()` was called inside the tests block, so examples could not
+  register ctest tests without tests also being enabled.
+
+### Added
+
+- **Conan package.** `conanfile.py` with a `force_portable` option mirroring the
+  CMake one, a version read from `version.hpp` so it cannot drift, and a
+  `validate()` that refuses Clang < 19 with libstdc++ up front with the reason.
+  `test_package/` links the package and checks the number it prints. CI builds
+  both the native and the portable package.
+- **An instruction-count regression gate.** `benchmarks/icount.cpp` and
+  `scripts/icount.sh` count retired instructions per operation under Valgrind,
+  using a two-point measurement that cancels everything not proportional to the
+  iteration count. Two independent runs are byte-identical, which is what makes
+  a 1% threshold usable on a shared CI runner where wall-clock noise is far
+  larger. `scripts/compare_icount.py` gates every pull request against the
+  committed baseline in `benchmarks/baseline/`.
+- **Eight examples**, replacing the single untested one. Each is one file, one
+  idea, and a ctest test that checks its own output before printing `OK`.
+- `tests/test_format.cpp`, covering `format.hpp`, `iostream.hpp` and `hash.hpp`,
+  none of which had any test.
+- CI jobs for Conan, the shared library, coverage, a fuzz smoke run, and the
+  regression gate; a nightly workflow with a 30-minute fuzz run and the
+  competitor benchmark; a release workflow that builds the archive, extracts it,
+  tests the extraction and publishes it; and Dependabot for action versions.
+- `docs/ci.md`, recording which compiler and standard-library combinations
+  actually work, measured rather than assumed.
+
+### Changed
+
+- **The release gate is now no regression against this library's own committed
+  baseline**, which passes, rather than parity with the 0.4 release, which never
+  did and was never the right criterion — 0.4 is a fixed-scale library with a
+  smaller API. The 0.4 comparison is kept as historical evidence in
+  `reports/BENCHMARK_VS_0_4.md` and its remaining slower rows are listed under
+  known open items in `STATUS.md`.
+- **The CI compiler matrix.** Clang 17 and 18 report `__cpp_concepts` as
+  `201907` and libstdc++ gates `<expected>` on `202002`, so those rows could
+  never have compiled. Clang is now paired with libc++; the fuzz and coverage
+  jobs use Clang 20 with libstdc++, because the libFuzzer runtime Ubuntu ships
+  is built against libstdc++ and will not link into a libc++ binary.
+- **README** now leads with the problem the library solves and a side-by-side
+  against `double` and hand-rolled `int64` cents, then install, then the
+  comparison table. The 0.4 compatibility surface and the naming rules moved to
+  `docs/api_reference.md`, which was expanded to cover every header and
+  function.
+- `docs/benchmarks.md` documents the two-tier measurement and the cross-scale
+  performance cliff: `mul_to` and `div_to` are about 160x cheaper when the
+  aligned intermediate fits 126 bits, which is now stated with the rule for
+  where the edge is.
+- MSVC builds add `/Zc:__cplusplus`, `/Zc:preprocessor` and `/utf-8`.
+
 ## [0.5.0-alpha.5] - 2026-09-04
 
 A performance pass. No public type, signature or semantic changed. The internal

@@ -62,6 +62,34 @@ set_target_properties(fixedwide PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
+# 128-bit division through __int128 is not an instruction: the compiler emits a
+# call to __divti3 / __udivti3 / __umodti3 in its runtime library. clang-cl
+# defines __SIZEOF_INT128__ but targets the MSVC CRT, which has no such symbols
+# and does not link compiler-rt's builtins by default -- so the native path
+# compiles there and then fails at link time with three undefined symbols.
+#
+# Test for it rather than naming the compiler: any toolchain that cannot divide
+# a 128-bit value without a runtime library it does not have gets the portable
+# multi-limb backend, which is differentially tested against the native one on
+# every CI run.
+if(NOT FIXEDWIDE_FORCE_PORTABLE)
+    include(CheckCXXSourceCompiles)
+    set(CMAKE_REQUIRED_QUIET ON)
+    check_cxx_source_compiles("
+        #if !defined(__SIZEOF_INT128__)
+        #error no __int128
+        #endif
+        __int128 d(__int128 a, __int128 b) { return a / b; }
+        unsigned __int128 u(unsigned __int128 a, unsigned __int128 b) { return a / b + a % b; }
+        int main() { return (int)(d(3, 2) + u(3, 2)); }
+    " FIXEDWIDE_INT128_DIVISION_LINKS)
+    unset(CMAKE_REQUIRED_QUIET)
+    if(NOT FIXEDWIDE_INT128_DIVISION_LINKS)
+        message(STATUS "fixedwide: 128-bit division does not link here; using the portable backend")
+        set(FIXEDWIDE_FORCE_PORTABLE ON)
+    endif()
+endif()
+
 if(FIXEDWIDE_FORCE_PORTABLE)
     target_compile_definitions(fixedwide PUBLIC FIXEDWIDE_FORCE_PORTABLE)
 endif()
