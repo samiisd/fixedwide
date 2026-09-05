@@ -57,11 +57,27 @@ void test_readme_types_snippet() {
     auto div_inexact = div(price, parse<Fixed64<4>>("3.0000").value(), Rounding::exact);
     CHECK(!div_inexact.has_value());
     CHECK(div_inexact.error() == ArithmeticError::inexact);
+
+    // Banker's rounding (Rounding::nearest_even) default on quantize:
+    auto q_even = quantize(parse<Fixed64<2>>("2.50").value(), 0);
+    CHECK(q_even.has_value() && to_string(*q_even) == "2.00");
+    auto q_odd = quantize(parse<Fixed64<2>>("3.50").value(), 0);
+    CHECK(q_odd.has_value() && to_string(*q_odd) == "4.00");
+}
+
+void test_readme_bankers_rounding_snippet() {
+    using namespace fixedwide;
+    auto a = parse<Fixed64<2>>("2.50").value();
+    auto b = parse<Fixed64<2>>("3.50").value();
+    // Explicit cast across scales:
+    CHECK(fixed_cast<Fixed64<0>>(a, Rounding::nearest_even)->raw() == 2);
+    CHECK(fixed_cast<Fixed64<0>>(b, Rounding::nearest_even)->raw() == 4);
 }
 
 int main() {
     test_readme_opening_snippet();
     test_readme_scale12_snippet();
     test_readme_types_snippet();
+    test_readme_bankers_rounding_snippet();
     return 0;
 }

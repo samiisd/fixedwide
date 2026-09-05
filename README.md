@@ -173,9 +173,14 @@ price == parse<Fixed64<8>>("19.99000000").value();   // ✓ true, exactly
 
 div(price, Fixed64<4>::from_raw(0)); // ArithmeticError::division_by_zero
 div(price, parse<Fixed64<4>>("3.0000").value(), Rounding::exact); // ArithmeticError::inexact
+
+// Deterministic banker's rounding (Rounding::nearest_even) is the arithmetic default:
+// exact halfways break toward the nearest even digit, preventing cumulative drift.
+quantize(parse<Fixed64<2>>("2.50").value(), 0); // ✓ 2.00 (halfway rounds down to even 2)
+quantize(parse<Fixed64<2>>("3.50").value(), 0); // ✓ 4.00 (halfway rounds up to even 4)
 ```
 
-Six rounding modes. `constexpr` arithmetic. Core arithmetic, parsing, and
+Six rounding modes, with **deterministic banker's rounding (`Rounding::nearest_even`) as the default for arithmetic**—evaluated via pure integer bit-level operations with zero floating-point registers or architecture drift. `constexpr` arithmetic. Core arithmetic, parsing, and
 caller-buffer formatting allocate no heap memory and return failures through
 `std::expected` (proved by a test that replaces `operator new` and counts).
 Convenience string formatting like `to_string` allocates by design.
