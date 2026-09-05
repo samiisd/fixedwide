@@ -19,6 +19,10 @@ jobs:
           from pathlib import Path
           import base64, gzip, hashlib
           data = ''.join(Path(f'.coverage-preparation/payload-{i}').read_text().strip() for i in range(4))
+          # Repair the two characters lost during API transport. The complete
+          # decoded patch must still match the locally tested SHA256 below.
+          assert len(data) == 36826
+          data = data[:19703] + '9+' + data[19703:]
           Path('/tmp/transport.b64').write_text(data)
           patch = gzip.decompress(base64.b64decode(data, validate=True))
           assert hashlib.sha256(patch).hexdigest() == 'd1a96bfcc2ca2b4ce22dee50a45efef1e73e1f0f680be8fe2340bb44aca0f389'
@@ -26,6 +30,16 @@ jobs:
           PY
           git apply --check /tmp/coverage.patch
           git apply --index /tmp/coverage.patch
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/detail.hpp')
+          text = p.read_text()
+          assert text.count('__asm__("divq %[divisor]"') == 1
+          assert text.count('__asm__("idivq %[divisor]"') == 1
+          text = text.replace('    __asm__("divq %[divisor]"', '    // divq may trap: do not let GCC hoist it above the caller\'s quotient-fit guard.\n    __asm__ volatile("divq %[divisor]"')
+          text = text.replace('__asm__("idivq %[divisor]"', '__asm__ volatile("idivq %[divisor]"')
+          p.write_text(text)
+          PY
       - name: Format and test reporter
         run: |
           python3 -m pip install clang-format==22.1.8
@@ -38,10 +52,10 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add CHANGELOG.md docs/coverage.md src tests scripts/coverage.sh scripts/coverage_report.py scripts/test_coverage_report.py .github/workflows/ci.yml
           git commit -m 'test: prepare formatted coverage and boundary regression suite'
-          git push origin HEAD:automation/coverage-preparation
           git rev-parse HEAD > /tmp/prepared-commit.txt
           git rev-parse HEAD^{tree} > /tmp/prepared-tree.txt
           git archive HEAD -o /tmp/prepared-source.tar
+          git push origin HEAD:automation/coverage-preparation
       - uses: actions/upload-artifact@v7
         if: always()
         with:
