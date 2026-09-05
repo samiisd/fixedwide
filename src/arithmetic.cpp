@@ -9,13 +9,6 @@ namespace fixedwide::detail {
 
 namespace {
 
-// Fits in signed 64 bits. Used by the native paths only; the portable backend
-// reaches the same decision through fits64_n.
-[[maybe_unused]] [[nodiscard]] constexpr bool fits64(wide::int128 val) noexcept {
-    auto h = static_cast<std::int64_t>(val.high);
-    return (h == 0 && (val.low >> 63) == 0) || (h == -1 && (val.low >> 63) == 1);
-}
-
 [[nodiscard]] constexpr bool common_rounding(Rounding r) noexcept {
     return r == Rounding::toward_zero || r == Rounding::nearest_even;
 }
@@ -80,79 +73,6 @@ std::expected<std::int64_t, ArithmeticError> quotient64_signed(std::int64_t high
     }
     return quotient64_general(high, low, divisor, rounding);
 }
-
-#if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
-inline wide::int128 divide_native_general(wide::int128 numerator, wide::int128 divisor, Rounding rounding) noexcept {
-    __int128 n = static_cast<__int128>(numerator);
-    __int128 d = static_cast<__int128>(divisor);
-    bool neg = (n < 0) != (d < 0);
-    unsigned __int128 un = n < 0 ? (static_cast<unsigned __int128>(0) - static_cast<unsigned __int128>(n))
-                                 : static_cast<unsigned __int128>(n);
-    unsigned __int128 ud = d < 0 ? (static_cast<unsigned __int128>(0) - static_cast<unsigned __int128>(d))
-                                 : static_cast<unsigned __int128>(d);
-    unsigned __int128 q = un / ud;
-    unsigned __int128 rem = un % ud;
-    if (rem != 0) {
-        bool inc = false;
-        if (rounding == Rounding::nearest_even) {
-            inc = nearest_even_increment(q, rem, ud);
-        } else if (rounding == Rounding::floor) {
-            inc = neg;
-        } else if (rounding == Rounding::ceil) {
-            inc = !neg;
-        } else if (rounding == Rounding::nearest_away) {
-            inc = (rem * 2 >= ud);
-        }
-        // Branchless: see round_magnitude. `inc` is a coin flip on real data.
-        q += static_cast<unsigned __int128>(inc);
-    }
-    if (neg) {
-        unsigned __int128 neg_q = static_cast<unsigned __int128>(0) - q;
-        return wide::int128(static_cast<std::uint64_t>(neg_q), static_cast<std::uint64_t>(neg_q >> 64));
-    }
-    return wide::int128(static_cast<std::uint64_t>(q), static_cast<std::uint64_t>(q >> 64));
-}
-
-inline wide::int128 divide_native(wide::int128 numerator, wide::int128 divisor, Rounding rounding) noexcept {
-    if (fits64(divisor)) {
-        std::int64_t d = static_cast<std::int64_t>(divisor.low);
-        std::int64_t h = static_cast<std::int64_t>(numerator.high);
-        std::uint64_t l = numerator.low;
-        if (quotient_fits_signed64(h, l, d)) {
-            auto val = div_signed64(h, l, d);
-            if (rounding == Rounding::toward_zero || val.remainder == 0) return wide::int128(val.quotient);
-            return wide::int128(val.quotient) + wide::int128(nearest_adjustment(val, d, (h < 0) != (d < 0)));
-        }
-    }
-    return divide_native_general(numerator, divisor, rounding);
-}
-
-inline wide::int128 divide_scale_general(wide::int128 numerator, wide::uint128 scale, Rounding rounding) noexcept {
-    bool neg = numerator.is_negative();
-    auto mag = magnitude(numerator);
-    auto divres = divide128(mag, scale, rounding != Rounding::toward_zero);
-    wide::uint128 limit = wide::uint128::max() >> 1;
-    if (neg) limit = limit + wide::uint128(1ULL);
-    auto rounded = round_magnitude(divres.quotient, divres.remainder, scale, neg, rounding, limit);
-    if (!rounded) return wide::int128{};
-    if (neg) {
-        wide::uint128 r = *rounded;
-        wide::int128 signed_r(r.low, r.high);
-        return -signed_r;
-    }
-    return wide::int128(rounded->low, rounded->high);
-}
-
-// Live only in the portable branch below; the native branch never calls it.
-[[maybe_unused]] inline wide::int128 divide_product_by_scale(wide::int128 product, wide::uint128 scale,
-                                                             Rounding rounding) noexcept {
-    if (scale.high == 0 && quotient_fits_signed64(static_cast<std::int64_t>(product.high), product.low,
-                                                  static_cast<std::int64_t>(scale.low))) {
-        return divide_native(product, wide::int128(scale.low), rounding);
-    }
-    return divide_scale_general(product, scale, rounding);
-}
-#endif
 
 } // namespace
 
@@ -242,15 +162,6 @@ using nat::u128;
     const auto half = mag / 2;
     const auto high = static_cast<std::uint64_t>(static_cast<u128>(numerator) >> 64);
     return high + half < 2 * half && !(divisor < 0 && high + half == 0);
-}
-
-// All six rounding modes on unsigned magnitudes, including exact and overflow.
-// Live only in the portable branch; the native paths use the intrinsic form.
-[[maybe_unused]] [[nodiscard, gnu::noinline]] std::expected<i128, ArithmeticError>
-divide_signed_general_n(i128 numerator, i128 divisor, Rounding rounding) noexcept {
-    const u128 denominator = nat::magnitude(divisor);
-    return nat::finish(nat::divide128(nat::magnitude(numerator), denominator, rounding != Rounding::toward_zero),
-                       denominator, (numerator < 0) != (divisor < 0), rounding);
 }
 
 // The wide fallback stays out of line. Inlining it drags a __divti3 call and a
@@ -536,16 +447,6 @@ std::expected<wide::int128, ArithmeticError> mul128_kernel(wide::int128 a, wide:
     auto scale = pow10_wide<wide::int128>(decimals);
     auto uscale = wide::uint128(scale.low, scale.high);
 
-#if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
-    if (common_rounding(rounding) && fits64(a) && fits64(b)) {
-        std::int64_t hi;
-        std::uint64_t lo;
-        imul64x64(static_cast<std::int64_t>(a.low), static_cast<std::int64_t>(b.low), hi, lo);
-        wide::int128 prod(lo, static_cast<std::uint64_t>(hi));
-        return divide_product_by_scale(prod, uscale, rounding);
-    }
-#endif
-
     bool neg = a.is_negative() != b.is_negative();
     auto ma = magnitude(a);
     auto mb = magnitude(b);
@@ -584,37 +485,13 @@ std::expected<wide::int128, ArithmeticError> div128_kernel(wide::int128 a, wide:
     wide::int128 scale = (decimals < 19) ? wide::int128(pow10(decimals), 0ULL) : pow10_wide<wide::int128>(decimals);
     auto uscale = wide::uint128(scale.low, scale.high);
 
-#if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
-    wide::uint128 bound = (decimals < 19)
-                              ? wide::uint128((((~static_cast<unsigned __int128>(0)) >> 1) / pow10(decimals)))
-                              : divide128(wide::uint128::max() >> 1, uscale).quotient;
-    auto ua = magnitude(a);
-    if (common_rounding(rounding) && ua <= bound) {
-        __int128 scaled_a = static_cast<__int128>(a) * static_cast<__int128>(scale);
-        if (rounding == Rounding::toward_zero) {
-            return wide::int128(scaled_a / static_cast<__int128>(b));
-        }
-        return divide_native(wide::int128(scaled_a), b, rounding);
-    }
-#endif
-
     bool neg = a.is_negative() != b.is_negative();
     auto ma = magnitude(a);
     auto mb = magnitude(b);
 
     // Numerator = ma * uscale (up to 256 bits)
-#if defined(__SIZEOF_INT128__) && defined(__clang__)
-    using u256_internal = unsigned _BitInt(256);
-    unsigned __int128 ma_128 = (static_cast<unsigned __int128>(ma.high) << 64) | ma.low;
-    u256_internal num_256 =
-        (uscale.high == 0)
-            ? (static_cast<u256_internal>(ma_128) * uscale.low)
-            : (static_cast<u256_internal>(ma_128) * ((static_cast<unsigned __int128>(uscale.high) << 64) | uscale.low));
-    wide::uint256 num(static_cast<std::uint64_t>(num_256), static_cast<std::uint64_t>(num_256 >> 64),
-                      static_cast<std::uint64_t>(num_256 >> 128), static_cast<std::uint64_t>(num_256 >> 192));
-#else
     wide::uint256 num = multiply128(ma, uscale);
-#endif
+
     if (num.limbs[2] == 0 && num.limbs[3] == 0) {
         wide::uint128 n128(num.limbs[0], num.limbs[1]);
         auto divres = divide128(n128, mb, rounding != Rounding::toward_zero);
@@ -647,30 +524,11 @@ std::expected<wide::int128, ArithmeticError> mul_div128_kernel(wide::int128 a, w
     const wide::int128 c(c_low, c_high);
     if (c.is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
 
-#if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
-    if (common_rounding(rounding) && fits64(a) && fits64(b)) {
-        std::int64_t hi;
-        std::uint64_t lo;
-        imul64x64(static_cast<std::int64_t>(a.low), static_cast<std::int64_t>(b.low), hi, lo);
-        wide::int128 prod(lo, static_cast<std::uint64_t>(hi));
-        return divide_native(prod, c, rounding);
-    }
-#endif
-
     bool neg = a.is_negative() != (b.is_negative() != c.is_negative());
     auto ma = magnitude(a);
     auto mb = magnitude(b);
     auto mc = magnitude(c);
-#if defined(__SIZEOF_INT128__) && defined(__clang__)
-    using u256_internal = unsigned _BitInt(256);
-    unsigned __int128 ma_128 = (static_cast<unsigned __int128>(ma.high) << 64) | ma.low;
-    unsigned __int128 mb_128 = (static_cast<unsigned __int128>(mb.high) << 64) | mb.low;
-    u256_internal p256 = static_cast<u256_internal>(ma_128) * static_cast<u256_internal>(mb_128);
-    wide::uint256 prod256(static_cast<std::uint64_t>(p256), static_cast<std::uint64_t>(p256 >> 64),
-                          static_cast<std::uint64_t>(p256 >> 128), static_cast<std::uint64_t>(p256 >> 192));
-#else
     auto prod256 = multiply128(ma, mb);
-#endif
 
     if (prod256.limbs[2] == 0 && prod256.limbs[3] == 0) {
         wide::uint128 p128(prod256.limbs[0], prod256.limbs[1]);
@@ -782,40 +640,6 @@ std::expected<wide::int128, ArithmeticError> quantize128_kernel(wide::int128 a, 
     unsigned diff = current_decimals - target_decimals;
     bool neg = a.is_negative();
     auto mag = magnitude(a);
-#if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
-    if (diff < 19) {
-        std::uint64_t udiv = pow10(diff);
-        unsigned __int128 ma = (static_cast<unsigned __int128>(mag.high) << 64) | mag.low;
-        unsigned __int128 q = ma / udiv;
-        unsigned __int128 r = ma % udiv;
-        constexpr unsigned __int128 limit = (~static_cast<unsigned __int128>(0)) >> 1;
-        unsigned __int128 lim = limit + (neg ? 1 : 0);
-        if (r != 0) {
-            if (rounding == Rounding::exact) return std::unexpected(ArithmeticError::inexact);
-            bool inc = false;
-            if (rounding == Rounding::nearest_even) {
-                inc = detail::nearest_even_increment(q, r, static_cast<unsigned __int128>(udiv));
-            } else if (rounding == Rounding::floor) {
-                inc = neg;
-            } else if (rounding == Rounding::ceil) {
-                inc = !neg;
-            } else if (rounding == Rounding::nearest_away) {
-                inc = (r * 2 >= udiv);
-            }
-            // Branchless, with the overflow test folded into the rare branch.
-            if (inc && q == lim) return std::unexpected(ArithmeticError::overflow);
-            q += static_cast<unsigned __int128>(inc);
-        }
-        unsigned __int128 res_u;
-        if (__builtin_mul_overflow(q, static_cast<unsigned __int128>(udiv), &res_u) || res_u > lim) {
-            return std::unexpected(ArithmeticError::overflow);
-        }
-        if (neg) {
-            res_u = static_cast<unsigned __int128>(0) - res_u;
-        }
-        return wide::int128(static_cast<std::uint64_t>(res_u), static_cast<std::uint64_t>(res_u >> 64));
-    }
-#endif
     auto divisor = pow10_wide<wide::int128>(diff);
     auto udiv = wide::uint128(divisor.low, divisor.high);
     auto divres = divide128(mag, udiv, rounding != Rounding::toward_zero);

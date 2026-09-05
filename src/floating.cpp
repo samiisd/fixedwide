@@ -1,7 +1,9 @@
 #include <fixedwide/floating.hpp>
 #include "detail.hpp"
 #include "limbs.hpp"
+#include <algorithm>
 #include <cmath>
+#include <type_traits>
 #include <limits>
 
 namespace fixedwide::detail {
@@ -26,24 +28,27 @@ std::expected<wide::int256, ArithmeticError> float_to_raw(Float value, unsigned 
     // library fail to compile on GCC 13 while claiming to support GCC.
     const Float m = std::abs(std::frexp(value, &exp));
 
-    // The significand is accumulated in a std::uint64_t, so no more than 64
-    // bits of it can be kept. numeric_limits reports what the platform's type
-    // actually has -- 24 for float, 53 for double, 64 for x86 long double, and
-    // 53 for long double on arm64 macOS, where it is double. On a platform
-    // whose long double is IEEE binary128 the value is 113 and the cap loses
-    // the low bits; sizeof was used here before and got that case wrong in the
-    // other direction, by claiming 64 bits of a 113-bit significand.
-    constexpr int sig_bits = std::numeric_limits<Float>::digits < 64 ? std::numeric_limits<Float>::digits : 64;
-    const Float scaled_m = std::ldexp(m, sig_bits);
-
-    std::uint64_t significand = static_cast<std::uint64_t>(scaled_m);
-    int pwr = exp - sig_bits;
-
-    if (pwr > 300) {
-        return std::unexpected(ArithmeticError::overflow);
+    // Extract the full significand in chunks. A binary128 long double has
+    // 113 bits, so silently limiting this to uint64_t loses real input bits.
+    constexpr int sig_bits = std::numeric_limits<Float>::digits;
+    u1024_limbs significand{};
+    if constexpr (sig_bits <= 64) {
+        significand = u1024_limbs(static_cast<std::uint64_t>(std::ldexp(m, sig_bits)));
+    } else {
+        Float remaining = m;
+        for (int consumed = 0; consumed < sig_bits;) {
+            const int count = std::min(64, sig_bits - consumed);
+            remaining = std::ldexp(remaining, count);
+            const auto chunk = static_cast<std::uint64_t>(remaining);
+            significand = (significand << static_cast<unsigned>(count)) + u1024_limbs(chunk);
+            remaining -= static_cast<Float>(chunk);
+            consumed += count;
+        }
     }
+    const int pwr = exp - sig_bits;
+    if (pwr > 300) return std::unexpected(ArithmeticError::overflow);
 
-    u1024_limbs num = u1024_limbs(significand) * pow10_limbs(decimals);
+    u1024_limbs num = significand * pow10_limbs(decimals);
     u1024_limbs den(1ULL);
 
     if (pwr >= 0) {
@@ -51,7 +56,12 @@ std::expected<wide::int256, ArithmeticError> float_to_raw(Float value, unsigned 
     } else {
         unsigned neg_pwr = static_cast<unsigned>(-pwr);
         if (neg_pwr >= 1024) {
-            num = u1024_limbs(0ULL);
+            // The nonzero scaled magnitude is below half a raw unit:
+            // at most 113 significand bits + 253 scale bits, divided by
+            // at least 2^1024. Preserve an inexact, below-half remainder
+            // so directed rounding and Rounding::exact still work.
+            num = u1024_limbs(1ULL);
+            den = u1024_limbs(4ULL);
         } else {
             den = den << neg_pwr;
         }
@@ -81,11 +91,15 @@ template<typename Float>
 Float raw_to_float(wide::int256 raw, unsigned decimals) noexcept {
     bool neg = raw.is_negative();
     auto mag = magnitude(raw);
-    Float d = static_cast<Float>(mag.limbs[0]) + static_cast<Float>(mag.limbs[1]) * std::ldexp(Float(1.0), 64) +
-              static_cast<Float>(mag.limbs[2]) * std::ldexp(Float(1.0), 128) +
-              static_cast<Float>(mag.limbs[3]) * std::ldexp(Float(1.0), 192);
-    Float scale = std::pow(Float(10.0), static_cast<Float>(decimals));
-    Float res = d / scale;
+    // float cannot represent 2^128: even a zero high limb used to evaluate
+    // 0 * infinity and contaminate every result with NaN. Accumulate and
+    // rescale in at least double, whose exponent range covers all 256 bits.
+    using Work = std::conditional_t<std::is_same_v<Float, float>, double, Float>;
+    Work d = static_cast<Work>(mag.limbs[0]) + static_cast<Work>(mag.limbs[1]) * std::ldexp(Work(1), 64) +
+             static_cast<Work>(mag.limbs[2]) * std::ldexp(Work(1), 128) +
+             static_cast<Work>(mag.limbs[3]) * std::ldexp(Work(1), 192);
+    Work scale = std::pow(Work(10), static_cast<Work>(decimals));
+    const Float res = static_cast<Float>(d / scale);
     return neg ? -res : res;
 }
 

@@ -360,6 +360,12 @@ template<std::size_t Lnum, std::size_t Lden>
         mul64x64(qhat, v2, ph, pl);
         while (!carry && (ph > rhat || (ph == rhat && pl > u_next2))) {
             --qhat;
+            // Keep qhat*v2 in sync with the estimate. Testing the old product
+            // again can decrement one time too many and return q-1 even for
+            // an exact division. Subtraction avoids another wide multiply.
+            const std::uint64_t previous_low = pl;
+            pl -= v2;
+            ph -= static_cast<std::uint64_t>(previous_low < v2);
             std::uint64_t prev = rhat;
             rhat += v1;
             carry = (rhat < prev);
