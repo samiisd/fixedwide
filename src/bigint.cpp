@@ -19,6 +19,9 @@ std::expected<UnsignedDivision, ArithmeticError> divmod(u256 numerator, u128 div
 
 std::expected<SignedDivision, ArithmeticError> divmod(i256 numerator, i128 divisor) noexcept {
     if (divisor.is_zero()) return std::unexpected(ArithmeticError::division_by_zero);
+    // The extra negative magnitude has no positive signed counterpart. Detect
+    // it before modular negation turns the mathematical quotient back into min.
+    if (numerator == i256::min() && divisor == i128(-1)) return std::unexpected(ArithmeticError::overflow);
     bool neg_num = numerator.is_negative();
     bool neg = neg_num != divisor.is_negative();
     auto unum = magnitude(numerator);

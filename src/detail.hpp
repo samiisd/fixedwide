@@ -179,7 +179,11 @@ template<typename F>
 [[nodiscard]] inline std::uint64_t div128by64(std::uint64_t high, std::uint64_t low, std::uint64_t divisor,
                                               std::uint64_t& remainder) noexcept {
     std::uint64_t quotient;
-    __asm__("divq %[divisor]" : "=a"(quotient), "=d"(remainder) : "a"(low), "d"(high), [divisor] "r"(divisor) : "cc");
+    // divq may trap: do not let GCC hoist it above the caller's quotient-fit guard.
+    __asm__ volatile("divq %[divisor]"
+                     : "=a"(quotient), "=d"(remainder)
+                     : "a"(low), "d"(high), [divisor] "r"(divisor)
+                     : "cc");
     return quotient;
 }
 
@@ -190,7 +194,10 @@ struct SignedQuotient64 {
 [[nodiscard]] inline SignedQuotient64 div_signed64(std::int64_t high, std::uint64_t low,
                                                    std::int64_t divisor) noexcept {
     std::int64_t quotient, remainder;
-    __asm__("idivq %[divisor]" : "=a"(quotient), "=d"(remainder) : "a"(low), "d"(high), [divisor] "r"(divisor) : "cc");
+    __asm__ volatile("idivq %[divisor]"
+                     : "=a"(quotient), "=d"(remainder)
+                     : "a"(low), "d"(high), [divisor] "r"(divisor)
+                     : "cc");
     return {quotient, remainder};
 }
 

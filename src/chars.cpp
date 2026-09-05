@@ -316,7 +316,7 @@ std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::s
         q = m / d;
         r = m % d;
     } else {
-        auto divres = divide128(wide::uint128(m, 0ULL), pow10_wide<wide::uint128>(reduce), false);
+        auto divres = divide128(wide::uint128(m, 0ULL), pow10_wide<wide::uint128>(reduce));
         q = divres.quotient.low;
         r = divres.remainder.low;
         d = 0;
@@ -393,7 +393,7 @@ std::expected<std::size_t, FormatError> format_fixed_kernel(char* buffer, std::s
             q = wide::uint128(qlo, qhi);
             r = wide::uint128(rem, 0);
         } else {
-            auto divres = divide128(mag128, divisor128, false);
+            auto divres = divide128(mag128, divisor128);
             q = divres.quotient;
             r = divres.remainder;
         }

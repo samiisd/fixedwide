@@ -1,5 +1,21 @@
 # Changelog
 
+
+## Unreleased
+
+- Add a comprehensive five-part numerical boundary suite with independent
+  integer/rational oracles and always-active assertions.
+- Measure native and portable coverage separately, retain raw LLVM totals and
+  distinct source-line counts, and fail on empty or mismatched coverage maps.
+- Fix signed 256/128-bit `min / -1` overflow reporting.
+- Preserve remainders when rounding reduced-digit Fixed128 formatting.
+- Fix fixed-to-float NaNs from zero high limbs and directed rounding of tiny
+  nonzero floating inputs; preserve extended long-double significands.
+- Fix stale quotient-correction products in the generic Knuth divider.
+- Honor the forced-portable backend in wide arithmetic and remove unreachable
+  legacy native helpers.
+
+
 All notable changes to the `fixedwide` library are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),

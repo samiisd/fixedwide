@@ -385,80 +385,30 @@ jobs:
           wget -qO llvm.sh https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
           sudo ./llvm.sh 20
           sudo apt-get install -y --no-install-recommends libboost-dev cmake ninja-build
-      # Both backends, merged.
-      #
-      # A single native build reports code that only the portable backend
-      # reaches as uncovered -- src/division.hpp read as 10% covered when the
-      # portable and no-int128 jobs exercise it thoroughly. Both are shipped, so
-      # both belong in the number.
-      - name: Build native and portable
+      - name: Test coverage reporting
+        run: python3 -m unittest discover -s scripts -p test_coverage_report.py
+      - name: Build, test and measure each backend separately
+        shell: bash
+        env:
+          LLVM_COV: llvm-cov-20
+          LLVM_PROFDATA: llvm-profdata-20
         run: |
+          set -euo pipefail
           for backend in native portable; do
-            extra=""
-            [ "$backend" = portable ] && extra="-DFIXEDWIDE_FORCE_PORTABLE=ON"
+            extra=()
+            [ "$backend" != portable ] || extra+=(-DFIXEDWIDE_FORCE_PORTABLE=ON)
             cmake -B "build-$backend" -G Ninja -DCMAKE_BUILD_TYPE=Debug \
               -DCMAKE_CXX_COMPILER=clang++-20 -DFIXEDWIDE_COVERAGE=ON \
-              -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON $extra
+              -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON \
+              -DFIXEDWIDE_BUILD_EXAMPLES=ON "${extra[@]}"
             cmake --build "build-$backend"
+            scripts/coverage.sh "build-$backend" "coverage/$backend" "$backend"
+            cat "coverage/$backend/SUMMARY.md" >> "$GITHUB_STEP_SUMMARY"
           done
-      - name: Run tests and report merged coverage
-        # pipefail is not optional here. The previous version piped llvm-cov
-        # through tee without it, so when llvm-cov failed -- which it did, on
-        # every run, because source DIRECTORIES were passed where it expects
-        # object files -- the step took tee's exit status and the job reported
-        # success with no coverage report at all.
-        shell: bash
+      - name: Prepare the conservative coverage badge
         run: |
-          set -euo pipefail
-          mkdir -p "$PWD/profraw"
-          for backend in native portable; do
-            # An absolute pattern: ctest runs each test from its own binary
-            # directory, so a relative one scatters the files and the merge
-            # finds nothing.
-            LLVM_PROFILE_FILE="$PWD/profraw/$backend-%p.profraw" \
-              ctest --test-dir "build-$backend" --output-on-failure
-          done
-          llvm-profdata-20 merge -sparse profraw/*.profraw -o merged.profdata
-
-          # One positional binary, every other binary via -object, and the
-          # sources selected with a regex rather than by path arguments.
-          mapfile -t binaries < <(find build-native/tests build-native/examples \
-                                       build-portable/tests build-portable/examples \
-                                       -maxdepth 1 -type f -perm -u+x | sort)
-          primary=${binaries[0]}
-          extra=()
-          for b in "${binaries[@]:1}"; do extra+=(-object "$b"); done
-          ignore='-ignore-filename-regex=(tests|examples|benchmarks|fuzz|_deps)/'
-
-          llvm-cov-20 report "$primary" "${extra[@]}" \
-            -instr-profile=merged.profdata "$ignore" | tee coverage.txt
-
-          {
-            echo '### Coverage (native + portable, merged)'
-            echo '```'
-            cat coverage.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-      - name: Enforce coverage thresholds
-        shell: bash
-        run: |
-          set -euo pipefail
-          read -r lines branches < <(awk '/^TOTAL/ {
-              for (i = 1; i <= NF; ++i) if ($i ~ /%$/) { gsub("%","",$i); pct[++n] = $i }
-              # llvm-cov TOTAL columns: regions, functions, lines, branches.
-              print pct[3], pct[4]
-          }' coverage.txt)
-          echo "line coverage:   $lines%"
-          echo "branch coverage: $branches%"
-          # A ratchet against regression, not an aspiration. Raise it when the
-          # number rises; never lower it to make a build green.
-          fail=0
-          # Set from the first merged CI measurement: 70.14% line, 76.82%
-          # branch. Raise it when the number rises; never lower it to make a
-          # build green -- that is what a ratchet means.
-          awk -v v="$lines"    'BEGIN { exit (v+0 >= 70) ? 0 : 1 }' || { echo "line coverage below 70%" >&2; fail=1; }
-          awk -v v="$branches" 'BEGIN { exit (v+0 >= 76) ? 0 : 1 }' || { echo "branch coverage below 76%" >&2; fail=1; }
-          exit $fail
+          python3 scripts/coverage_badge.py \
+            coverage/native/llvm-summary.txt docs/assets/coverage.svg
       # shields.io cannot fetch a number out of a private repository, so the
       # badge is generated from the same report the gate just enforced and
       # committed. It therefore cannot drift from the number CI actually
@@ -466,7 +416,7 @@ jobs:
       - name: Refresh the coverage badge
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          python3 scripts/coverage_badge.py coverage.txt docs/assets/coverage.svg
+          python3 scripts/coverage_badge.py coverage/native/llvm-summary.txt docs/assets/coverage.svg
           if ! git diff --quiet docs/assets/coverage.svg; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -483,4 +433,16 @@ jobs:
         if: always()
         with:
           name: coverage-report
-          path: coverage.txt
+          path: |
+            coverage/*/SUMMARY.md
+            coverage/*/summary.json
+            coverage/*/environment.txt
+            coverage/*/ctest.log
+            coverage/*/conformance.log
+            coverage/*/llvm-summary.txt
+            coverage/*/*.stderr
+            coverage/*/coverage.lcov
+            coverage/*/llvm-export.json
+            coverage/*/coverage.profdata
+            docs/assets/coverage.svg
+          if-no-files-found: error

@@ -132,3 +132,23 @@ if(FIXEDWIDE_BUILD_ORACLE_TESTS)
     target_include_directories(test_oracle PRIVATE ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
     add_test(NAME fixedwide.oracle COMMAND test_oracle)
 endif()
+
+# Independent, focused coverage regressions supplement the large differential
+# suites. Boost is a test-only dependency and never propagates to consumers.
+if(Boost_FOUND)
+    add_executable(test_coverage
+        test_coverage.cpp
+        test_coverage_wide.cpp
+        test_coverage_text.cpp
+        test_coverage_arithmetic.cpp
+        test_coverage_adapters.cpp
+        test_coverage_mixed.cpp)
+    target_link_libraries(test_coverage PRIVATE fixedwide::fixedwide)
+    target_include_directories(test_coverage PRIVATE ${CMAKE_SOURCE_DIR} ${Boost_INCLUDE_DIRS})
+    # These tests share a source-coverage map. A single unity translation unit
+    # avoids competing unused/instantiated mappings for the same header code.
+    set_target_properties(test_coverage PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 0)
+    foreach(SUITE wide text arithmetic adapters mixed)
+        add_test(NAME fixedwide.coverage_${SUITE} COMMAND test_coverage ${SUITE})
+    endforeach()
+endif()
