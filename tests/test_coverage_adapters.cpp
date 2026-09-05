@@ -152,5 +152,8 @@ void run_coverage_adapters() {
     floating<Fixed64<12>, float>();
     floating<Fixed128<38>, double>();
     floating<Fixed256<76>, long double>();
+}
+
+void run_coverage_format_adapters() {
     formats_and_streams();
 }

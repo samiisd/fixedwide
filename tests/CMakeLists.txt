@@ -135,7 +135,7 @@ endif()
 
 # Independent, focused coverage regressions supplement the large differential
 # suites. Boost is a test-only dependency and never propagates to consumers.
-if(Boost_FOUND)
+if(Boost_FOUND AND (FIXEDWIDE_BUILD_TESTS OR FIXEDWIDE_BUILD_ORACLE_TESTS))
     add_executable(test_coverage
         test_coverage.cpp
         test_coverage_wide.cpp
@@ -148,7 +148,12 @@ if(Boost_FOUND)
     # These tests share a source-coverage map. A single unity translation unit
     # avoids competing unused/instantiated mappings for the same header code.
     set_target_properties(test_coverage PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 0)
-    foreach(SUITE wide text arithmetic adapters mixed)
+    foreach(SUITE wide text arithmetic adapters format_adapters mixed)
         add_test(NAME fixedwide.coverage_${SUITE} COMMAND test_coverage ${SUITE})
     endforeach()
+    # The existing fixedwide.format test documents the libc++abi format_error
+    # allocation mismatch. Isolate the same exception checks here, leaving the
+    # arithmetic, floating and other coverage suites fully checked by ASan.
+    set_tests_properties(fixedwide.coverage_format_adapters PROPERTIES
+        ENVIRONMENT "ASAN_OPTIONS=alloc_dealloc_mismatch=0")
 endif()

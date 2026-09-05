@@ -7,6 +7,7 @@ void run_coverage_wide();
 void run_coverage_text();
 void run_coverage_arithmetic();
 void run_coverage_adapters();
+void run_coverage_format_adapters();
 void run_coverage_mixed();
 
 int main(int argc, char** argv) {
@@ -23,6 +24,7 @@ int main(int argc, char** argv) {
     run("text", run_coverage_text);
     run("arithmetic", run_coverage_arithmetic);
     run("adapters", run_coverage_adapters);
+    run("format_adapters", run_coverage_format_adapters);
     run("mixed", run_coverage_mixed);
     CHECK(matched);
     std::printf("coverage suite %s passed; assertions=%llu\n", argv[1], static_cast<unsigned long long>(checks));
