@@ -9,6 +9,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstring>
+#include <limits>
 
 namespace fixedwide_competitor {
 
@@ -19,8 +20,12 @@ void benchmark_adjacent_types(const Fixtures& fixtures) {
     std::vector<CnlBinary> cnl_lhs(data_size), cnl_rhs(data_size);
     std::vector<FpmBinary> fpm_lhs(data_size), fpm_rhs(data_size);
 
-    const double scale = static_cast<double>(fixtures.scale);
-    bool saw_cnl_binary_overflow = false;
+    // Both binary libraries receive the SAME bounded inputs. Dividing the
+    // scale-4 fixture by 32 puts both magnitudes below 0.5, keeping CNL's
+    // un-widened raw product inside int64_t. Prove that bound per input below;
+    // never execute an overflowing operation and then inspect its result.
+    const double scale = static_cast<double>(fixtures.scale) * 32.0;
+    constexpr __int128 binary_scale = static_cast<__int128>(1) << 32;
     for (std::size_t i = 0; i < data_size; ++i) {
         lhs[i] = static_cast<double>(fixtures.mul[i].lhs_raw) / scale;
         rhs[i] = static_cast<double>(fixtures.mul[i].rhs_raw) / scale;
@@ -29,22 +34,30 @@ void benchmark_adjacent_types(const Fixtures& fixtures) {
         fpm_lhs[i] = FpmBinary{lhs[i]};
         fpm_rhs[i] = FpmBinary{rhs[i]};
 
+        const auto lhs_raw = cnl::_impl::to_rep(cnl_lhs[i]);
+        const auto rhs_raw = cnl::_impl::to_rep(cnl_rhs[i]);
+        const __int128 product = static_cast<__int128>(lhs_raw) * rhs_raw;
+        expect(rhs_raw != 0, "CNL binary divisor is zero");
+        expect(product >= std::numeric_limits<std::int64_t>::min() &&
+                   product <= std::numeric_limits<std::int64_t>::max(),
+               "CNL binary raw product would overflow; fixture must be bounded before execution");
+
         const CnlBinary cnl_add = cnl_lhs[i] + cnl_rhs[i];
         expect(std::abs(static_cast<double>(cnl_add) - (lhs[i] + rhs[i])) < 1e-4,
                "CNL binary addition exceeded its declared tolerance");
-
-        // CNL's same-type division first divides the raw representations at
-        // exponent zero, dropping fractional bits before converting to power<-32>.
-        const CnlBinary cnl_div = cnl_lhs[i] / cnl_rhs[i];
-        const std::int64_t expected_div_raw = (cnl::_impl::to_rep(cnl_lhs[i]) / cnl::_impl::to_rep(cnl_rhs[i])) << 32;
-        expect(cnl::_impl::to_rep(cnl_div) == expected_div_raw,
-               "CNL binary division disagrees with its same-type quotient model");
-
-        // CNL scaled_integer forms products directly in its underlying int64_t
-        // representation type without 128-bit widening, overflowing for values >= 0.5.
         const CnlBinary cnl_mul = cnl_lhs[i] * cnl_rhs[i];
-        saw_cnl_binary_overflow =
-            saw_cnl_binary_overflow || (std::abs(static_cast<double>(cnl_mul) - (lhs[i] * rhs[i])) > 0.01);
+        expect(std::abs(static_cast<double>(cnl_mul) - (lhs[i] * rhs[i])) < 1e-4,
+               "CNL binary multiplication exceeded its declared tolerance");
+
+        // Same-type division loses fractional quotient bits at exponent zero.
+        // Label it separately rather than presenting it as full-precision div.
+        const __int128 expected_div_raw = (static_cast<__int128>(lhs_raw) / rhs_raw) * binary_scale;
+        expect(expected_div_raw >= std::numeric_limits<std::int64_t>::min() &&
+                   expected_div_raw <= std::numeric_limits<std::int64_t>::max(),
+               "CNL binary quotient conversion would overflow");
+        const CnlBinary cnl_div = cnl_lhs[i] / cnl_rhs[i];
+        expect(cnl::_impl::to_rep(cnl_div) == static_cast<std::int64_t>(expected_div_raw),
+               "CNL binary division disagrees with its same-type quotient model");
 
         expect(std::abs(static_cast<double>(fpm_lhs[i] + fpm_rhs[i]) - (lhs[i] + rhs[i])) < 1e-4,
                "fpm addition exceeded its declared tolerance");
@@ -53,7 +66,6 @@ void benchmark_adjacent_types(const Fixtures& fixtures) {
         expect(std::abs(static_cast<double>(fpm_lhs[i] / fpm_rhs[i]) - (lhs[i] / rhs[i])) < 1e-4,
                "fpm division exceeded its declared tolerance");
     }
-    expect(saw_cnl_binary_overflow, "CNL binary multiplication did not expose representation overflow");
 
     row("cnl", "scaled_integer<int64,power<-32>>", "binary_fixed_approx", "add", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) {
@@ -67,7 +79,7 @@ void benchmark_adjacent_types(const Fixtures& fixtures) {
             consume(result);
         }
     });
-    row("cnl", "scaled_integer<int64,power<-32>>", "binary_fixed_approx", "div", [&](std::size_t n) {
+    row("cnl", "scaled_integer<int64,power<-32>>", "binary_fixed_approx", "div_same_type", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) {
             const CnlBinary result = cnl_lhs[i & (data_size - 1)] / cnl_rhs[i & (data_size - 1)];
             consume(result);
@@ -112,10 +124,29 @@ void benchmark_hardware_floors(const Fixtures& fixtures) {
         raw_lhs[i] = fixtures.mul[i].lhs_raw;
         raw_rhs[i] = fixtures.mul[i].rhs_raw;
         expect(raw_rhs[i] != 0, "raw integer divisor is zero");
+        const __int128 raw_product = static_cast<__int128>(raw_lhs[i]) * raw_rhs[i];
+        expect(raw_product >= std::numeric_limits<std::int64_t>::min() &&
+                   raw_product <= std::numeric_limits<std::int64_t>::max(),
+               "raw integer multiplication fixture would overflow");
         expect(std::abs((add_lhs[i] + add_rhs[i]) - static_cast<double>(fixtures.add[i].expected_raw) / scale) < 1e-4,
                "hardware double add exceeds expected tolerance");
         expect(std::abs((mul_lhs[i] * mul_rhs[i]) - static_cast<double>(fixtures.mul[i].expected_raw) / scale) < 1e-4,
                "hardware double mul exceeds expected tolerance");
+        expect(std::abs((div_lhs[i] / div_rhs[i]) - static_cast<double>(fixtures.div[i].expected_raw) / scale) < 1e-4,
+               "hardware double div exceeds expected tolerance");
+
+        double parsed = 0;
+        const auto& text = fixtures.text[i].text;
+        const auto parsed_result = std::from_chars(text.data(), text.data() + text.size(), parsed);
+        expect(parsed_result.ec == std::errc{} && parsed_result.ptr == text.data() + text.size() &&
+                   std::abs(parsed - text_values[i]) < 1e-12,
+               "hardware double parse exceeds expected tolerance");
+        std::array<char, 96> buffer{};
+        const auto formatted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), text_values[i],
+                                             std::chars_format::fixed, 4);
+        expect(formatted.ec == std::errc{} &&
+                   std::string_view(buffer.data(), static_cast<std::size_t>(formatted.ptr - buffer.data())) == text,
+               "hardware double formatting disagrees with canonical text");
     }
 
     row("std", "double", "hardware_baseline", "add", [&](std::size_t n) {
@@ -177,16 +208,20 @@ void benchmark_hardware_floors(const Fixtures& fixtures) {
 
 void benchmark_serialization(const Fixtures& fixtures) {
     using T = fixedwide::Fixed64<4>;
+    using Bytes = std::array<std::uint8_t, sizeof(std::int64_t)>;
     std::vector<T> values(data_size);
+    std::vector<Bytes> native_bytes(data_size), little_bytes(data_size);
     for (std::size_t i = 0; i < data_size; ++i) {
         values[i] = T::from_raw(fixtures.text[i].raw);
-        const auto bytes = fixedwide::to_bytes<fixedwide::endian::little>(values[i]);
-        const auto restored = fixedwide::from_bytes<T, fixedwide::endian::little>(bytes);
+        little_bytes[i] = fixedwide::to_bytes<fixedwide::endian::little>(values[i]);
+        const auto restored = fixedwide::from_bytes<T, fixedwide::endian::little>(little_bytes[i]);
         expect(restored.has_value() && *restored == values[i], "serialization roundtrip disagrees with oracle");
+        const auto raw = fixtures.text[i].raw;
+        std::memcpy(native_bytes[i].data(), &raw, sizeof raw);
     }
 
     row("std", "int64_t", "hardware_baseline", "memcpy_store", [&](std::size_t n) {
-        std::array<std::uint8_t, sizeof(std::int64_t)> buffer{};
+        Bytes buffer{};
         for (std::size_t i = 0; i < n; ++i) {
             const auto raw = fixtures.text[i & (data_size - 1)].raw;
             std::memcpy(buffer.data(), &raw, sizeof raw);
@@ -194,12 +229,9 @@ void benchmark_serialization(const Fixtures& fixtures) {
         }
     });
     row("std", "int64_t", "hardware_baseline", "memcpy_load", [&](std::size_t n) {
-        std::array<std::uint8_t, sizeof(std::int64_t)> buffer{};
-        const auto raw = fixtures.text[0].raw;
-        std::memcpy(buffer.data(), &raw, sizeof raw);
         for (std::size_t i = 0; i < n; ++i) {
             std::int64_t result = 0;
-            std::memcpy(&result, buffer.data(), sizeof result);
+            std::memcpy(&result, native_bytes[i & (data_size - 1)].data(), sizeof result);
             consume(result);
         }
     });
@@ -210,9 +242,8 @@ void benchmark_serialization(const Fixtures& fixtures) {
         }
     });
     row("fixedwide", "Fixed64<4>", "serialization", "from_bytes_little", [&](std::size_t n) {
-        const auto bytes = fixedwide::to_bytes<fixedwide::endian::little>(values[0]);
         for (std::size_t i = 0; i < n; ++i) {
-            const auto result = fixedwide::from_bytes<T, fixedwide::endian::little>(bytes);
+            const auto result = fixedwide::from_bytes<T, fixedwide::endian::little>(little_bytes[i & (data_size - 1)]);
             consume(result);
         }
     });
