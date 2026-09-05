@@ -164,10 +164,6 @@ using nat::u128;
     return high + half < 2 * half && !(divisor < 0 && high + half == 0);
 }
 
-// All six rounding modes on unsigned magnitudes, including exact and overflow.
-// Live only in the portable branch; the native paths use the intrinsic form.
-[[maybe_unused]]
-
 // The wide fallback stays out of line. Inlining it drags a __divti3 call and a
 // full rounding tail into every caller's hot path, which costs register pressure
 // and code layout even on the operands that never reach it.

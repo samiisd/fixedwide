@@ -1,5 +1,9 @@
 # Changelog
 
+All notable changes to the `fixedwide` library are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
@@ -14,12 +18,6 @@
 - Fix stale quotient-correction products in the generic Knuth divider.
 - Honor the forced-portable backend in wide arithmetic and remove unreachable
   legacy native helpers.
-
-
-All notable changes to the `fixedwide` library are documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.6.0] - 2026-09-04
 
