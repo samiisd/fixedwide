@@ -1,7 +1,6 @@
-// Cross-library benchmark with explicit numerical contracts.
-//
-// Exact decimal rows use signed scaled-integer fixtures and an independent
-// __int128 oracle. Binary fixed-point and raw hardware rows are separate classes.
+// Cross-library throughput benchmark with explicit numerical contracts.
+// Decimal fixtures are exact at their scale. Binary fixtures have bounded raw
+// intermediates and separate tolerance-based validation; they are not decimal.
 #include "competitor_common.hpp"
 #include "competitor_versions.hpp"
 
@@ -33,14 +32,18 @@ int main(int argc, char** argv) {
 
     const Fixtures scale4 = make_scale4_fixtures();
     const Fixtures scale12 = make_scale12_fixtures();
+    const char* mode = std::getenv("FIXEDWIDE_BENCH_MODE");
 
-    std::printf("# schema=2\n");
+    std::printf("# schema=3\n");
+    std::printf("# mode=%s\n", mode != nullptr ? mode : "timing");
     std::printf("# compiler=%s\n", __VERSION__);
     std::printf("# iterations=%zu\n", fixedwide_bench::iterations);
     std::printf("# repetitions=%u\n", fixedwide_bench::repetitions);
     std::printf("# dependencies=%s\n", fixedwide_bench::competitor_dependencies);
     std::printf("# decimal_contract=signed exact scaled-integer fixtures; multiplication and division exact at "
                 "declared scale\n");
+    std::printf("# binary_contract=shared scale-4 multiplication inputs divided by 32; raw product bounds checked "
+                "before execution; tolerance-based validation\n");
     std::printf("# text_contract=fixed notation with all declared fractional digits\n");
     std::printf(
         "library,type,semantic_class,operation,iterations,repetitions,min_ns,median_ns,p95_ns,max_ns,samples\n");
@@ -52,6 +55,7 @@ int main(int argc, char** argv) {
     benchmark_hardware_floors(scale4);
     benchmark_serialization(scale4);
 
+    std::printf("# validations=%llu\n", static_cast<unsigned long long>(validations));
     std::fprintf(stderr, "PASSED validations=%llu\n", static_cast<unsigned long long>(validations));
     return 0;
 }

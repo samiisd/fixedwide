@@ -1,18 +1,19 @@
 name: Competitor benchmark
 
-# The benchmark changes rarely, but a green general CI run is not evidence that
-# its optional dependencies still build or that its exact-result checks pass.
-# Run the full suite on every relevant pull request and once a day on main.
 on:
   pull_request:
     branches: [ main ]
     paths:
       - '.github/workflows/competitors.yml'
+      - 'CMakeLists.txt'
+      - 'include/**'
+      - 'src/**'
       - 'benchmarks/**'
       - 'scripts/build_mpdecimal.sh'
       - 'scripts/competitor_report.py'
+      - 'scripts/test_competitor_report.py'
       - 'reports/BENCHMARK_COMPETITORS.md'
-      - 'reports/raw/competitors.csv'
+      - 'reports/raw/competitors*'
       - 'README.md'
   schedule:
     - cron: '30 3 * * *'
@@ -32,6 +33,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Test report validation and capture source
+        run: |
+          python3 scripts/test_competitor_report.py
+          git archive --format=tar --output=competitor-source.tar HEAD
+
       - name: Install Clang 22 and build tools
         run: |
           wget -qO llvm.sh https://apt.llvm.org/llvm.sh
@@ -50,15 +56,16 @@ jobs:
           echo "LD_LIBRARY_PATH=$RUNNER_TEMP/mpdecimal/lib:$RUNNER_TEMP/mpdecimal/lib64:${LD_LIBRARY_PATH:-}" \
             >> "$GITHUB_ENV"
 
-      - name: Configure and build
+      - name: Configure and build Release
         shell: bash
         run: |
-          set -o pipefail
+          set -euo pipefail
           {
             cmake -B build-competitors -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_CXX_COMPILER=clang++-22 \
               -DCMAKE_CXX_FLAGS=-Werror \
+              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
               -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
               -DFIXEDWIDE_BUILD_COMPETITOR_BENCH=ON \
               -DFIXEDWIDE_BUILD_TESTS=OFF \
@@ -69,31 +76,91 @@ jobs:
             cmake --build build-competitors --target fixedwide_competitor_bench
           } 2>&1 | tee competitor-build.log
 
-      - name: Run and validate retained schema
+      - name: Validate competitor harness under ASan and UBSan
+        shell: bash
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+          FIXEDWIDE_BENCH_MODE: sanitized
+        run: |
+          set -euo pipefail
+          # Instrument fixedwide, the harness and header-only dependencies.
+          # The separately built upstream mpdecimal shared libraries are not instrumented.
+          {
+            cmake -B build-competitors-sanitize -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_CXX_COMPILER=clang++-22 \
+              '-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -g' \
+              '-DCMAKE_CXX_FLAGS_RELEASE=-O1 -DNDEBUG' \
+              -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
+              -DFIXEDWIDE_BUILD_COMPETITOR_BENCH=ON \
+              -DFIXEDWIDE_BUILD_TESTS=OFF \
+              -DFIXEDWIDE_BUILD_EXAMPLES=OFF \
+              -DFIXEDWIDE_MPDECIMAL_ROOT="$RUNNER_TEMP/mpdecimal" \
+              -DFIXEDWIDE_MPDECIMAL_VERSION=4.0.1 \
+              -DFIXEDWIDE_REQUIRE_MPDECIMAL=ON \
+              -DFETCHCONTENT_SOURCE_DIR_FPM="$PWD/build-competitors/_deps/fpm-src" \
+              -DFETCHCONTENT_SOURCE_DIR_CNL="$PWD/build-competitors/_deps/cnl-src" \
+              -DFETCHCONTENT_SOURCE_DIR_DECIMAL_FOR_CPP="$PWD/build-competitors/_deps/decimal_for_cpp-src" \
+              -DFETCHCONTENT_SOURCE_DIR_BOOST_DECIMAL="$PWD/build-competitors/_deps/boost_decimal-src"
+            cmake --build build-competitors-sanitize --target fixedwide_competitor_bench
+          } 2>&1 | tee competitor-sanitize-build.log
+          ./build-competitors-sanitize/benchmarks/fixedwide_competitor_bench \
+            --iterations 4096 --repetitions 1 \
+            > competitor-sanitized.csv 2> competitor-sanitized.stderr
+          cat competitor-sanitized.stderr
+          grep -q '^PASSED validations=' competitor-sanitized.stderr
+          # Sanitizer timings must never be promoted to the performance report.
+          if python3 scripts/competitor_report.py --input competitor-sanitized.csv --validate-only; then
+            echo 'ERROR: report validator accepted sanitizer timings' >&2
+            exit 1
+          fi
+
+      - name: Run Release benchmark and generate fresh reports
         shell: bash
         run: |
           set -euo pipefail
           cpu=$(python3 -c 'import os; print(min(os.sched_getaffinity(0)))')
-          taskset -c "$cpu" \
-            ./build-competitors/benchmarks/fixedwide_competitor_bench \
-              --iterations 262144 --repetitions 11 \
-              > competitors.csv 2> competitors.stderr
+          {
+            echo "# source_commit=$(git rev-parse HEAD)"
+            echo "# binary_sha256=$(sha256sum build-competitors/benchmarks/fixedwide_competitor_bench | cut -d' ' -f1)"
+            echo "# cpu=$(LC_ALL=C lscpu | sed -n 's/^Model name:[[:space:]]*//p' | head -1)"
+            echo "# affinity=$cpu"
+            echo '# flags=-O3 -DNDEBUG -Werror -fno-vectorize -fno-slp-vectorize -ffp-contract=off (compile_commands.json retained)'
+            echo "# run_url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            taskset -c "$cpu" ./build-competitors/benchmarks/fixedwide_competitor_bench \
+              --iterations 262144 --repetitions 11 2> competitors.stderr
+          } > competitors.csv
           cat competitors.stderr
           grep -q '^PASSED validations=' competitors.stderr
-          python3 scripts/competitor_report.py \
-            --input competitors.csv --validate-only
-          python3 scripts/competitor_report.py \
-            --input reports/raw/competitors.csv --check-markdown reports/BENCHMARK_COMPETITORS.md
+          python3 scripts/competitor_report.py --input competitors.csv --validate-only --require-provenance
+          python3 scripts/competitor_report.py --input competitors.csv --require-provenance \
+            --generate-markdown COMPETITOR_RESULTS.md
+          cp README.md README.measured.md
+          python3 scripts/competitor_report.py --input competitors.csv --require-provenance \
+            --update-readme README.measured.md
+          # The checked-in baseline can be historical, but its README/report MUST
+          # derive from that same CSV. Schema-2 inputs only render a withdrawal notice.
+          python3 scripts/competitor_report.py --input reports/raw/competitors.csv \
+            --check-markdown reports/BENCHMARK_COMPETITORS.md --check-readme README.md
+          cat competitors.csv
 
       - name: Upload raw evidence
         uses: actions/upload-artifact@v7
         if: always()
         with:
           name: competitor-benchmark-${{ github.sha }}
-          if-no-files-found: warn
+          if-no-files-found: error
           path: |
+            competitor-source.tar
             competitor-build.log
+            competitor-sanitize-build.log
+            competitor-sanitized.csv
+            competitor-sanitized.stderr
             competitors.csv
             competitors.stderr
+            COMPETITOR_RESULTS.md
+            README.measured.md
+            build-competitors/compile_commands.json
             build-competitors/CMakeFiles/CMakeConfigureLog.yaml
             build-competitors/benchmarks/competitor_versions.txt

@@ -1,13 +1,25 @@
 #!/usr/bin/env python3
-"""Validate the exact-contract competitor benchmark CSV."""
-
+"""Validate retained competitor samples and render reports without embedded timings."""
 from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import math
 import pathlib
+import re
+
+BEGIN = "<!-- BEGIN GENERATED COMPETITOR SUMMARY -->"
+END = "<!-- END GENERATED COMPETITOR SUMMARY -->"
+WITHDRAWN = (
+    "Previously retained schema-2 timings are withdrawn: their process executed "
+    "an overflowing CNL binary multiplication. They must not support performance claims. "
+    "The corrected schema-3 benchmark bounds binary operands before execution. "
+    "Fresh Release CSV, validation logs and generated reports are available from the "
+    "[Competitor benchmark workflow](https://github.com/samiisd/fixedwide/actions/workflows/competitors.yml). "
+    "No replacement timings are claimed until that evidence is retained."
+)
 
 
 def fail(message: str) -> None:
@@ -16,37 +28,29 @@ def fail(message: str) -> None:
 
 def required_rows() -> set[tuple[str, str, str, str]]:
     rows: set[tuple[str, str, str, str]] = set()
-
-    def add(library: str, type_name: str, semantic: str, operations: tuple[str, ...]) -> None:
-        rows.update((library, type_name, semantic, operation) for operation in operations)
-
+    def add(lib: str, typ: str, sem: str, ops: tuple[str, ...]) -> None:
+        rows.update((lib, typ, sem, op) for op in ops)
     arithmetic = ("add", "mul", "div")
     all_ops = (*arithmetic, "parse", "format_fixed")
-
-    add("fixedwide", "Fixed64<4>", "decimal_fixed_exact_4", all_ops)
-    add("decimal_for_cpp", "decimal<4,half_even>", "decimal_fixed_exact_4", all_ops)
+    for d in (4, 12):
+        sem = f"decimal_fixed_exact_{d}"
+        add("fixedwide", f"Fixed64<{d}>", sem, all_ops)
+        add("decimal_for_cpp", f"decimal<{d},half_even>", sem, all_ops)
     add("cnl", "scaled_integer<int64,power<-4,10>>", "decimal_fixed_exact_4", ("add", "mul"))
     add("cnl", "scaled_integer<int64,power<-4,10>>", "decimal_fixed_adjacent", ("div_same_type",))
     add("boost.decimal", "decimal64_t", "decimal_float_exact_4", all_ops)
     add("mpdecimal", "Decimal", "arbitrary_decimal_exact_4", all_ops)
     add("boost.multiprecision", "cpp_dec_float_50", "arbitrary_decimal_exact_4", all_ops)
-    add("fixedwide", "Fixed64<12>", "decimal_fixed_exact_12", all_ops)
-    add("decimal_for_cpp", "decimal<12,half_even>", "decimal_fixed_exact_12", all_ops)
-    add("cnl", "scaled_integer<int64,power<-32>>", "binary_fixed_approx", arithmetic)
+    add("cnl", "scaled_integer<int64,power<-32>>", "binary_fixed_approx", ("add", "mul", "div_same_type"))
     add("fpm", "fixed<int64,int128,32>", "binary_fixed_approx", arithmetic)
     add("std", "double", "hardware_baseline", all_ops)
-    add(
-        "std",
-        "int64_t",
-        "hardware_baseline",
-        ("add_unchecked", "mul_unchecked", "div_unchecked", "memcpy_store", "memcpy_load"),
-    )
+    add("std", "int64_t", "hardware_baseline",
+        ("add_unchecked", "mul_unchecked", "div_unchecked", "memcpy_store", "memcpy_load"))
     add("fixedwide", "Fixed64<4>", "serialization", ("to_bytes_little", "from_bytes_little"))
     return rows
 
 
-def validate(path: pathlib.Path) -> tuple[dict[str, str], list[dict[str, str]]]:
-
+def load(path: pathlib.Path) -> tuple[dict[str, str], list[dict[str, str]]]:
     metadata: dict[str, str] = {}
     body: list[str] = []
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -54,280 +58,182 @@ def validate(path: pathlib.Path) -> tuple[dict[str, str], list[dict[str, str]]]:
             item = line[1:].strip()
             if "=" in item:
                 key, value = item.split("=", 1)
-                metadata[key.strip()] = value.strip()
+                key = key.strip()
+                if key in metadata:
+                    fail(f"duplicate metadata {key!r}")
+                metadata[key] = value.strip()
         elif line.strip():
             body.append(line)
+    reader = csv.DictReader(io.StringIO("\n".join(body)))
+    columns = ("library", "type", "semantic_class", "operation", "iterations", "repetitions",
+               "min_ns", "median_ns", "p95_ns", "max_ns", "samples")
+    if reader.fieldnames != list(columns):
+        fail(f"unexpected columns {reader.fieldnames!r}")
+    return metadata, list(reader)
 
-    for key in (
-        "schema",
-        "compiler",
-        "iterations",
-        "repetitions",
-        "dependencies",
-        "decimal_contract",
-        "text_contract",
-    ):
+
+def validate(metadata: dict[str, str], rows: list[dict[str, str]], provenance: bool = False) -> None:
+    for key in ("schema", "compiler", "iterations", "repetitions", "dependencies",
+                "decimal_contract", "binary_contract", "text_contract", "validations"):
         if not metadata.get(key):
             fail(f"missing metadata {key!r}")
-    if metadata["schema"] != "2":
-        fail(f"unsupported schema {metadata['schema']!r}")
-
-    reader = csv.DictReader(io.StringIO("\n".join(body)))
-    expected_columns = {
-        "library",
-        "type",
-        "semantic_class",
-        "operation",
-        "iterations",
-        "repetitions",
-        "min_ns",
-        "median_ns",
-        "p95_ns",
-        "max_ns",
-        "samples",
-    }
-    if reader.fieldnames is None or set(reader.fieldnames) != expected_columns:
-        fail(f"unexpected columns {reader.fieldnames!r}")
-
+    if metadata["schema"] != "3":
+        fail("only corrected schema-3 timings may be published")
+    if metadata.get("mode", "timing") != "timing":
+        fail("sanitizer timings are validation evidence, not performance results")
+    if provenance:
+        for key in ("source_commit", "binary_sha256", "cpu", "flags", "affinity", "run_url"):
+            if not metadata.get(key):
+                fail(f"missing provenance {key!r}")
+        if not re.fullmatch(r"[0-9a-f]{40}", metadata["source_commit"]):
+            fail("invalid source commit")
+        if not re.fullmatch(r"[0-9a-f]{64}", metadata["binary_sha256"]):
+            fail("invalid executable SHA-256")
+    try:
+        if int(metadata["validations"]) <= 0:
+            fail("missing successful preflight checks")
+        expected_iterations = int(metadata["iterations"])
+        expected_repetitions = int(metadata["repetitions"])
+    except ValueError:
+        fail("invalid numeric metadata")
     seen: set[tuple[str, str, str, str]] = set()
-    common_iterations: set[int] = set()
-    common_repetitions: set[int] = set()
-    count = 0
-
-    for number, row in enumerate(reader, start=2):
-        count += 1
-        key = (row["library"], row["type"], row["semantic_class"], row["operation"])
+    for row in rows:
+        if None in row or any(v is None for v in row.values()):
+            fail("malformed CSV row")
+        key = tuple(row[name] for name in ("library", "type", "semantic_class", "operation"))
         if key in seen:
             fail(f"duplicate row {key!r}")
         seen.add(key)
-
         try:
-            iterations = int(row["iterations"])
-            repetitions = int(row["repetitions"])
-            reported = tuple(float(row[name]) for name in ("min_ns", "median_ns", "p95_ns", "max_ns"))
-            samples = tuple(float(value) for value in row["samples"].split(";") if value)
-        except (TypeError, ValueError) as exc:
-            fail(f"invalid row {number}: {exc}")
-
-        if iterations <= 0 or repetitions <= 0 or repetitions % 2 == 0:
-            fail(f"invalid iteration/repetition count in {key!r}")
-        if len(samples) != repetitions:
-            fail(f"wrong sample count in {key!r}")
-        if any(not math.isfinite(value) or value < 0 for value in (*reported, *samples)):
-            fail(f"invalid timing in {key!r}")
-
+            n, reps = int(row["iterations"]), int(row["repetitions"])
+            values = tuple(float(row[x]) for x in ("min_ns", "median_ns", "p95_ns", "max_ns"))
+            samples = tuple(float(x) for x in row["samples"].split(";"))
+        except (ValueError, TypeError):
+            fail(f"invalid numeric row {key!r}")
+        if n <= 0 or reps <= 0 or reps % 2 == 0 or (n, reps) != (expected_iterations, expected_repetitions):
+            fail(f"inconsistent workload in {key!r}")
+        if len(samples) != reps or any(not math.isfinite(x) or x < 0 for x in (*samples, *values)):
+            fail(f"invalid samples in {key!r}")
         ordered = sorted(samples)
-        expected = (
-            ordered[0],
-            ordered[len(ordered) // 2],
-            ordered[(len(ordered) - 1) * 95 // 100],
-            ordered[-1],
-        )
-        if any(abs(left - right) > 5e-6 for left, right in zip(reported, expected)):
-            fail(f"summary statistics do not match raw samples in {key!r}")
-
-        common_iterations.add(iterations)
-        common_repetitions.add(repetitions)
-
-    missing = sorted(required_rows() - seen)
-    if missing:
-        fail("missing required rows:\n  " + "\n  ".join(repr(row) for row in missing))
-    if len(common_iterations) != 1 or len(common_repetitions) != 1:
-        fail("rows use inconsistent iteration or repetition counts")
-    if metadata["iterations"] != str(next(iter(common_iterations))):
-        fail("iteration metadata disagrees with rows")
-    if metadata["repetitions"] != str(next(iter(common_repetitions))):
-        fail("repetition metadata disagrees with rows")
-
-    reader_rows = list(csv.DictReader(io.StringIO("\n".join(body))))
-    print(f"validated {count} benchmark rows")
-    return metadata, reader_rows
+        expected = (ordered[0], ordered[reps // 2], ordered[(reps - 1) * 95 // 100], ordered[-1])
+        if any(abs(a - b) > 5e-6 for a, b in zip(values, expected)):
+            fail(f"summary disagrees with samples in {key!r}")
+    if seen != required_rows():
+        fail(f"row set mismatch; missing={required_rows() - seen!r}; extra={seen - required_rows()!r}")
 
 
-def checked_status(library: str, semantic: str) -> str:
-    if semantic in ("hardware_baseline", "serialization"):
-        return "n/a"
-    if library == "fixedwide":
-        return "checked"
-    if library == "boost.decimal":
-        return "ieee status"
-    if library in ("mpdecimal", "boost.multiprecision"):
-        return "exceptions"
-    return "unchecked"
+def scope() -> str:
+    return (
+        "These are independent-operation throughput microbenchmarks, not dependency-chain latency. "
+        "Decimal multiplication/division fixtures are deliberately exact at the selected scale; "
+        "they do not measure the general cost of inexact nearest-even rounding. "
+        "Decimal preflight checks compare raw values or canonical fixed-format text against integer-derived expectations. "
+        "Binary fixed-point and double checks use documented floating tolerances; "
+        "cpp_dec_float_50 division uses a 1e-45 residual plus exact four-place text. "
+        "CNL div_same_type discards fractional quotient digits and is NOT an equivalent division result."
+    )
 
 
-def format_table(rows: list[dict[str, str]]) -> list[str]:
-    lines = [
-        "| library | type | operation | median ns/op | min ns | p95 ns | error handling |",
-        "|---|---|---|---:|---:|---:|---|",
-    ]
-    for r in rows:
-        lib = r["library"]
-        t = f"`{r['type']}`"
-        op = r["operation"]
-        med = f"{float(r['median_ns']):.3f}"
-        min_ns = f"{float(r['min_ns']):.3f}"
-        p95 = f"{float(r['p95_ns']):.3f}"
-        status = checked_status(lib, r["semantic_class"])
-        lines.append(f"| {lib} | {t} | {op} | {med} | {min_ns} | {p95} | {status} |")
-    return lines
-
-
-def generate_markdown(metadata: dict[str, str], rows: list[dict[str, str]]) -> str:
-    sections: dict[str, list[dict[str, str]]] = {
-        "decimal_fixed_exact_4": [],
-        "decimal_fixed_adjacent": [],
-        "decimal_fixed_exact_12": [],
-        "decimal_float_exact_4": [],
-        "arbitrary_decimal_exact_4": [],
-        "binary_fixed_approx": [],
-        "hardware_baseline": [],
-        "serialization": [],
-    }
-    for row in rows:
-        sem = row["semantic_class"]
-        if sem in sections:
-            sections[sem].append(row)
-
-    scale4_rows = sections["decimal_fixed_exact_4"] + sections["decimal_fixed_adjacent"]
-    scale12_rows = sections["decimal_fixed_exact_12"]
-    decfloat_rows = sections["decimal_float_exact_4"]
-    arb_rows = sections["arbitrary_decimal_exact_4"]
-    binary_rows = sections["binary_fixed_approx"]
-    hw_rows = sections["hardware_baseline"] + sections["serialization"]
-
-    out = [
-        "# Competitor benchmark",
-        "",
-        "## What this is, and what it is not",
-        "",
-        "Every row below was produced by `benchmarks/competitor/` on an isolated, core-pinned x86-64 Linux environment.",
-        "Rows are grouped by **semantic class**. Cost may be compared across classes; correctness may not.",
-        "A binary fixed-point multiply and a decimal fixed-point multiply are not the same operation, and only one of them can represent `0.01`.",
-        "",
-        f"Each number is the **median** of {metadata.get('repetitions', '11')} timed repetitions of {metadata.get('iterations', '262144')} operations.",
-        "Minimum, median, p95, maximum and raw samples are preserved in `reports/raw/competitors.csv`.",
-        "Every timed loop's output was validated against exact oracles before timing.",
-        "",
-        "## Libraries Evaluated",
-        "",
-        "| Library | Type | Architecture / Representation | Error Handling | Allocation |",
-        "|---|---|---|---|---|",
-        "| **fixedwide** | `Fixed64<D>` | Decimal Fixed-Point (scaled 64-bit integer, 128-bit intermediate) | Checked (`std::expected`) | Zero (core arithmetic, parsing, caller-buffer formatting) |",
-        "| **decimal_for_cpp** | `dec::decimal<D>` | Decimal Fixed-Point (scaled 64-bit integer) | Unchecked / wraps | Zero arithmetic / allocates on `toString` |",
-        "| **cnl** | `scaled_integer` | Fixed-Point (binary or decimal radix) | Unchecked / wraps | Zero |",
-        "| **fpm** | `fixed` | Binary Fixed-Point (scaled 64-bit integer) | Unchecked / wraps | Zero |",
-        "| **Boost.Decimal** | `decimal64_t` | Decimal Floating-Point (IEEE 754-2008 decimal64) | IEEE flags / status | Zero |",
-        "| **mpdecimal** | `decimal::Decimal` | Arbitrary-Precision Decimal Float (libmpdec++) | Context status / exception | Dynamic |",
-        "| **Boost.Multiprecision** | `cpp_dec_float_50` | Arbitrary-Precision Decimal Float (50 decimal digits) | Exceptions | Dynamic |",
-        "| *std (baseline)* | `double` | Binary Floating-Point (IEEE 754 binary64) | Hardware NaN/inf | Zero |",
-        "| *std (baseline)* | `int64_t` | Raw 64-bit integer (unscaled machine word) | Undefined behavior | Zero |",
-        "",
-        "## Test Environment & Methodology",
-        "",
-        f"- **Compiler**: {metadata.get('compiler', 'Clang 22.1.8')} (`-O3 -DNDEBUG -fno-vectorize -fno-slp-vectorize -ffp-contract=off`)",
-        "- **Execution**: Thread pinned to single CPU core",
-        f"- **Workload**: {int(metadata.get('iterations', '262144')):,} operations per repetition, {metadata.get('repetitions', '11')} timed repetitions",
-        "- **Reporting**: Medians are reported as the primary metric, alongside minimum and 95th-percentile samples",
-        "- **Validation**: All operations verified against exact oracles prior to timed loops",
-        "- **Raw Data**: Full per-sample timing records are preserved in `reports/raw/competitors.csv`",
-        "",
-        "## Results",
-        "",
-        "### decimal fixed, matched scale (scale 4)",
-        "",
-        "The like-for-like comparison: the same scale, the same operand integers, and results brought back to the declared type.",
-        "",
-        *format_table(scale4_rows),
-        "",
-        "### decimal fixed, high precision (scale 12)",
-        "",
-        "Decimal fixed point at 12 decimal places.",
-        "",
-        *format_table(scale12_rows),
-        "",
-        "### decimal float",
-        "",
-        "IEEE 754 decimal floating point: a decimal significand with a moving exponent.",
-        "",
-        *format_table(decfloat_rows),
-        "",
-        "### arbitrary-precision decimal",
-        "",
-        "Arbitrary-precision decimal representations.",
-        "",
-        *format_table(arb_rows),
-        "",
-        "### binary fixed",
-        "",
-        "Binary fixed point: an integer scaled by a power of two. Cannot represent 0.01 exactly.",
-        "",
-        *format_table(binary_rows),
-        "",
-        "### raw machine types",
-        "",
-        "Hardware baselines and serialization floor.",
-        "",
-        *format_table(hw_rows),
-        "",
-        "## The raw-type floor",
-        "",
-        "Hardware operations (unscaled 64-bit integer and binary float) represent the absolute execution floor of the host CPU, not comparable decimal libraries. A checked decimal add costs only two instructions more than a raw 64-bit integer add, and byte-order-defined serialization (`to_bytes` / `from_bytes`) operates at the native `memcpy` floor.",
-        "",
-        "## Reading these numbers honestly",
-        "",
-        "- **Against CNL at matched scale**: CNL decimal multiply (0.578 ns) performs single-word 64-bit integer multiplication without intermediate widening or overflow checking. `fixedwide::mul` (1.298 ns) computes a 128-bit intermediate, rescales, verifies destination bounds, and returns `std::expected`.",
-        "- **Intermediate precision limits**: At scale 12, non-widening 64-bit fixed-point arithmetic overflows for values above ~0.003 during multiplication. `fixedwide` uses a 128-bit intermediate representation and computes exact products.",
-        "- **Binary fixed-point (`cnl`, `fpm`)**: Binary fixed-point cannot represent decimal fractions like 0.01 exactly in binary radix.",
-        "- **Against Boost.Decimal**: At scale 4, fixedwide is faster for arithmetic multiplication (1.30 ns vs 3.62 ns), division (1.43 ns vs 9.30 ns), parsing (9.33 ns vs 11.99 ns), and fixed formatting (10.95 ns vs 23.04 ns). Boost.Decimal provides IEEE 754 decimal floating-point dynamic range.",
-        "- **Standard library binary float (`double`)**: Binary floats are fast in hardware but suffer from decimal representation error (e.g. `0.01` cannot be represented exactly).",
-        "",
-        "## Reproducing it",
-        "",
-        "```bash",
-        "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \\",
-        "      -DFIXEDWIDE_BUILD_BENCHMARKS=ON -DFIXEDWIDE_BUILD_COMPETITOR_BENCH=ON",
-        "cmake --build build --target fixedwide_competitor_bench",
-        "./build/benchmarks/fixedwide_competitor_bench",
-        "```",
-        "",
-    ]
+def summary(metadata: dict[str, str], rows: list[dict[str, str]]) -> str:
+    if metadata.get("schema") == "2":
+        return WITHDRAWN + "\n"
+    lookup = {(r["library"], r["type"], r["operation"]): r for r in rows}
+    types = (("fixedwide", "Fixed64<4>"), ("decimal_for_cpp", "decimal<4,half_even>"),
+             ("boost.decimal", "decimal64_t"), ("std", "double"))
+    out = ["Exact-result scale-4 throughput; median ns/op. Different error models are not equivalent contracts.",
+           "", "| operation | fixedwide | decimal_for_cpp | Boost.Decimal | double |",
+           "|---|---:|---:|---:|---:|"]
+    for op in ("mul", "div", "parse", "format_fixed"):
+        cells = [f"{float(lookup[(lib, typ, op)]['median_ns']):.3f}" for lib, typ in types]
+        out.append("| " + op + " | " + " | ".join(cells) + " |")
+    out += ["", f"Recorded compiler: `{metadata['compiler']}`. "
+            f"Source commit: `{metadata.get('source_commit', 'not recorded')}`. "
+            f"{metadata['repetitions']} repetitions of {metadata['iterations']} operations.", "", scope(), ""]
     return "\n".join(out)
 
 
+def markdown(metadata: dict[str, str], rows: list[dict[str, str]], digest: str) -> str:
+    if metadata.get("schema") == "2":
+        return "# Competitor benchmark\n\n" + WITHDRAWN + "\n"
+    out = ["# Competitor benchmark", "", scope(), "", "## Recorded provenance", "",
+           f"CSV SHA-256: `{digest}`", ""]
+    for key in ("source_commit", "compiler", "cpu", "flags", "affinity", "run_url", "binary_sha256",
+                "iterations", "repetitions", "validations", "dependencies", "decimal_contract",
+                "binary_contract", "text_contract"):
+        out.append(f"- {key}: `{metadata.get(key, 'not recorded')}`")
+    out += ["", "## Reading the results", "",
+            "The binary CNL/fpm inputs share the scale-4 multiplication fixtures divided by 32. "
+            "Every CNL raw product is checked in __int128 before the int64 operation executes. "
+            "These bounded binary workloads do not share the decimal workloads' economic range.", "",
+            "fixedwide uses checked decimal rescaling. decimal_for_cpp explicitly selects half-even; "
+            "CNL and fpm use their configured arithmetic without fixedwide-style checked overflow. "
+            "Unconfigured signed overflow is not promised to wrap. Only successful bounded inputs are timed.", "",
+            "Boost.Decimal has a moving decimal exponent. mpdecimal has runtime precision and may allocate. "
+            "The default cpp_dec_float_50 stores its fixed-precision digits inside the object, without a "
+            "digit-storage allocator; string conversions may allocate. Allocating string formatters are "
+            "labelled by API/type and should not be mistaken for caller-buffer formatting.", "",
+            "Serialization load rows traverse prepared buffers. They are microbenchmarks, not a universal memcpy floor. "
+            "The p95 column follows the harness's lower order statistic: sorted[(n-1)*95/100]. "
+            "All samples remain in the CSV. Sanitized runs must not supply timing tables.", ""]
+    for sem in dict.fromkeys(r["semantic_class"] for r in rows):
+        out += [f"## {sem}", "", "| library | type | operation | median ns/op | min ns | p95 ns |",
+                "|---|---|---|---:|---:|---:|"]
+        for r in rows:
+            if r["semantic_class"] == sem:
+                out.append(f"| {r['library']} | `{r['type']}` | {r['operation']} | "
+                           f"{float(r['median_ns']):.3f} | {float(r['min_ns']):.3f} | {float(r['p95_ns']):.3f} |")
+        out.append("")
+    out += ["## Reproduce", "", "Build mpdecimal first with scripts/build_mpdecimal.sh and use its prefix as "
+            "FIXEDWIDE_MPDECIMAL_ROOT. The complete Release and UBSan/ASan commands, recorded environment, "
+            "binary hashes and raw outputs are retained by .github/workflows/competitors.yml. "
+            "Do not reuse a schema-2 baseline; those measurements were withdrawn.", "",
+            "Generate this report and the README summary from the SAME validated CSV:", "", "```bash",
+            "python3 scripts/competitor_report.py --input reports/raw/competitors.csv --require-provenance \\",
+            "  --generate-markdown reports/BENCHMARK_COMPETITORS.md --update-readme README.md", "```", ""]
+    return "\n".join(out)
+
+
+def update_readme(text: str, generated: str) -> str:
+    if text.count(BEGIN) != 1 or text.count(END) != 1:
+        fail("README must contain exactly one generated-summary marker pair")
+    before, rest = text.split(BEGIN, 1)
+    _, after = rest.split(END, 1)
+    return before + BEGIN + "\n\n" + generated.rstrip() + "\n\n" + END + after
+
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input", required=True, type=pathlib.Path)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input", type=pathlib.Path, required=True)
     parser.add_argument("--validate-only", action="store_true")
+    parser.add_argument("--require-provenance", action="store_true")
     parser.add_argument("--generate-markdown", type=pathlib.Path)
     parser.add_argument("--check-markdown", type=pathlib.Path)
+    parser.add_argument("--update-readme", type=pathlib.Path)
+    parser.add_argument("--check-readme", type=pathlib.Path)
     args = parser.parse_args()
-
-    metadata, rows = validate(args.input)
+    meta, rows = load(args.input)
+    withdrawn = meta.get("schema") == "2"
+    if withdrawn and args.validate_only:
+        fail("schema-2 data is withdrawn; rerun the corrected benchmark")
+    if not withdrawn:
+        validate(meta, rows, args.require_provenance)
+        print(f"validated {len(rows)} benchmark rows")
+    else:
+        print("schema-2 data is withdrawn; rendering a notice without timings")
+    report = markdown(meta, rows, hashlib.sha256(args.input.read_bytes()).hexdigest())
     if args.generate_markdown:
-        md = generate_markdown(metadata, rows)
-        args.generate_markdown.write_text(md, encoding="utf-8")
-        print(f"generated markdown report: {args.generate_markdown}")
-    elif args.check_markdown:
-        md = generate_markdown(metadata, rows)
-        if not args.check_markdown.is_file():
-            fail(f"markdown file {args.check_markdown} does not exist")
-        actual = args.check_markdown.read_text(encoding="utf-8")
-        if actual != md:
-            import difflib
-
-            diff = difflib.unified_diff(
-                actual.splitlines(keepends=True),
-                md.splitlines(keepends=True),
-                fromfile=str(args.check_markdown),
-                tofile="generated",
-            )
-            print("".join(diff))
-            fail(f"markdown file {args.check_markdown} does not match generated report")
-        print(f"markdown report {args.check_markdown} matches raw data")
+        args.generate_markdown.write_text(report, encoding="utf-8")
+    if args.check_markdown and args.check_markdown.read_text(encoding="utf-8") != report:
+        fail("Markdown differs from generated report")
+    for path, check in ((args.update_readme, False), (args.check_readme, True)):
+        if path:
+            old = path.read_text(encoding="utf-8")
+            new = update_readme(old, summary(meta, rows))
+            if check and old != new:
+                fail("README summary differs from retained data")
+            if not check:
+                path.write_text(new, encoding="utf-8")
 
 
 if __name__ == "__main__":
     main()
-

@@ -4,8 +4,8 @@
 
 # fixedwide
 
-**Fast, zero-allocation, checked decimal fixed-point arithmetic for C++23.**  
-*For physical instrumentation, deterministic simulation, geodesy, and financial ledgers.*
+**Checked decimal fixed-point arithmetic for C++23.**  
+*For discrete measurements, deterministic simulation, coordinates and financial ledgers.*
 
 [![CI](https://github.com/samiisd/fixedwide/actions/workflows/ci.yml/badge.svg)](https://github.com/samiisd/fixedwide/actions/workflows/ci.yml)
 [![coverage](docs/assets/coverage.svg)](docs/ci.md)
@@ -20,112 +20,88 @@
 
 ## Why fixedwide?
 
-Whenever measurements or values live on a **discrete decimal grid**, binary floating point (`float`, `double`) introduces subtle representation errors, and raw integers require error-prone manual scale management.
+When values live on a **discrete decimal grid**, a scaled integer can represent them exactly. fixedwide makes the scale part of the type, checks arithmetic overflow, and makes rounding policy explicit. It does not eliminate quantization error or the need to choose where a calculation rounds.
 
-| Approach | Where It Shines | The Fatal Trade-Off |
+| Approach | Useful properties | Trade-offs |
 |---|---|---|
-| **`double`** *(binary float)* | Massive dynamic range ($10^{\pm 308}$) | **Binary representation drift:** Fractions like `0.01` or `0.001` cannot be represented in base 2; cross-platform results drift due to FMA and compiler differences. |
-| **`int64_t`** *(manual scaling)* | Exact discrete steps | **Manual bookkeeping & silent UB:** No compiler help when mixing different scales; signed integer overflow triggers undefined behavior silently. |
-| **`Boost.Decimal`** *(decimal float)* | Scientific decimal float | **Floating exponent overhead:** 3–9 ns latency per operation; variable exponent shifts during arithmetic. |
-| **`mpdecimal`** *(arbitrary decimal)* | Unlimited digits (34+) | **Dynamic allocation:** Heap allocations on arithmetic and parsing; 10–40 ns latency. |
-| 🟢 **`fixedwide`** | **Exact decimal fixed-point (0–76 dec)** | **Sub-2ns arithmetic, 128-bit intermediate widening, compile-time scale safety, zero heap allocations, 100% bit-identical across architectures.** |
+| `double` | Hardware arithmetic and wide dynamic range | Decimal fractions such as `0.01` are not exactly representable. |
+| Manually scaled `int64_t` | Exact discrete values and compact storage | Scale management and overflow checks belong to the caller. |
+| Boost.Decimal | Decimal significand with a moving exponent | Different range, precision and error semantics from fixed point. |
+| mpdecimal | Runtime decimal precision and a configurable arithmetic context | Different storage/allocation and context costs. |
+| fixedwide | Compile-time decimal scale, checked rescaling, fixed-size storage | Bounded range; division/multiplication can still require rounding. |
 
----
+Core arithmetic, decimal parsing and caller-buffer formatting allocate no heap memory and return errors as values. Convenience string formatting such as `to_string` may allocate. The guarantee does not extend to throwing adapters or to `.value()` on an unsuccessful `std::expected`.
 
 ## Domains
 
-- 🔬 **Laboratory Instrumentation & Metrology**: Digital multimeters, ADCs, pressure transducers, and spectrometers report in discrete decimal increments (e.g. $0.001\text{ V}$, $0.05\text{ bar}$, $0.0001\text{ mA}$). `fixedwide` preserves the physical resolution of the instrument without binary conversion noise polluting calibration chains.
-- 🛰️ **Deterministic Simulation & Robotics**: Multi-axis CNC machines, stepper motors ($0.001\text{ mm}$ steps), and lockstep simulation engines demand bit-for-bit identical results across x86-64, ARM64, and WebAssembly without floating-point contraction differences.
-- 🗺️ **Geodesy & GIS Coordinates**: Micro-degree coordinates and survey grids require fixed precision where millimeter-scale positions must never drift over repeated geometric transformations.
-- 📊 **Financial Ledgers & Regulated Billing**: Currency cents, utility smart metering (kWh to 4 decimals), and tax tariffs mandated by statute to execute exact banker's rounding (`Rounding::nearest_even`).
-
----
+- **Instrumentation:** store measurements on a declared decimal grid while preserving their recorded resolution. Calibration and conversion still need an explicit rounding boundary.
+- **Simulation and coordinates:** use deterministic checked integer arithmetic for quantities represented on fixed grids. Coordinate transformations are not automatically lossless.
+- **Ledgers and billing:** preserve decimal amounts and apply the rounding rule required by the application. Nearest-even is the library default, not a universal tax or settlement rule.
 
 ## The Problem in Three Snippets
 
 ```cpp
 double binary_total = 0.0;
 for (int i = 0; i < 100; ++i) binary_total += 0.01;
-// 1.0000000000000007          ← binary floats do not have 0.01
+// A typical binary64 result is 1.0000000000000007, not exactly 1.
 ```
 
 ```cpp
+#include <cstdint>
 std::int64_t a = 5'000'000'000'000'000'000;
-std::int64_t raw_total = a + a;
-// signed integer overflow      ← undefined behavior in standard C++
+// a + a would overflow signed int64_t: undefined behaviour, not a checked result.
 ```
+
+Inside a function with the arithmetic, chars and string headers included:
 
 ```cpp
-using Money = fixedwide::Fixed64<2>;               // an int64 of cents
-
+using Money = fixedwide::Fixed64<2>;
 auto checked_total = Money::from_raw(0);
-for (int i = 0; i < 100; ++i)
-    checked_total = add(checked_total, parse<Money>("0.01").value()).value();
-// to_string(checked_total) == "1.00"   ← exactly
-
-add(Money::max(), parse<Money>("0.01").value());
-// ArithmeticError::overflow    ← reported, not wrapped
+for (int i = 0; i < 100; ++i) {
+    checked_total = fixedwide::add(
+        checked_total, fixedwide::parse<Money>("0.01").value()).value();
+}
+// fixedwide::to_string(checked_total) == "1.00"
+auto overflow = fixedwide::add(Money::max(), fixedwide::parse<Money>("0.01").value());
+// overflow.error() == fixedwide::ArithmeticError::overflow
 ```
 
-The scale lives in the type, so different fixed-point widths and scales are distinct types:
-when a price and quantity carry different scales (such as 4 and 2 decimals),
-mixing them without specifying the target scale does not compile.
-Note that `basic_fixed` enforces scale and bit-width distinctness, not dimensional analysis:
-types with identical width and scale are the same type.
+These known constants make the successful `.value()` calls safe in this example. Check results before dereferencing when processing external values.
 
-
----
+Different widths/scales are distinct types. Two aliases with identical width and scale are the **same** type: this is scale safety, not dimensional analysis.
 
 ## Intermediate precision widening vs single-word fixed point
 
-Fixed-point multiplication rescales by dividing by the scale factor after multiplication ($(\text{raw}_a \times \text{raw}_b) / 10^D$).
-At high fractional scales, computing the intermediate product within the same storage type overflows: at 12 decimals, any product $\ge 10^{12} \cdot 2^{63} \approx 9.22$ overflows a 64-bit integer before the scale factor can be applied.
+For scale `S = 10^D`, multiplication computes `(raw_a * raw_b) / S` before rounding to the destination. A positive economic product `a * b` fits an un-widened signed 64-bit intermediate only when:
 
-`fixedwide` evaluates 64-bit multiplications using a 128-bit intermediate integer, detecting overflow against destination bounds before returning:
-
-```cpp
-// 123.456789012345 × 2 at Fixed64<12>
-auto a = parse<Fixed64<12>>("123.456789012345").value();
-auto b = parse<Fixed64<12>>("2.000000000000").value();
-auto res = mul(a, b); // 246.913578024690 (128-bit intermediate, rescaled once)
+```text
+a * b <= (2^63 - 1) / S^2
 ```
 
-In contrast, single-word fixed-point models (such as `cnl::scaled_integer<int64_t, power<-12, 10>>`) overflow 64-bit integer representation on the intermediate product for values above ~0.003 when intermediate widening is not configured.
+At `D = 12`, that limit is approximately `9.223372e-6`. For **equal positive operands**, the largest value that can be squared without such intermediate overflow is approximately `0.003037`. This is not a universal limit for each operand independently.
 
----
+fixedwide widens the `Fixed64` multiplication intermediate to 128 bits, rescales, and checks the destination:
+
+```cpp
+using F = fixedwide::Fixed64<12>;
+auto a = fixedwide::parse<F>("123.456789012345").value();
+auto b = fixedwide::parse<F>("2.000000000000").value();
+auto result = fixedwide::mul(a, b); // 246.913578024690
+```
+
+Other fixed-point libraries can be configured with widened representations or overflow policies. Compare the configuration actually being measured, not just the library name.
 
 ## Performance
 
-Median ns/op, Clang 22, `-O3`, core-pinned, every timed result validated against
-an oracle prior to measurement.
-[Full table and methodology.](reports/BENCHMARK_COMPETITORS.md)
+[Full report and contracts](reports/BENCHMARK_COMPETITORS.md). The summary below is generated from the same retained CSV as that report. Exact-result throughput is not a claim about all rounding modes, widths, or dependency-chain latency. The separate rounding benchmark covers inexact arithmetic.
 
-### Scale 4 comparison
+<!-- BEGIN GENERATED COMPETITOR SUMMARY -->
 
-| | **fixedwide**<br>`Fixed64<4>` | Boost.Decimal<br>`decimal64_t` | CNL<br>`scaled_integer` | `double`<br>*(binary float)* |
-|---|---:|---:|---:|---:|
-| multiply | **1.30** | 3.62 | 0.58 | 0.28 |
-| divide | **1.43** | 9.30 | 1.22 *(same-type)* | 0.75 |
-| parse | **9.33** | 11.99 | — | 5.00 |
-| format | **10.95** | 23.04 | — | 28.46 |
-| error model | `std::expected` | IEEE status flags | unchecked | hardware NaN/inf |
+Previously retained schema-2 timings are withdrawn: their process executed an overflowing CNL binary multiplication. They must not support performance claims. The corrected schema-3 benchmark bounds binary operands before execution. Fresh Release CSV, validation logs and generated reports are available from the [Competitor benchmark workflow](https://github.com/samiisd/fixedwide/actions/workflows/competitors.yml). No replacement timings are claimed until that evidence is retained.
 
-At scale 12 (`Fixed64<12>`), fixedwide measures **1.97 ns** multiply, **1.92 ns** divide, **17.63 ns** parse, and **13.34 ns** format.
+<!-- END GENERATED COMPETITOR SUMMARY -->
 
-### Against raw machine hardware
-
-| | **fixedwide** | raw `int64_t` | `double` |
-|---|---:|---:|---:|
-| add | 0.41 | 0.28 | 0.37 |
-| store 8 bytes | 0.20 `to_bytes` | 0.27 `memcpy` | — |
-| load 8 bytes | 0.28 `from_bytes` | 0.18 `memcpy` | — |
-
-**Performance trade-offs:** At scale 4, CNL's unscaled 64-bit multiply is ~2.2× faster (0.58 ns vs 1.30 ns) because it performs single-word integer multiplication without 128-bit intermediate widening or overflow checking. `fixedwide::mul` widens to 128 bits, rescales, verifies destination bounds, and returns `std::expected`. That is the safety trade-off this library is designed for.
-
-**Deterministic instruction-count CI gate:** Every pull request measures retired instructions under Valgrind on Linux x86-64 (GCC 14) and fails if any core workload grows by more than 1%. This prevents algorithmic bloat independently of wall-clock timing jitter. [How.](docs/benchmarks.md)
-
-
----
+The instruction-count CI gate checks core workloads against its committed baseline. This is distinct from a timing comparison against 0.4; see [benchmark methodology](docs/benchmarks.md).
 
 ## Install
 
@@ -138,15 +114,9 @@ FetchContent_MakeAvailable(fixedwide)
 target_link_libraries(app PRIVATE fixedwide::fixedwide)
 ```
 
-Or `conan create .`, or `cmake --build build --target install` then
-`find_package(fixedwide)`. All three give you the identical two lines of CMake,
-and [CI proves each of them still works](docs/ci.md).
+Alternatively, build the local Conan recipe with `conan create .`, or install with CMake and consume `fixedwide::fixedwide` through `find_package(fixedwide)`. Local recipe testing does not imply publication on ConanCenter.
 
-`#include <fixedwide/all.hpp>` costs **187 ms** — the `<format>` and
-`<iostream>` adapters are opt-in, because those two standard headers together
-cost 885 ms, more than everything here.
-
----
+The `<format>` and `<iostream>` adapters are opt-in rather than pulled into every arithmetic translation unit. Include-cost measurements and their environment are documented separately.
 
 ## The types
 
@@ -159,73 +129,52 @@ cost 885 ms, more than everything here.
 | `Fixed128<D>` | `wide::int128` | 0–38 | 16 B |
 | `Fixed256<D>` | `wide::int256` | 0–76 | 32 B |
 
-
-A value *is* its scaled integer. No exponent, no tag, no indirection,
-`sizeof(Fixed64<2>) == 8`.
+A value is its scaled integer, with no runtime scale member.
 
 ```cpp
+using namespace fixedwide;
 auto price = parse<Fixed64<4>>("19.9900").value();
-auto rate  = parse<Fixed64<8>>("1.07500000").value();
+auto rate = parse<Fixed64<8>>("1.07500000").value();
 
-mul(price, rate);                    // ✗ compile error: two different types
-mul_to<Fixed128<2>>(price, rate);    // ✓ 21.49 — exact product, ONE rounding
-price == parse<Fixed64<8>>("19.99000000").value();   // ✓ true, exactly
+// mul(price, rate);              // rejected: two different types
+auto total = mul_to<Fixed128<2>>(price, rate); // 21.49; one final rounding
+bool same = price == parse<Fixed64<8>>("19.99000000").value(); // true
 
-div(price, Fixed64<4>::from_raw(0)); // ArithmeticError::division_by_zero
-div(price, parse<Fixed64<4>>("3.0000").value(), Rounding::exact); // ArithmeticError::inexact
+auto zero = div(price, Fixed64<4>::from_raw(0)); // division_by_zero
+auto inexact = div(price, parse<Fixed64<4>>("3.0000").value(), Rounding::exact);
+// inexact.error() == ArithmeticError::inexact
 
-// Deterministic banker's rounding (Rounding::nearest_even) is the arithmetic default:
-// exact halfways break toward the nearest even digit, preventing cumulative drift.
-quantize(parse<Fixed64<2>>("2.50").value(), 0); // ✓ 2.00 (halfway rounds down to even 2)
-quantize(parse<Fixed64<2>>("3.50").value(), 0); // ✓ 4.00 (halfway rounds up to even 4)
+// Nearest-even is the arithmetic default. Only exact halfway cases use parity.
+auto even = quantize(parse<Fixed64<2>>("2.50").value(), 0); // 2.00
+auto odd = quantize(parse<Fixed64<2>>("3.50").value(), 0);  // 4.00
 ```
 
-Six rounding modes, with **deterministic banker's rounding (`Rounding::nearest_even`) as the default for arithmetic**—evaluated via pure integer bit-level operations with zero floating-point registers or architecture drift. `constexpr` arithmetic. Core arithmetic, parsing, and
-caller-buffer formatting allocate no heap memory and return failures through
-`std::expected` (proved by a test that replaces `operator new` and counts).
-Convenience string formatting like `to_string` allocates by design.
+Nearest-even reduces systematic tie-breaking bias; it does **not** prevent accumulated rounding error. Rounding `0.005` individually to two places gives `0.00`, whereas adding 100 original values and rounding once gives `0.50`. Preserve intermediates and round at the intended calculation boundary.
 
----
+All six rounding policies remain available. Decimal parsing and `fixed_cast` default to exact; full-precision serialization does not discard digits. Raw binary encoding contains no scale tag, so both endpoints must agree on the type.
 
 ## Examples
 
-Eight programs, one file and one idea each. All eight are `ctest` tests that
-check their own output, so they cannot drift away from the library.
-
 | | | |
 |---|---|---|
-| 01 | [Quick start](examples/01_quick_start.cpp) | parse → multiply across scales → format |
-| 02 | [Rounding](examples/02_rounding_modes.cpp) | all six modes on one division, side by side |
-| 03 | [Errors](examples/03_error_handling.cpp) | overflow and divide-by-zero as values, `and_then` chaining |
-| 04 | [Mixed scales](examples/04_mixed_scales.cpp) | `mul_to` / `fixed_cast`, and what is compile-rejected |
-| 05 | [Text](examples/05_text_io.cpp) | `to_chars`, `std::format`, streams |
-| 06 | [Binary](examples/06_binary_roundtrip.cpp) | `to_bytes` / `from_bytes`, both byte orders |
-| 07 | [Money ledger](examples/07_money_ledger.cpp) | an invoice in `double` and in `Fixed64<2>`, side by side |
-| 08 | [constexpr](examples/08_constexpr.cpp) | the whole arithmetic surface at compile time |
+| 01 | [Quick start](examples/01_quick_start.cpp) | parse → mixed multiply → format |
+| 02 | [Rounding](examples/02_rounding_modes.cpp) | all six policies |
+| 03 | [Errors](examples/03_error_handling.cpp) | failures as values |
+| 04 | [Mixed scales](examples/04_mixed_scales.cpp) | explicit destinations |
+| 05 | [Text](examples/05_text_io.cpp) | chars, format and streams |
+| 06 | [Binary](examples/06_binary_roundtrip.cpp) | both byte orders |
+| 07 | [Money ledger](examples/07_money_ledger.cpp) | invoice example |
+| 08 | [constexpr](examples/08_constexpr.cpp) | compile-time arithmetic |
 
----
+## Verification
 
-## Verified, not asserted
+The repository's [CI documentation](docs/ci.md) and [execution matrix](reports/EXECUTION_MATRIX.csv) distinguish executed platforms from untested targets. They cover Linux, macOS, Windows, portable/no-int128 configurations, sanitizers and emulated s390x. Do not infer WebAssembly or Windows ARM64 execution from the portable implementation alone.
 
-Every row is a CI job that builds **and runs the tests** on every push. A
-platform with no job is marked `not-configured` and is not claimed.
-
-Linux x86-64 (GCC 14, Clang 18 + libc++) · Linux AArch64 · macOS 14 and 15 ·
-Windows MSVC and clang-cl · **big-endian s390x** · portable backend ·
-no-`__int128` · ASan + UBSan · shared library · Conan · FetchContent ·
-`find_package` · libFuzzer · instruction-count gate
-
-Big-endian runs under emulation and says so. Not configured: Windows ARM64.
-
-| | |
+| Documentation | |
 |---|---|
-| [API reference](docs/api_reference.md) | every header and function, naming rules, the 0.4 surface |
-| [Architecture](docs/architecture.md) | storage, the three backends, how one is chosen |
-| [Benchmarks](docs/benchmarks.md) | how every number was produced, and why not `-march=native` |
-| [CI](docs/ci.md) | what each job proves, and which compilers genuinely do not work |
-| [STATUS](STATUS.md) | what has been executed, and every open item |
+| [API reference](docs/api_reference.md) | public functions and headers |
+| [Architecture](docs/architecture.md) | storage and arithmetic backends |
+| [Benchmarks](docs/benchmarks.md) | methods and limitations |
+| [STATUS](STATUS.md) | executed work and open items |
 
----
-
-Pre-1.0 — the API may still change, and `CHANGELOG.md` says when.
-[MIT](LICENSE). [Contributing](CONTRIBUTING.md). [Ethics](ETHICS.md).
+Pre-1.0: the API may still change. [Changelog](CHANGELOG.md) · [MIT](LICENSE) · [Contributing](CONTRIBUTING.md) · [Ethics](ETHICS.md).
