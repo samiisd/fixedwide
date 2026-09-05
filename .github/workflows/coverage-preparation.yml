@@ -1,0 +1,55 @@
+name: Coverage preparation
+on:
+  push:
+    branches: [automation/coverage-preparation]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Verify and apply source patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, gzip, hashlib
+          data = ''.join(Path(f'.coverage-preparation/payload-{i}').read_text().strip() for i in range(4))
+          Path('/tmp/transport.b64').write_text(data)
+          patch = gzip.decompress(base64.b64decode(data, validate=True))
+          assert hashlib.sha256(patch).hexdigest() == 'd1a96bfcc2ca2b4ce22dee50a45efef1e73e1f0f680be8fe2340bb44aca0f389'
+          Path('/tmp/coverage.patch').write_bytes(patch)
+          PY
+          git apply --check /tmp/coverage.patch
+          git apply --index /tmp/coverage.patch
+      - name: Format and test reporter
+        run: |
+          python3 -m pip install clang-format==22.1.8
+          scripts/format.sh
+          scripts/format.sh --check
+          python3 -m unittest discover -s scripts -p test_coverage_report.py
+      - name: Commit prepared source on isolated branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md docs/coverage.md src tests scripts/coverage.sh scripts/coverage_report.py scripts/test_coverage_report.py .github/workflows/ci.yml
+          git commit -m 'test: prepare formatted coverage and boundary regression suite'
+          git push origin HEAD:automation/coverage-preparation
+          git rev-parse HEAD > /tmp/prepared-commit.txt
+          git rev-parse HEAD^{tree} > /tmp/prepared-tree.txt
+          git archive HEAD -o /tmp/prepared-source.tar
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage-prepared-source
+          path: |
+            /tmp/transport.b64
+            /tmp/coverage.patch
+            /tmp/prepared-commit.txt
+            /tmp/prepared-tree.txt
+            /tmp/prepared-source.tar
+          if-no-files-found: error
