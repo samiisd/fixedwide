@@ -47,13 +47,19 @@ make install
 # directories that actually exist: under `pipefail`, passing a missing lib64
 # directory to find would turn a successful install into a false failure.
 test -f "$PREFIX/include/decimal.hh"
-found=0
+found_c=0
+found_cpp=0
 for libdir in "$PREFIX/lib" "$PREFIX/lib64"; do
     [[ -d "$libdir" ]] || continue
     while IFS= read -r library; do
         printf '%s\n' "$library"
-        found=1
+        if [[ "$library" == *libmpdec++* ]]; then
+            found_cpp=1
+        elif [[ "$library" == *libmpdec.* ]]; then
+            found_c=1
+        fi
     done < <(find "$libdir" -maxdepth 1 -type f \
         \( -name 'libmpdec.*' -o -name 'libmpdec++.*' \) -print | sort)
 done
-[[ $found -eq 1 ]]
+[[ $found_c -eq 1 && $found_cpp -eq 1 ]]
+

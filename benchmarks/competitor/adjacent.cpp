@@ -112,6 +112,10 @@ void benchmark_hardware_floors(const Fixtures& fixtures) {
         raw_lhs[i] = fixtures.mul[i].lhs_raw;
         raw_rhs[i] = fixtures.mul[i].rhs_raw;
         expect(raw_rhs[i] != 0, "raw integer divisor is zero");
+        expect(std::abs((add_lhs[i] + add_rhs[i]) - static_cast<double>(fixtures.add[i].expected_raw) / scale) < 1e-4,
+               "hardware double add exceeds expected tolerance");
+        expect(std::abs((mul_lhs[i] * mul_rhs[i]) - static_cast<double>(fixtures.mul[i].expected_raw) / scale) < 1e-4,
+               "hardware double mul exceeds expected tolerance");
     }
 
     row("std", "double", "hardware_baseline", "add", [&](std::size_t n) {
@@ -176,6 +180,9 @@ void benchmark_serialization(const Fixtures& fixtures) {
     std::vector<T> values(data_size);
     for (std::size_t i = 0; i < data_size; ++i) {
         values[i] = T::from_raw(fixtures.text[i].raw);
+        const auto bytes = fixedwide::to_bytes<fixedwide::endian::little>(values[i]);
+        const auto restored = fixedwide::from_bytes<T, fixedwide::endian::little>(bytes);
+        expect(restored.has_value() && *restored == values[i], "serialization roundtrip disagrees with oracle");
     }
 
     row("std", "int64_t", "hardware_baseline", "memcpy_store", [&](std::size_t n) {

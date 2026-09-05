@@ -11,7 +11,7 @@ inline std::string filter;
 template<class F>
 void measure(const std::string& name, F loop) {
     if (!filter.empty() && name.find(filter) == std::string::npos) return;
-    loop(2048);
+    loop(4096);
     std::vector<double> samples;
     for (unsigned repeat = 0; repeat < repetitions; ++repeat) {
         const auto start = std::chrono::steady_clock::now();

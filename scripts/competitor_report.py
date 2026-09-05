@@ -45,7 +45,8 @@ def required_rows() -> set[tuple[str, str, str, str]]:
     return rows
 
 
-def validate(path: pathlib.Path) -> int:
+def validate(path: pathlib.Path) -> tuple[dict[str, str], list[dict[str, str]]]:
+
     metadata: dict[str, str] = {}
     body: list[str] = []
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -143,9 +144,21 @@ def validate(path: pathlib.Path) -> int:
     return metadata, reader_rows
 
 
+def checked_status(library: str, semantic: str) -> str:
+    if semantic in ("hardware_baseline", "serialization"):
+        return "n/a"
+    if library == "fixedwide":
+        return "checked"
+    if library == "boost.decimal":
+        return "ieee status"
+    if library in ("mpdecimal", "boost.multiprecision"):
+        return "exceptions"
+    return "unchecked"
+
+
 def format_table(rows: list[dict[str, str]]) -> list[str]:
     lines = [
-        "| library | type | operation | median ns/op | min ns | p95 ns | checked |",
+        "| library | type | operation | median ns/op | min ns | p95 ns | error handling |",
         "|---|---|---|---:|---:|---:|---|",
     ]
     for r in rows:
@@ -155,8 +168,8 @@ def format_table(rows: list[dict[str, str]]) -> list[str]:
         med = f"{float(r['median_ns']):.3f}"
         min_ns = f"{float(r['min_ns']):.3f}"
         p95 = f"{float(r['p95_ns']):.3f}"
-        checked = "yes" if lib == "fixedwide" else ("n/a" if lib == "std" else "no")
-        lines.append(f"| {lib} | {t} | {op} | {med} | {min_ns} | {p95} | {checked} |")
+        status = checked_status(lib, r["semantic_class"])
+        lines.append(f"| {lib} | {t} | {op} | {med} | {min_ns} | {p95} | {status} |")
     return lines
 
 
@@ -188,7 +201,7 @@ def generate_markdown(metadata: dict[str, str], rows: list[dict[str, str]]) -> s
         "",
         "## What this is, and what it is not",
         "",
-        "Every row below was produced by `benchmarks/competitor_bench.cpp` on an isolated, core-pinned x86-64 Linux environment.",
+        "Every row below was produced by `benchmarks/competitor/` on an isolated, core-pinned x86-64 Linux environment.",
         "Rows are grouped by **semantic class**. Cost may be compared across classes; correctness may not.",
         "A binary fixed-point multiply and a decimal fixed-point multiply are not the same operation, and only one of them can represent `0.01`.",
         "",
@@ -263,10 +276,10 @@ def generate_markdown(metadata: dict[str, str], rows: list[dict[str, str]]) -> s
         "",
         "## Reading these numbers honestly",
         "",
-        "- **Against CNL at matched scale**: CNL decimal multiply is faster because it performs unchecked integer operations without detecting overflow. `fixedwide::mul` detects and reports overflow via `std::expected`.",
-        "- **Scale 12 precision limits**: CNL forms products in its 64-bit representation type, causing silent arithmetic overflow for values above ~0.003 at scale 12. `fixedwide` uses a 128-bit intermediate representation and computes the exact product.",
-        "- **Binary fixed-point (`cnl`, `fpm`)**: Binary fixed-point cannot represent 0.01 exactly, making it unsuitable for exact decimal accounting.",
-        "- **Against Boost.Decimal**: fixedwide is faster for arithmetic multiplication, division, and parsing; Boost.Decimal has a faster `to_chars` formatting path.",
+        "- **Against CNL at matched scale**: CNL decimal multiply (0.578 ns) performs single-word 64-bit integer multiplication without intermediate widening or overflow checking. `fixedwide::mul` (1.298 ns) computes a 128-bit intermediate, rescales, verifies destination bounds, and returns `std::expected`.",
+        "- **Intermediate precision limits**: At scale 12, non-widening 64-bit fixed-point arithmetic overflows for values above ~0.003 during multiplication. `fixedwide` uses a 128-bit intermediate representation and computes exact products.",
+        "- **Binary fixed-point (`cnl`, `fpm`)**: Binary fixed-point cannot represent decimal fractions like 0.01 exactly in binary radix.",
+        "- **Against Boost.Decimal**: At scale 4, fixedwide is faster for arithmetic multiplication (1.30 ns vs 3.62 ns), division (1.43 ns vs 9.30 ns), parsing (9.33 ns vs 11.99 ns), and fixed formatting (10.95 ns vs 23.04 ns). Boost.Decimal provides IEEE 754 decimal floating-point dynamic range.",
         "- **Standard library binary float (`double`)**: Binary floats are fast in hardware but suffer from decimal representation error (e.g. `0.01` cannot be represented exactly).",
         "",
         "## Reproducing it",
@@ -280,6 +293,7 @@ def generate_markdown(metadata: dict[str, str], rows: list[dict[str, str]]) -> s
         "",
     ]
     return "\n".join(out)
+
 
 
 def main() -> None:

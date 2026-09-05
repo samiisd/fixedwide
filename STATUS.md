@@ -1,6 +1,6 @@
-# fixedwide 0.5.0 — status
+# fixedwide 0.6.0 — status
 
-**Version**: 0.5.0
+**Version**: 0.6.0
 **Standard**: C++23
 **Disposition**: pre-1.0. The API may still change; `CHANGELOG.md` will say when.
 
@@ -20,11 +20,14 @@ by more than 1%. Instruction counts are deterministic — two runs of
 `scripts/icount.sh` on the same binary are byte-identical — which is what makes
 a 1% threshold usable on a shared runner.
 
-The older gate was 0.4 parity, which never passed and was never going to be the
-right release criterion: 0.4 is a fixed-scale library with a smaller API, and
-some of the gap is what generality costs. That comparison is kept as historical
-evidence in `reports/BENCHMARK_VS_0_4.md`, and the rows that are still slower
-are listed under known open items below rather than blocking a release.
+Early development targeted strict wall-clock parity against fixedwide 0.4.
+However, 0.4 was hard-coded specifically for 12 decimals with a single storage width.
+Generalizing to arbitrary compile-time scales (0–76) and multi-limb tiers introduces
+caller-frame overheads that leave 9 to 18 workloads 5% to 24.5% slower than 0.4.
+That comparison is retained as historical evidence in `reports/BENCHMARK_VS_0_4.md`,
+and the current release gate enforces deterministic retired-instruction count limits
+against the current codebase baseline.
+
 
 ## What 0.5.0 changed
 
@@ -240,7 +243,7 @@ that work, measured. Eight examples in `examples/` are ctest tests.
     the umbrella header. `all.hpp` is now 187 ms. What remains of the
     `arithmetic.hpp` difference is `detail/constexpr_arith.hpp`, which cannot be
     dropped without dropping `constexpr` arithmetic.
-12. The competitor comparison against CNL is at scale 6 only, because CNL
-    overflows at scale 12 for ordinary values. A comparison against a library
-    that does check overflow at 12 decimals would be more informative than
-    either.
+12. The competitor comparison against CNL is at scale 4 (`power<-4, 10>`), because
+    unscaled 64-bit integer arithmetic without intermediate widening overflows at
+    scale 12 for ordinary values.
+

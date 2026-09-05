@@ -92,13 +92,14 @@ else()
     set(_fixedwide_boost_label "unknown")
 endif()
 
-set(_fixedwide_dependency_text
+string(CONCAT _fixedwide_dependency_text
     "fixedwide=${PROJECT_VERSION}; "
     "decimal_for_cpp=599372ee214ab37b5c0fc68148352321978f20ed; "
     "CNL=v1.1.7; fpm=v1.1.0; "
     "Boost.Decimal=1297a5efcb2368969f322d0addb3149ed4cbdd50; "
     "Boost.Multiprecision=${_fixedwide_boost_label}; "
     "mpdecimal=${_fixedwide_mpdecimal_label}")
+
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/competitor_versions.hpp
 "#pragma once\n"
