@@ -82,6 +82,8 @@ jobs:
           grep -q '^PASSED validations=' competitors.stderr
           python3 scripts/competitor_report.py \
             --input competitors.csv --validate-only
+          python3 scripts/competitor_report.py \
+            --input reports/raw/competitors.csv --check-markdown reports/BENCHMARK_COMPETITORS.md
 
       - name: Upload raw evidence
         uses: actions/upload-artifact@v7

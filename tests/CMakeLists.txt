@@ -14,6 +14,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         constexpr
         mixed_native
         format
+        readme
     )
 
     foreach(NAME ${TEST_NAMES})

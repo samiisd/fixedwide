@@ -118,7 +118,7 @@ evidence "Linux AArch64 on real hardware (Pixel 6, static cross build)" executed
 evidence "Clang libFuzzer under ASan+UBSan" executed-pass \
     "50,000,000 executions, no crash and no sanitizer diagnostic" "reports/fuzz_execution.log"
 evidence "Competitor benchmark from a clean checkout" executed-pass \
-    "CNL 1.1.7 and fpm 1.1.0 fetched at pinned tags; 28,672 output validations passed" "reports/raw/competitors.csv"
+    "decimal_for_cpp, CNL, fpm, Boost.Decimal, mpdecimal, Boost.Multiprecision; 167,938 output validations passed" "reports/raw/competitors.csv"
 evidence "Compile-time measurement versus 0.4" executed-pass \
     "fixed.hpp +28.6%, arithmetic.hpp +41.2%, chars.hpp +14.3% on Clang 22" "reports/COMPILE_TIME.md"
 # Rows this host cannot run, but CI can. Read the real outcome out of the most

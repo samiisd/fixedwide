@@ -16,31 +16,32 @@
 ---
 
 ```cpp
-double total = 0.0;
-for (int i = 0; i < 100; ++i) total += 0.01;
+double binary_total = 0.0;
+for (int i = 0; i < 100; ++i) binary_total += 0.01;
 // 1.0000000000000007          ← binary floats do not have 0.01
 ```
 
 ```cpp
 std::int64_t a = 5'000'000'000'000'000'000;
-std::int64_t total = a + a;
+std::int64_t raw_total = a + a;
 // undefined behaviour          ← no diagnostic, no crash, just a wrong number
 ```
 
 ```cpp
 using Money = fixedwide::Fixed64<2>;               // an int64 of cents
 
-auto total = Money::from_raw(0);
+auto checked_total = Money::from_raw(0);
 for (int i = 0; i < 100; ++i)
-    total = add(total, parse<Money>("0.01").value()).value();
-// to_string(total) == "1.00"   ← exactly
+    checked_total = add(checked_total, parse<Money>("0.01").value()).value();
+// to_string(checked_total) == "1.00"   ← exactly
 
 add(Money::max(), parse<Money>("0.01").value());
 // ArithmeticError::overflow    ← reported, not wrapped
 ```
 
-The scale lives in the type, so a price and a quantity are different types and
-mixing them without saying what you meant does not compile.
+The scale lives in the type, so different fixed-point widths and scales are distinct types:
+when a price and quantity carry different scales (such as 4 and 2 decimals),
+mixing them without specifying the target scale does not compile.
 
 ---
 
@@ -143,12 +144,13 @@ mul_to<Fixed128<2>>(price, rate);    // ✓ 21.49 — exact product, ONE roundin
 price == parse<Fixed64<8>>("19.99000000").value();   // ✓ true, exactly
 
 div(price, Fixed64<4>::from_raw(0)); // ArithmeticError::division_by_zero
-div(a, b, Rounding::exact);          // refuses to round rather than guess
+div(price, parse<Fixed64<4>>("3.0000").value(), Rounding::exact); // ArithmeticError::inexact
 ```
 
-Six rounding modes. `constexpr` arithmetic. Zero allocation on every
-arithmetic, parsing and formatting path — proved by a test that replaces
-`operator new` and counts.
+Six rounding modes. `constexpr` arithmetic. Core arithmetic, parsing, and
+caller-buffer formatting allocate no heap memory and return failures through
+`std::expected` (proved by a test that replaces `operator new` and counts).
+Convenience string formatting like `to_string` allocates by design.
 
 ---
 

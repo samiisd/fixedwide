@@ -149,6 +149,7 @@ void benchmark_cnl_decimal(const Fixtures& fixtures) {
     std::vector<T> add_lhs(data_size), add_rhs(data_size);
     std::vector<T> mul_lhs(data_size), mul_rhs(data_size);
     std::vector<T> div_lhs(data_size), div_rhs(data_size);
+    bool saw_fractional_quotient_loss = false;
 
     for (std::size_t i = 0; i < data_size; ++i) {
         add_lhs[i] = cnl::_impl::from_rep<T>(fixtures.add[i].lhs_raw);
@@ -166,18 +167,19 @@ void benchmark_cnl_decimal(const Fixtures& fixtures) {
         expect(cnl::_impl::to_rep(mul_result) == fixtures.mul[i].expected_raw,
                "CNL radix-10 multiplication disagrees with the integer oracle");
 
-        // CNL's division has a different result/rounding contract from
-        // fixedwide. Validate it independently with exact integer arithmetic: the
-        // represented answer must be within one scale-4 unit of lhs / rhs.
-        const __int128 actual_raw = cnl::_impl::to_rep(div_result);
-        const __int128 exact_numerator = static_cast<__int128>(fixtures.div[i].lhs_raw) * fixtures.scale;
-        const __int128 residual = actual_raw * fixtures.div[i].rhs_raw - exact_numerator;
-        const __int128 residual_magnitude = residual < 0 ? -residual : residual;
-        const __int128 divisor_magnitude = fixtures.div[i].rhs_raw < 0 ? -static_cast<__int128>(fixtures.div[i].rhs_raw)
-                                                                       : static_cast<__int128>(fixtures.div[i].rhs_raw);
-        expect(residual_magnitude < divisor_magnitude,
-               "CNL radix-10 division differs from the exact quotient by at least one output unit");
+        // CNL's same-type division first divides the raw representations at
+        // exponent zero, then converts that integral quotient back to scale 4.
+        // Fractional quotient digits are therefore gone before the conversion.
+        const __int128 whole = static_cast<__int128>(fixtures.div[i].lhs_raw) / fixtures.div[i].rhs_raw;
+        const __int128 expected_raw = whole * fixtures.scale;
+        expect(expected_raw >= std::numeric_limits<std::int64_t>::min() &&
+                   expected_raw <= std::numeric_limits<std::int64_t>::max() &&
+                   cnl::_impl::to_rep(div_result) == static_cast<std::int64_t>(expected_raw),
+               "CNL radix-10 division disagrees with its same-type quotient model");
+        saw_fractional_quotient_loss = saw_fractional_quotient_loss || expected_raw != fixtures.div[i].expected_raw;
     }
+    expect(saw_fractional_quotient_loss, "CNL adjacent division fixture did not expose fractional quotient loss");
+
     constexpr const char* type_name = "scaled_integer<int64,power<-4,10>>";
     row("cnl", type_name, "decimal_fixed_exact_4", "add", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) {
@@ -191,7 +193,7 @@ void benchmark_cnl_decimal(const Fixtures& fixtures) {
             consume(result);
         }
     });
-    row("cnl", type_name, "decimal_fixed_adjacent", "div", [&](std::size_t n) {
+    row("cnl", type_name, "decimal_fixed_adjacent", "div_same_type", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) {
             const T result = div_lhs[i & (data_size - 1)] / div_rhs[i & (data_size - 1)];
             consume(result);

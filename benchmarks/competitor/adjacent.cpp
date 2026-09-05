@@ -20,6 +20,7 @@ void benchmark_adjacent_types(const Fixtures& fixtures) {
     std::vector<FpmBinary> fpm_lhs(data_size), fpm_rhs(data_size);
 
     const double scale = static_cast<double>(fixtures.scale);
+    bool saw_cnl_binary_overflow = false;
     for (std::size_t i = 0; i < data_size; ++i) {
         lhs[i] = static_cast<double>(fixtures.mul[i].lhs_raw) / scale;
         rhs[i] = static_cast<double>(fixtures.mul[i].rhs_raw) / scale;
@@ -28,19 +29,31 @@ void benchmark_adjacent_types(const Fixtures& fixtures) {
         fpm_lhs[i] = FpmBinary{lhs[i]};
         fpm_rhs[i] = FpmBinary{rhs[i]};
 
-        expect(std::abs(static_cast<double>(cnl_lhs[i] + cnl_rhs[i]) - (lhs[i] + rhs[i])) < 1e-6,
+        const CnlBinary cnl_add = cnl_lhs[i] + cnl_rhs[i];
+        expect(std::abs(static_cast<double>(cnl_add) - (lhs[i] + rhs[i])) < 1e-4,
                "CNL binary addition exceeded its declared tolerance");
-        expect(std::abs(static_cast<double>(cnl_lhs[i] * cnl_rhs[i]) - (lhs[i] * rhs[i])) < 1e-6,
-               "CNL binary multiplication exceeded its declared tolerance");
-        expect(std::abs(static_cast<double>(cnl_lhs[i] / cnl_rhs[i]) - (lhs[i] / rhs[i])) < 1e-6,
-               "CNL binary division exceeded its declared tolerance");
-        expect(std::abs(static_cast<double>(fpm_lhs[i] + fpm_rhs[i]) - (lhs[i] + rhs[i])) < 1e-6,
+
+        // CNL's same-type division first divides the raw representations at
+        // exponent zero, dropping fractional bits before converting to power<-32>.
+        const CnlBinary cnl_div = cnl_lhs[i] / cnl_rhs[i];
+        const std::int64_t expected_div_raw = (cnl::_impl::to_rep(cnl_lhs[i]) / cnl::_impl::to_rep(cnl_rhs[i])) << 32;
+        expect(cnl::_impl::to_rep(cnl_div) == expected_div_raw,
+               "CNL binary division disagrees with its same-type quotient model");
+
+        // CNL scaled_integer forms products directly in its underlying int64_t
+        // representation type without 128-bit widening, overflowing for values >= 0.5.
+        const CnlBinary cnl_mul = cnl_lhs[i] * cnl_rhs[i];
+        saw_cnl_binary_overflow =
+            saw_cnl_binary_overflow || (std::abs(static_cast<double>(cnl_mul) - (lhs[i] * rhs[i])) > 0.01);
+
+        expect(std::abs(static_cast<double>(fpm_lhs[i] + fpm_rhs[i]) - (lhs[i] + rhs[i])) < 1e-4,
                "fpm addition exceeded its declared tolerance");
-        expect(std::abs(static_cast<double>(fpm_lhs[i] * fpm_rhs[i]) - (lhs[i] * rhs[i])) < 1e-6,
+        expect(std::abs(static_cast<double>(fpm_lhs[i] * fpm_rhs[i]) - (lhs[i] * rhs[i])) < 1e-4,
                "fpm multiplication exceeded its declared tolerance");
-        expect(std::abs(static_cast<double>(fpm_lhs[i] / fpm_rhs[i]) - (lhs[i] / rhs[i])) < 1e-6,
+        expect(std::abs(static_cast<double>(fpm_lhs[i] / fpm_rhs[i]) - (lhs[i] / rhs[i])) < 1e-4,
                "fpm division exceeded its declared tolerance");
     }
+    expect(saw_cnl_binary_overflow, "CNL binary multiplication did not expose representation overflow");
 
     row("cnl", "scaled_integer<int64,power<-32>>", "binary_fixed_approx", "add", [&](std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) {

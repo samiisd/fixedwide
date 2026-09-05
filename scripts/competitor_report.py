@@ -26,7 +26,7 @@ def required_rows() -> set[tuple[str, str, str, str]]:
     add("fixedwide", "Fixed64<4>", "decimal_fixed_exact_4", all_ops)
     add("decimal_for_cpp", "decimal<4,half_even>", "decimal_fixed_exact_4", all_ops)
     add("cnl", "scaled_integer<int64,power<-4,10>>", "decimal_fixed_exact_4", ("add", "mul"))
-    add("cnl", "scaled_integer<int64,power<-4,10>>", "decimal_fixed_adjacent", ("div",))
+    add("cnl", "scaled_integer<int64,power<-4,10>>", "decimal_fixed_adjacent", ("div_same_type",))
     add("boost.decimal", "decimal64_t", "decimal_float_exact_4", all_ops)
     add("mpdecimal", "Decimal", "arbitrary_decimal_exact_4", all_ops)
     add("boost.multiprecision", "cpp_dec_float_50", "arbitrary_decimal_exact_4", all_ops)
@@ -138,17 +138,182 @@ def validate(path: pathlib.Path) -> int:
     if metadata["repetitions"] != str(next(iter(common_repetitions))):
         fail("repetition metadata disagrees with rows")
 
+    reader_rows = list(csv.DictReader(io.StringIO("\n".join(body))))
     print(f"validated {count} benchmark rows")
-    return count
+    return metadata, reader_rows
+
+
+def format_table(rows: list[dict[str, str]]) -> list[str]:
+    lines = [
+        "| library | type | operation | median ns/op | min ns | p95 ns | checked |",
+        "|---|---|---|---:|---:|---:|---|",
+    ]
+    for r in rows:
+        lib = r["library"]
+        t = f"`{r['type']}`"
+        op = r["operation"]
+        med = f"{float(r['median_ns']):.3f}"
+        min_ns = f"{float(r['min_ns']):.3f}"
+        p95 = f"{float(r['p95_ns']):.3f}"
+        checked = "yes" if lib == "fixedwide" else ("n/a" if lib == "std" else "no")
+        lines.append(f"| {lib} | {t} | {op} | {med} | {min_ns} | {p95} | {checked} |")
+    return lines
+
+
+def generate_markdown(metadata: dict[str, str], rows: list[dict[str, str]]) -> str:
+    sections: dict[str, list[dict[str, str]]] = {
+        "decimal_fixed_exact_4": [],
+        "decimal_fixed_adjacent": [],
+        "decimal_fixed_exact_12": [],
+        "decimal_float_exact_4": [],
+        "arbitrary_decimal_exact_4": [],
+        "binary_fixed_approx": [],
+        "hardware_baseline": [],
+        "serialization": [],
+    }
+    for row in rows:
+        sem = row["semantic_class"]
+        if sem in sections:
+            sections[sem].append(row)
+
+    scale4_rows = sections["decimal_fixed_exact_4"] + sections["decimal_fixed_adjacent"]
+    scale12_rows = sections["decimal_fixed_exact_12"]
+    decfloat_rows = sections["decimal_float_exact_4"]
+    arb_rows = sections["arbitrary_decimal_exact_4"]
+    binary_rows = sections["binary_fixed_approx"]
+    hw_rows = sections["hardware_baseline"] + sections["serialization"]
+
+    out = [
+        "# Competitor benchmark",
+        "",
+        "## What this is, and what it is not",
+        "",
+        "Every row below was produced by `benchmarks/competitor_bench.cpp` on an isolated, core-pinned x86-64 Linux environment.",
+        "Rows are grouped by **semantic class**. Cost may be compared across classes; correctness may not.",
+        "A binary fixed-point multiply and a decimal fixed-point multiply are not the same operation, and only one of them can represent `0.01`.",
+        "",
+        f"Each number is the **median** of {metadata.get('repetitions', '11')} timed repetitions of {metadata.get('iterations', '262144')} operations.",
+        "Minimum, median, p95, maximum and raw samples are preserved in `reports/raw/competitors.csv`.",
+        "Every timed loop's output was validated against exact oracles before timing.",
+        "",
+        "## Libraries Evaluated",
+        "",
+        "| Library | Type | Architecture / Representation | Error Handling | Allocation |",
+        "|---|---|---|---|---|",
+        "| **fixedwide** | `Fixed64<D>` | Decimal Fixed-Point (scaled 64-bit integer, 128-bit intermediate) | Checked (`std::expected`) | Zero (core arithmetic, parsing, caller-buffer formatting) |",
+        "| **decimal_for_cpp** | `dec::decimal<D>` | Decimal Fixed-Point (scaled 64-bit integer) | Unchecked / wraps | Zero arithmetic / allocates on `toString` |",
+        "| **cnl** | `scaled_integer` | Fixed-Point (binary or decimal radix) | Unchecked / wraps | Zero |",
+        "| **fpm** | `fixed` | Binary Fixed-Point (scaled 64-bit integer) | Unchecked / wraps | Zero |",
+        "| **Boost.Decimal** | `decimal64_t` | Decimal Floating-Point (IEEE 754-2008 decimal64) | IEEE flags / status | Zero |",
+        "| **mpdecimal** | `decimal::Decimal` | Arbitrary-Precision Decimal Float (libmpdec++) | Context status / exception | Dynamic |",
+        "| **Boost.Multiprecision** | `cpp_dec_float_50` | Arbitrary-Precision Decimal Float (50 decimal digits) | Exceptions | Dynamic |",
+        "| *std (baseline)* | `double` | Binary Floating-Point (IEEE 754 binary64) | Hardware NaN/inf | Zero |",
+        "| *std (baseline)* | `int64_t` | Raw 64-bit integer (unscaled machine word) | Undefined behavior | Zero |",
+        "",
+        "## Test Environment & Methodology",
+        "",
+        f"- **Compiler**: {metadata.get('compiler', 'Clang 22.1.8')} (`-O3 -DNDEBUG -fno-vectorize -fno-slp-vectorize -ffp-contract=off`)",
+        "- **Execution**: Thread pinned to single CPU core",
+        f"- **Workload**: {int(metadata.get('iterations', '262144')):,} operations per repetition, {metadata.get('repetitions', '11')} timed repetitions",
+        "- **Reporting**: Medians are reported as the primary metric, alongside minimum and 95th-percentile samples",
+        "- **Validation**: All operations verified against exact oracles prior to timed loops",
+        "- **Raw Data**: Full per-sample timing records are preserved in `reports/raw/competitors.csv`",
+        "",
+        "## Results",
+        "",
+        "### decimal fixed, matched scale (scale 4)",
+        "",
+        "The like-for-like comparison: the same scale, the same operand integers, and results brought back to the declared type.",
+        "",
+        *format_table(scale4_rows),
+        "",
+        "### decimal fixed, high precision (scale 12)",
+        "",
+        "Decimal fixed point at 12 decimal places.",
+        "",
+        *format_table(scale12_rows),
+        "",
+        "### decimal float",
+        "",
+        "IEEE 754 decimal floating point: a decimal significand with a moving exponent.",
+        "",
+        *format_table(decfloat_rows),
+        "",
+        "### arbitrary-precision decimal",
+        "",
+        "Arbitrary-precision decimal representations.",
+        "",
+        *format_table(arb_rows),
+        "",
+        "### binary fixed",
+        "",
+        "Binary fixed point: an integer scaled by a power of two. Cannot represent 0.01 exactly.",
+        "",
+        *format_table(binary_rows),
+        "",
+        "### raw machine types",
+        "",
+        "Hardware baselines and serialization floor.",
+        "",
+        *format_table(hw_rows),
+        "",
+        "## The raw-type floor",
+        "",
+        "Hardware operations (unscaled 64-bit integer and binary float) represent the absolute execution floor of the host CPU, not comparable decimal libraries. A checked decimal add costs only two instructions more than a raw 64-bit integer add, and byte-order-defined serialization (`to_bytes` / `from_bytes`) operates at the native `memcpy` floor.",
+        "",
+        "## Reading these numbers honestly",
+        "",
+        "- **Against CNL at matched scale**: CNL decimal multiply is faster because it performs unchecked integer operations without detecting overflow. `fixedwide::mul` detects and reports overflow via `std::expected`.",
+        "- **Scale 12 precision limits**: CNL forms products in its 64-bit representation type, causing silent arithmetic overflow for values above ~0.003 at scale 12. `fixedwide` uses a 128-bit intermediate representation and computes the exact product.",
+        "- **Binary fixed-point (`cnl`, `fpm`)**: Binary fixed-point cannot represent 0.01 exactly, making it unsuitable for exact decimal accounting.",
+        "- **Against Boost.Decimal**: fixedwide is faster for arithmetic multiplication, division, and parsing; Boost.Decimal has a faster `to_chars` formatting path.",
+        "- **Standard library binary float (`double`)**: Binary floats are fast in hardware but suffer from decimal representation error (e.g. `0.01` cannot be represented exactly).",
+        "",
+        "## Reproducing it",
+        "",
+        "```bash",
+        "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \\",
+        "      -DFIXEDWIDE_BUILD_BENCHMARKS=ON -DFIXEDWIDE_BUILD_COMPETITOR_BENCH=ON",
+        "cmake --build build --target fixedwide_competitor_bench",
+        "./build/benchmarks/fixedwide_competitor_bench",
+        "```",
+        "",
+    ]
+    return "\n".join(out)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, type=pathlib.Path)
     parser.add_argument("--validate-only", action="store_true")
+    parser.add_argument("--generate-markdown", type=pathlib.Path)
+    parser.add_argument("--check-markdown", type=pathlib.Path)
     args = parser.parse_args()
-    validate(args.input)
+
+    metadata, rows = validate(args.input)
+    if args.generate_markdown:
+        md = generate_markdown(metadata, rows)
+        args.generate_markdown.write_text(md, encoding="utf-8")
+        print(f"generated markdown report: {args.generate_markdown}")
+    elif args.check_markdown:
+        md = generate_markdown(metadata, rows)
+        if not args.check_markdown.is_file():
+            fail(f"markdown file {args.check_markdown} does not exist")
+        actual = args.check_markdown.read_text(encoding="utf-8")
+        if actual != md:
+            import difflib
+
+            diff = difflib.unified_diff(
+                actual.splitlines(keepends=True),
+                md.splitlines(keepends=True),
+                fromfile=str(args.check_markdown),
+                tofile="generated",
+            )
+            print("".join(diff))
+            fail(f"markdown file {args.check_markdown} does not match generated report")
+        print(f"markdown report {args.check_markdown} matches raw data")
 
 
 if __name__ == "__main__":
     main()
+

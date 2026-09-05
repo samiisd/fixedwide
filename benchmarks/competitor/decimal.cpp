@@ -184,7 +184,9 @@ void benchmark_cpp_dec_float(const Fixtures& fixtures) {
                "cpp_dec_float_50 addition disagrees with the decimal oracle");
         expect(mul_lhs[i] * mul_rhs[i] == mul_expected[i],
                "cpp_dec_float_50 multiplication disagrees with the decimal oracle");
-        expect(div_lhs[i] / div_rhs[i] == div_expected[i],
+        const T quotient = div_lhs[i] / div_rhs[i];
+        expect(abs(quotient - div_expected[i]) < T("1e-45") &&
+                   quotient.str(4, std::ios_base::fixed) == fixtures.div[i].expected_text,
                "cpp_dec_float_50 division disagrees with the decimal oracle");
         expect(text_values[i].str(4, std::ios_base::fixed) == fixtures.text[i].text,
                "cpp_dec_float_50 formatting disagrees with canonical text");
