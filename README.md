@@ -4,16 +4,44 @@
 
 # fixedwide
 
-**Checked fixed-point decimal arithmetic for C++23.**
+**Fast, zero-allocation, checked decimal fixed-point arithmetic for C++23.**  
+*For physical instrumentation, deterministic simulation, geodesy, and financial ledgers.*
 
 [![CI](https://github.com/samiisd/fixedwide/actions/workflows/ci.yml/badge.svg)](https://github.com/samiisd/fixedwide/actions/workflows/ci.yml)
 [![coverage](docs/assets/coverage.svg)](docs/ci.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)
 
+[Why fixedwide?](#why-fixedwide) • [Domains](#domains) • [Quick Start](#the-problem-in-three-snippets) • [Performance](#performance) • [The Types](#the-types) • [Install](#install)
+
 </div>
 
 ---
+
+## Why fixedwide?
+
+Whenever measurements or values live on a **discrete decimal grid**, binary floating point (`float`, `double`) introduces subtle representation errors, and raw integers require error-prone manual scale management.
+
+| Approach | Where It Shines | The Fatal Trade-Off |
+|---|---|---|
+| **`double`** *(binary float)* | Massive dynamic range ($10^{\pm 308}$) | **Binary representation drift:** Fractions like `0.01` or `0.001` cannot be represented in base 2; cross-platform results drift due to FMA and compiler differences. |
+| **`int64_t`** *(manual scaling)* | Exact discrete steps | **Manual bookkeeping & silent UB:** No compiler help when mixing different scales; signed integer overflow triggers undefined behavior silently. |
+| **`Boost.Decimal`** *(decimal float)* | Scientific decimal float | **Floating exponent overhead:** 3–9 ns latency per operation; variable exponent shifts during arithmetic. |
+| **`mpdecimal`** *(arbitrary decimal)* | Unlimited digits (34+) | **Dynamic allocation:** Heap allocations on arithmetic and parsing; 10–40 ns latency. |
+| 🟢 **`fixedwide`** | **Exact decimal fixed-point (0–76 dec)** | **Sub-2ns arithmetic, 128-bit intermediate widening, compile-time scale safety, zero heap allocations, 100% bit-identical across architectures.** |
+
+---
+
+## Domains
+
+- 🔬 **Laboratory Instrumentation & Metrology**: Digital multimeters, ADCs, pressure transducers, and spectrometers report in discrete decimal increments (e.g. $0.001\text{ V}$, $0.05\text{ bar}$, $0.0001\text{ mA}$). `fixedwide` preserves the physical resolution of the instrument without binary conversion noise polluting calibration chains.
+- 🛰️ **Deterministic Simulation & Robotics**: Multi-axis CNC machines, stepper motors ($0.001\text{ mm}$ steps), and lockstep simulation engines demand bit-for-bit identical results across x86-64, ARM64, and WebAssembly without floating-point contraction differences.
+- 🗺️ **Geodesy & GIS Coordinates**: Micro-degree coordinates and survey grids require fixed precision where millimeter-scale positions must never drift over repeated geometric transformations.
+- 📊 **Financial Ledgers & Regulated Billing**: Currency cents, utility smart metering (kWh to 4 decimals), and tax tariffs mandated by statute to execute exact banker's rounding (`Rounding::nearest_even`).
+
+---
+
+## The Problem in Three Snippets
 
 ```cpp
 double binary_total = 0.0;
@@ -44,6 +72,7 @@ when a price and quantity carry different scales (such as 4 and 2 decimals),
 mixing them without specifying the target scale does not compile.
 Note that `basic_fixed` enforces scale and bit-width distinctness, not dimensional analysis:
 types with identical width and scale are the same type.
+
 
 ---
 
