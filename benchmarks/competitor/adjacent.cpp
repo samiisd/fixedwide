@@ -142,8 +142,8 @@ void benchmark_hardware_floors(const Fixtures& fixtures) {
                    std::abs(parsed - text_values[i]) < 1e-12,
                "hardware double parse exceeds expected tolerance");
         std::array<char, 96> buffer{};
-        const auto formatted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), text_values[i],
-                                             std::chars_format::fixed, 4);
+        const auto formatted =
+            std::to_chars(buffer.data(), buffer.data() + buffer.size(), text_values[i], std::chars_format::fixed, 4);
         expect(formatted.ec == std::errc{} &&
                    std::string_view(buffer.data(), static_cast<std::size_t>(formatted.ptr - buffer.data())) == text,
                "hardware double formatting disagrees with canonical text");

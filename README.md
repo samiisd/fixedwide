@@ -97,7 +97,18 @@ Other fixed-point libraries can be configured with widened representations or ov
 
 <!-- BEGIN GENERATED COMPETITOR SUMMARY -->
 
-Previously retained schema-2 timings are withdrawn: their process executed an overflowing CNL binary multiplication. They must not support performance claims. The corrected schema-3 benchmark bounds binary operands before execution. Fresh Release CSV, validation logs and generated reports are available from the [Competitor benchmark workflow](https://github.com/samiisd/fixedwide/actions/workflows/competitors.yml). No replacement timings are claimed until that evidence is retained.
+Exact-result scale-4 throughput; median ns/op. Different error models are not equivalent contracts.
+
+| operation | fixedwide | decimal_for_cpp | Boost.Decimal | double |
+|---|---:|---:|---:|---:|
+| mul | 2.500 | 11.880 | 7.536 | 0.715 |
+| div | 3.052 | 11.902 | 20.781 | 1.742 |
+| parse | 21.861 | 198.274 | 23.935 | 12.466 |
+| format_fixed | 26.137 | 266.114 | 40.500 | 46.258 |
+
+Recorded compiler: `Ubuntu Clang 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)`. Source commit: `bdea3667a71542a987d310524a3438c52bc9bb0b`. 11 repetitions of 262144 operations.
+
+These are independent-operation throughput microbenchmarks, not dependency-chain latency. Decimal multiplication/division fixtures are deliberately exact at the selected scale; they do not measure the general cost of inexact nearest-even rounding. Decimal preflight checks compare raw values or canonical fixed-format text against integer-derived expectations. Binary fixed-point and double checks use documented floating tolerances; cpp_dec_float_50 division uses a 1e-45 residual plus exact four-place text. CNL div_same_type discards fractional quotient digits and is NOT an equivalent division result.
 
 <!-- END GENERATED COMPETITOR SUMMARY -->
 
