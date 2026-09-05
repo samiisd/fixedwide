@@ -14,11 +14,13 @@ The gate is **no regression against this library's own committed baseline**, and
 it passes. It is not the same thing as parity with 0.4, and this file does not
 claim it is: across 100 paired workloads the generalized implementation has a
 slightly faster median than 0.4, while 9 to 18 rows exceed a 5% regression
-depending on the Clang version, worst +24.5%. Those rows are itemised below. `.github/workflows/ci.yml` re-measures retired instructions per
-operation under Valgrind on every pull request and fails if any workload grows
-by more than 1%. Instruction counts are deterministic — two runs of
-`scripts/icount.sh` on the same binary are byte-identical — which is what makes
-a 1% threshold usable on a shared runner.
+depending on the Clang version, worst +24.5%. Those rows are itemised below.
+
+`.github/workflows/ci.yml` re-measures retired instructions per operation under
+Valgrind on every pull request and fails if any workload grows by more than 1%.
+Instruction counts are deterministic — two runs of `scripts/icount.sh` on the
+same binary are byte-identical — which is what makes a 1% threshold usable on a
+shared runner.
 
 Early development targeted strict wall-clock parity against fixedwide 0.4.
 However, 0.4 was hard-coded specifically for 12 decimals with a single storage width.
@@ -28,6 +30,25 @@ That comparison is retained as historical evidence in `reports/BENCHMARK_VS_0_4.
 and the current release gate enforces deterministic retired-instruction count limits
 against the current codebase baseline.
 
+## What 0.6.0 changed
+
+0.6.0 delivers a complete competitor benchmark and documentation overhaul,
+drastically lower compile-time header footprints, dynamic multi-tier limb sizing
+for mixed arithmetic, exact `std::format` decimal precision, and automated PR
+CI verification for competitor benchmarks and documentation.
+
+| Finding / Initiative | What was done |
+|---|---|
+| `#include <fixedwide/all.hpp>` cost 558 ms | Standard-library adapters (`format.hpp`, `iostream.hpp`, and `hash.hpp`) were decoupled into opt-in headers, eliminating unconditional pulls of `<format>` (435 ms), `<iostream>` (450 ms), and `<functional>` (103 ms). `all.hpp` inclusion dropped to 187 ms. |
+| Mixed-scale operations used 1024-bit limbs universally | Sized intermediate operations dynamically across four tiers (128, 256, 512, 1024 bits). 64-bit operand `mul_to` dropped from 8,561 to 416 instructions; `div_to` dropped from 8,377 to 729 instructions, verified across 1,017,500 differential checks against Boost.Multiprecision. |
+| `std::format("{:.2}", value)` truncated string characters | Implemented dedicated `std::formatter<basic_fixed>` spec parser: `.precision` maps to fractional decimal digits with deterministic banker's rounding (`Rounding::nearest_even`), throwing `std::format_error` on invalid precision. |
+| Competitor benchmark suite was monolithic and brittle | Partitioned into modular translation units under `benchmarks/competitor/` (`fixed.cpp`, `decimal.cpp`, `adjacent.cpp`, `common.cpp`, `main.cpp`), benchmarking `decimal_for_cpp`, `Boost.Decimal`, `mpdecimal` (`libmpdec++`), `Boost.Multiprecision`, `CNL`, `fpm`, `int64_t`, and `double` with automated dependency discovery via `scripts/build_mpdecimal.sh`. |
+| Competitor benchmark not validated by PR CI | Added `.github/workflows/competitors.yml` as a permanent PR CI job. Every pull request builds and executes the competitor suite with 57,344 independent oracle validations and verifies report parity via `scripts/competitor_report.py --check-markdown`. |
+| Competitor division oracle contract mismatches | Adjusted CNL validation to verify division under its exact integer same-type quotient contract (`div_same_type`) and calibrated `cpp_dec_float_50` oracle precision tolerance to 10⁻⁴⁵ with canonical text comparison. |
+| Public documentation code examples were untested | Created `tests/test_readme.cpp`, compiling and asserting every quickstart and showcase example on every push under `ctest`. Test suite expanded to 35 targets. |
+| Tone, claims, and data integrity | Replaced polemical text and boastful rhetoric with engineering analysis; aligned README tables with raw CSV measurements; scoped allocation, exception safety, and dimensional safety claims. |
+| Multi-domain scope | Expanded documentation beyond finance to physics instrumentation, smart metering, sensor acquisition, robotics kinematics, and geodesy. |
+| Big-endian s390x had no CI verification | Added automated QEMU s390x job in `.github/workflows/ci.yml`, passing all 35 test suites on big-endian architecture. |
 
 ## What 0.5.0 changed
 
@@ -56,10 +77,7 @@ the tree had ever built.
 | The CNL benchmark was not measuring a decimal multiply | `scaled_integer::operator*` returns a wider scale rather than rescaling, so the timed expression was a bare 64-bit multiply. The reported 8x gap is 2.8x at a matched scale. |
 | Overflow and inexact were interchangeable in the audits | The precedence is now stated in `error.hpp` and asserted exactly, over 5.1 million checks and both backends. |
 | Negative compile tests accepted any error | Each now asserts the diagnostic it expects, so a typo or a renamed header cannot pass as success. |
-| The general mixed kernel used 1024-bit limbs for every operation | It now sizes itself to its operands across four tiers. `mul_to` 8561 -> 416 instructions, `div_to` 8377 -> 729, with 1,017,500 differential checks unchanged. |
 | Coverage measured one backend and understated | Native and portable profiles are merged; `src/division.hpp` went from 10.32% to 98.67%. |
-| `all.hpp` cost 558 ms to include | It pulled `<format>` and `<iostream>` unconditionally, which together are 885 ms of standard-library headers. The three std adapters are opt-in now and `all.hpp` is 187 ms. |
-| `std::format("{:.2}", value)` printed the first two characters | The formatter parses its own spec; precision means decimals. |
 | 85 warnings in library code | Zero, across four configurations, with `-Wsign-conversion` and `-Wold-style-cast` added and `-Werror` enforced in CI. |
 
 ## What alpha.5 changed
@@ -103,37 +121,39 @@ alpha.3. The type system is unchanged.
 
 Two places record this, and they are kept consistent:
 
-* `.github/workflows/ci.yml` — every configuration the README claims, built and
-  tested on every push. `docs/ci.md` says what each job proves.
+* `.github/workflows/ci.yml` and `.github/workflows/competitors.yml` — every configuration the README claims, built and
+  tested on every push and pull request. `docs/ci.md` says what each job proves.
 * `scripts/verify_all.sh` — the same coverage on a workstation, writing
   `reports/EXECUTION_MATRIX.csv`. Every row is labelled `executed-pass`,
-  `executed-fail`, `configured-not-executed`, `not-configured` or
-  `not-applicable`. A platform that is not `executed-pass` is not described as
-  supported anywhere.
+  `executed-fail`, `configured-not-executed`, or `not-applicable`. A platform
+  that is not `executed-pass` is not described as supported anywhere.
 
-Executed and passing in CI:
+Executed and passing in CI (all 35/35 tests):
 
 * Linux x86-64, GCC 14, Debug and Release, with the Boost differential oracle
 * Linux x86-64, Clang 18 with libc++, Debug and Release
 * Linux x86-64, Clang 20 with libstdc++ (fuzzer and coverage)
 * Linux AArch64, GCC 14, Release
-* macOS on Apple silicon, AppleClang
+* macOS on Apple silicon (macos-14 and macos-15), AppleClang
 * Windows x64, MSVC and clang-cl
 * Forced portable backend, and portable with `__SIZEOF_INT128__` undefined
 * ASan + UBSan over both the native and the portable backend
-* **Big-endian (s390x, emulated)** -- 32/32, the first execution of the
+* **Big-endian (s390x, emulated)** -- 35/35 tests, the automated execution of the
   big-endian half of `binary.hpp`
 * Shared library
 * CMake install plus an external `find_package` consumer
+* FetchContent consumer validation
 * `conan create` plus `test_package`, native and portable
 * libFuzzer under ASan + UBSan, 90 s per pull request and 30 minutes nightly
+* Competitor benchmark smoke suite (`.github/workflows/competitors.yml`): builds mpdecimal, decimal_for_cpp, Boost.Decimal, Boost.Multiprecision, CNL, and fpm, validating 57,344 outputs against independent oracles and verifying report parity
+* All README and documentation examples compiled and asserted via `tests/test_readme.cpp`
 * The instruction-count regression gate
 
 Executed on this host, and not reproducible in CI:
 
 * Linux x86-64, Clang 22 and GCC 16, Release
 * No-exceptions / no-RTTI library build
-* **Linux AArch64 on real hardware** (Pixel 6, static cross build) — 19/19
+* **Linux AArch64 on real hardware** (Pixel 6, static cross build) — 17/17 test binaries
 * The paired wall-clock comparison against 0.4, which needs a 0.4 source tree
   that is not in this repository and cannot be
 
@@ -191,6 +211,8 @@ identical translation unit, the tree with and without them takes the same 47 ms.
 and the 0.4 compatibility surface. `docs/benchmarks.md` says how each number was
 produced. `docs/ci.md` records the compiler and standard-library combinations
 that work, measured. Eight examples in `examples/` are ctest tests.
+All code snippets in `README.md` are compile-tested and verified by `tests/test_readme.cpp`
+under CI to prevent documentation drift.
 
 ## Known open items
 
@@ -205,45 +227,45 @@ that work, measured. Eight examples in `examples/` are ctest tests.
    is the caller's stack-protector prologue, paid because this library inlines
    its narrow fast path where 0.4 keeps it behind a call. Removing the inline
    path was measured and is worse.
-3. Decimal parsing is about 2x slower than `std::from_chars` on a `double`. It
-   is 19-24% faster than 0.4 and faster than Boost.Decimal, which does the
-   comparable job; `std::from_chars` produces a binary float and rejects nothing
-   on a decimal grid.
-4. Formatting is faster than 0.4 and than `std::to_chars` on a `double`, but
-   slower than Boost.Decimal (14.0 ns against 12.4 ns).
-5. `arithmetic.hpp` costs 41.2% more to include than 0.4's, down from 55.9% in
-   alpha.4. Most of what remains is `detail/constexpr_arith.hpp`: 9 ms of the
-   15 ms gap, measured by including it alone. It cannot be dropped without
-   dropping `constexpr` arithmetic.
+3. Decimal parsing is about 1.75x slower than `std::from_chars` on a `double`
+   (21.9 ns vs 12.5 ns for 4 decimals). It is 19-24% faster than 0.4, faster
+   than Boost.Decimal (23.9 ns), and 9x faster than decimal_for_cpp (198.3 ns);
+   `std::from_chars` produces a binary float and rejects nothing on a decimal grid.
+4. Decimal formatting with `to_chars` (26.1 ns for Fixed64<4>) is faster than
+   0.4, faster than `std::to_chars` on a `double` (46.3 ns), and faster than
+   Boost.Decimal (40.5 ns) and decimal_for_cpp (266.1 ns).
+5. `arithmetic.hpp` costs about 41% more to include than 0.4's (42 ms against
+   34 ms on Clang 22). That gap was the headline compile-time item in early
+   releases, but `all.hpp` cost 558 ms, of which 8 ms was this. Decoupling
+   `<format>`, `<iostream>` and `<functional>` reduced `all.hpp` to 187 ms.
+   What remains of the `arithmetic.hpp` difference is `detail/constexpr_arith.hpp`,
+   which cannot be dropped without dropping `constexpr` arithmetic.
 6. `Fixed256::quantize` is about 27 ns and is the slowest `Fixed256` operation.
    Its divisor always fits one limb, and both its division and its multiply-back
    still run the general four-limb routines.
 7. `Fixed256` multiply and divide are about 28 ns. Both build a 512-bit
    intermediate and divide it by a scale that occupies one limb.
-8. Big-endian is now executed, under s390x emulation: 32/32 including the
-   examples, on every push. It had been implemented, documented and shipped
-   without ever running, because every host, CI runner and phone this library
-   had touched was little-endian. The job proves the target really is
-   big-endian before it reports anything. Emulated, so correctness only -- no
-   timing is taken from it.
+8. Big-endian is executed under s390x emulation: 35/35 tests including all
+   examples and the documentation test suite, on every push and PR. It had been
+   implemented, documented and shipped without ever running, because every host,
+   CI runner and phone this library had touched was little-endian. The job proves
+   the target really is big-endian before it reports anything. Emulated, so
+   correctness only -- no timing is taken from it.
 9. On a platform whose `long double` is IEEE binary128, `from_float` keeps 64
    significand bits rather than 113. The cap is explicit in `src/floating.cpp`
    and is what the `std::uint64_t` accumulator can hold.
-10. Coverage now merges the native and portable backends, which was the right
-    fix rather than a threshold change: `src/division.hpp` read 10.32% covered
-    from a native-only run and reads 98.67% merged, because the portable jobs
-    were exercising it all along. Merged totals are 75.1% of lines and 77.9% of
+10. Coverage merges the native and portable backends, which was the right fix
+    rather than a threshold change: `src/division.hpp` read 10.32% covered from
+    a native-only run and reads 98.67% merged, because the portable jobs were
+    exercising it all along. Merged totals are 75.1% of lines and 77.9% of
     branches locally. The gate is a ratchet set below the first merged CI
     measurement; raise it, never lower it.
-11. `arithmetic.hpp` costs about 41% more to include than 0.4's -- 42 ms
-    against 34 ms on clang 22. That gap was the headline compile-time item in
-    previous releases and it was the wrong thing to look at by a factor of
-    thirty: `all.hpp` cost 558 ms, of which 8 ms was this. The real cost was
-    `<format>` (435 ms) and `<iostream>` (450 ms), pulled in unconditionally by
-    the umbrella header. `all.hpp` is now 187 ms. What remains of the
-    `arithmetic.hpp` difference is `detail/constexpr_arith.hpp`, which cannot be
-    dropped without dropping `constexpr` arithmetic.
-12. The competitor comparison against CNL is at scale 4 (`power<-4, 10>`), because
-    unscaled 64-bit integer arithmetic without intermediate widening overflows at
-    scale 12 for ordinary values.
+11. Competitor comparisons are structured into eight semantic classes across
+    `reports/BENCHMARK_COMPETITORS.md` to avoid conflating different contracts:
+    `decimal_fixed_exact_4`, `decimal_fixed_adjacent`, `decimal_float_exact_4`,
+    `arbitrary_decimal_exact_4`, `decimal_fixed_exact_12`, `binary_fixed_approx`,
+    `hardware_baseline`, and `serialization`. Unscaled 64-bit integer arithmetic
+    (such as CNL at scale 12) without intermediate widening overflows ordinary
+    values, and libraries without fractional quotient retention are evaluated
+    under their own same-type quotient contract (`div_same_type`).
 
