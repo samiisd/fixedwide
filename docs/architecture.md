@@ -108,8 +108,13 @@ that always fits, so it cannot return `buffer_too_small` when given
 `char[text_capacity]`. The formatting kernel narrows to 64-bit arithmetic
 whenever the quotient, remainder and divisor all fit, which is most of the time.
 
-## What the library never does
+## Memory and error design
 
-No heap allocation, on any path. No virtual dispatch. No exceptions — it builds
-and works under `-fno-exceptions` and `-fno-rtti`. No `errno`. No global state.
+Core arithmetic, parsing, and buffer-based formatting (`to_chars`) perform no
+heap allocation and throw no exceptions; the core library builds and runs
+under `-fno-exceptions` and `-fno-rtti`. No virtual dispatch. No `errno`. No
+global state. Convenience string wrappers (`to_string`) and stream operators
+allocate via the standard library. The `<fixedwide/format.hpp>` adapter throws
+`std::format_error` on malformed specifiers per the `std::formatter` requirement.
 No silent wrong answer: every operation that can fail says so in its return type.
+

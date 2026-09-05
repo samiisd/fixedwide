@@ -1,235 +1,139 @@
 # Competitor benchmark
 
-## What this is, and what it is not
+These are independent-operation throughput microbenchmarks, not dependency-chain latency. Decimal multiplication/division fixtures are deliberately exact at the selected scale; they do not measure the general cost of inexact nearest-even rounding. Decimal preflight checks compare raw values or canonical fixed-format text against integer-derived expectations. Binary fixed-point and double checks use documented floating tolerances; cpp_dec_float_50 division uses a 1e-45 residual plus exact four-place text. CNL div_same_type discards fractional quotient digits and is NOT an equivalent division result.
 
-Every row below was produced by `benchmarks/competitor_bench.cpp` on this host.
-No row is quoted for a library the executable does not actually run.
+## Recorded provenance
 
-Rows are grouped by **semantic class**. Cost may be compared across classes;
-correctness may not. A binary fixed-point multiply and a decimal fixed-point
-multiply are not the same operation, and only one of them can represent `0.01`.
+CSV SHA-256: `a5c973e1beeecd6825ae319cdddea2e4fdeee0d4aa799a1bd9d06ae22f666c68`
 
-Each number is the **median** of 11 timed repetitions of 262144
-operations. Minimum, median, p95, maximum and every raw sample are in
-`reports/raw/competitors.csv`. Every timed loop's output was validated against
-an independent oracle **outside** the timed region first; the run reports
-`validations=57347` and refuses to print results if any check fails.
+- source_commit: `bdea3667a71542a987d310524a3438c52bc9bb0b`
+- compiler: `Ubuntu Clang 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)`
+- cpu: `AMD EPYC 9V74 80-Core Processor`
+- flags: `-O3 -DNDEBUG -Werror -fno-vectorize -fno-slp-vectorize -ffp-contract=off (compile_commands.json retained)`
+- affinity: `0`
+- run_url: `https://github.com/samiisd/fixedwide/actions/runs/33954651604`
+- binary_sha256: `68b89a47e4808eb6b481a0d588bfa82a8617b3d4705cb283434a5a3879336bb8`
+- iterations: `262144`
+- repetitions: `11`
+- validations: `212993`
+- dependencies: `fixedwide=0.6.0; decimal_for_cpp=599372ee214ab37b5c0fc68148352321978f20ed; CNL=v1.1.7; fpm=v1.1.0; Boost.Decimal=1297a5efcb2368969f322d0addb3149ed4cbdd50; Boost.Multiprecision=1.83.0; mpdecimal=4.0.1`
+- decimal_contract: `signed exact scaled-integer fixtures; multiplication and division exact at declared scale`
+- binary_contract: `shared scale-4 multiplication inputs divided by 32; raw product bounds checked before execution; tolerance-based validation`
+- text_contract: `fixed notation with all declared fractional digits`
 
-## Reproducing it
+## Reading the results
 
+The binary CNL/fpm inputs share the scale-4 multiplication fixtures divided by 32. Every CNL raw product is checked in __int128 before the int64 operation executes. These bounded binary workloads do not share the decimal workloads' economic range.
+
+fixedwide uses checked decimal rescaling. decimal_for_cpp explicitly selects half-even; CNL and fpm use their configured arithmetic without fixedwide-style checked overflow. Unconfigured signed overflow is not promised to wrap. Only successful bounded inputs are timed.
+
+Boost.Decimal has a moving decimal exponent. mpdecimal has runtime precision and may allocate. The default cpp_dec_float_50 stores its fixed-precision digits inside the object, without a digit-storage allocator; string conversions may allocate. Allocating string formatters are labelled by API/type and should not be mistaken for caller-buffer formatting.
+
+Serialization load rows traverse prepared buffers. They are microbenchmarks, not a universal memcpy floor. The p95 column follows the harness's lower order statistic: sorted[(n-1)*95/100]. All samples remain in the CSV. Sanitized runs must not supply timing tables.
+
+## decimal_fixed_exact_4
+
+| library | type | operation | median ns/op | min ns | p95 ns |
+|---|---|---|---:|---:|---:|
+| fixedwide | `Fixed64<4>` | add | 0.875 | 0.874 | 0.912 |
+| fixedwide | `Fixed64<4>` | mul | 2.500 | 2.441 | 2.569 |
+| fixedwide | `Fixed64<4>` | div | 3.052 | 2.993 | 3.082 |
+| fixedwide | `Fixed64<4>` | parse | 21.861 | 21.446 | 22.369 |
+| fixedwide | `Fixed64<4>` | format_fixed | 26.137 | 26.072 | 26.169 |
+| decimal_for_cpp | `decimal<4,half_even>` | add | 0.714 | 0.713 | 0.743 |
+| decimal_for_cpp | `decimal<4,half_even>` | mul | 11.880 | 11.855 | 12.058 |
+| decimal_for_cpp | `decimal<4,half_even>` | div | 11.902 | 11.886 | 11.928 |
+| decimal_for_cpp | `decimal<4,half_even>` | parse | 198.274 | 198.072 | 199.958 |
+| decimal_for_cpp | `decimal<4,half_even>` | format_fixed | 266.114 | 265.580 | 266.952 |
+| cnl | `scaled_integer<int64,power<-4,10>>` | add | 0.714 | 0.713 | 0.747 |
+| cnl | `scaled_integer<int64,power<-4,10>>` | mul | 1.357 | 1.354 | 1.391 |
+
+## decimal_fixed_adjacent
+
+| library | type | operation | median ns/op | min ns | p95 ns |
+|---|---|---|---:|---:|---:|
+| cnl | `scaled_integer<int64,power<-4,10>>` | div_same_type | 2.281 | 2.253 | 2.285 |
+
+## decimal_float_exact_4
+
+| library | type | operation | median ns/op | min ns | p95 ns |
+|---|---|---|---:|---:|---:|
+| boost.decimal | `decimal64_t` | add | 7.646 | 7.635 | 7.717 |
+| boost.decimal | `decimal64_t` | mul | 7.536 | 7.533 | 7.545 |
+| boost.decimal | `decimal64_t` | div | 20.781 | 20.744 | 20.993 |
+| boost.decimal | `decimal64_t` | parse | 23.935 | 23.901 | 24.005 |
+| boost.decimal | `decimal64_t` | format_fixed | 40.500 | 40.439 | 40.749 |
+
+## arbitrary_decimal_exact_4
+
+| library | type | operation | median ns/op | min ns | p95 ns |
+|---|---|---|---:|---:|---:|
+| mpdecimal | `Decimal` | add | 22.463 | 22.377 | 22.849 |
+| mpdecimal | `Decimal` | mul | 18.920 | 18.859 | 19.105 |
+| mpdecimal | `Decimal` | div | 97.830 | 97.569 | 98.261 |
+| mpdecimal | `Decimal` | parse | 45.627 | 45.560 | 45.817 |
+| mpdecimal | `Decimal` | format_fixed | 106.464 | 106.092 | 106.706 |
+| boost.multiprecision | `cpp_dec_float_50` | add | 25.763 | 25.697 | 25.803 |
+| boost.multiprecision | `cpp_dec_float_50` | mul | 101.284 | 101.104 | 101.510 |
+| boost.multiprecision | `cpp_dec_float_50` | div | 746.130 | 743.763 | 747.525 |
+| boost.multiprecision | `cpp_dec_float_50` | parse | 144.773 | 141.975 | 145.895 |
+| boost.multiprecision | `cpp_dec_float_50` | format_fixed | 214.879 | 214.084 | 216.442 |
+
+## decimal_fixed_exact_12
+
+| library | type | operation | median ns/op | min ns | p95 ns |
+|---|---|---|---:|---:|---:|
+| fixedwide | `Fixed64<12>` | add | 0.875 | 0.874 | 0.905 |
+| fixedwide | `Fixed64<12>` | mul | 3.258 | 3.215 | 3.274 |
+| fixedwide | `Fixed64<12>` | div | 3.172 | 3.144 | 3.183 |
+| fixedwide | `Fixed64<12>` | parse | 38.741 | 38.367 | 40.183 |
+| fixedwide | `Fixed64<12>` | format_fixed | 29.534 | 29.510 | 29.661 |
+| decimal_for_cpp | `decimal<12,half_even>` | add | 0.713 | 0.713 | 0.745 |
+| decimal_for_cpp | `decimal<12,half_even>` | mul | 67.736 | 67.551 | 68.564 |
+| decimal_for_cpp | `decimal<12,half_even>` | div | 67.552 | 67.471 | 68.196 |
+| decimal_for_cpp | `decimal<12,half_even>` | parse | 261.280 | 259.374 | 262.466 |
+| decimal_for_cpp | `decimal<12,half_even>` | format_fixed | 272.358 | 271.865 | 273.273 |
+
+## binary_fixed_approx
+
+| library | type | operation | median ns/op | min ns | p95 ns |
+|---|---|---|---:|---:|---:|
+| cnl | `scaled_integer<int64,power<-32>>` | add | 0.713 | 0.708 | 0.739 |
+| cnl | `scaled_integer<int64,power<-32>>` | mul | 1.169 | 1.166 | 1.198 |
+| cnl | `scaled_integer<int64,power<-32>>` | div_same_type | 2.281 | 2.253 | 2.297 |
+| fpm | `fixed<int64,int128,32>` | add | 0.713 | 0.708 | 0.740 |
+| fpm | `fixed<int64,int128,32>` | mul | 3.194 | 3.161 | 3.217 |
+| fpm | `fixed<int64,int128,32>` | div | 4.639 | 4.541 | 4.661 |
+
+## hardware_baseline
+
+| library | type | operation | median ns/op | min ns | p95 ns |
+|---|---|---|---:|---:|---:|
+| std | `double` | add | 0.713 | 0.713 | 0.747 |
+| std | `double` | mul | 0.715 | 0.714 | 0.743 |
+| std | `double` | div | 1.742 | 1.568 | 1.773 |
+| std | `double` | parse | 12.466 | 12.429 | 12.532 |
+| std | `double` | format_fixed | 46.258 | 46.070 | 46.877 |
+| std | `int64_t` | add_unchecked | 0.713 | 0.713 | 0.742 |
+| std | `int64_t` | mul_unchecked | 0.713 | 0.713 | 0.744 |
+| std | `int64_t` | div_unchecked | 2.281 | 2.253 | 2.287 |
+| std | `int64_t` | memcpy_store | 0.737 | 0.734 | 0.767 |
+| std | `int64_t` | memcpy_load | 0.698 | 0.698 | 0.726 |
+
+## serialization
+
+| library | type | operation | median ns/op | min ns | p95 ns |
+|---|---|---|---:|---:|---:|
+| fixedwide | `Fixed64<4>` | to_bytes_little | 0.698 | 0.698 | 0.772 |
+| fixedwide | `Fixed64<4>` | from_bytes_little | 0.697 | 0.697 | 0.725 |
+
+## Reproduce
+
+Build mpdecimal first with scripts/build_mpdecimal.sh and use its prefix as FIXEDWIDE_MPDECIMAL_ROOT. The complete Release and UBSan/ASan commands, recorded environment, binary hashes and raw outputs are retained by .github/workflows/competitors.yml. Do not reuse a schema-2 baseline; those measurements were withdrawn.
+
+Generate this report and the README summary from the SAME validated CSV:
+
+```bash
+python3 scripts/competitor_report.py --input reports/raw/competitors.csv --require-provenance \
+  --generate-markdown reports/BENCHMARK_COMPETITORS.md --update-readme README.md
 ```
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-      -DFIXEDWIDE_BUILD_BENCHMARKS=ON -DFIXEDWIDE_BUILD_COMPETITOR_BENCH=ON
-cmake --build build --target fixedwide_competitor_bench
-./build/benchmarks/fixedwide_competitor_bench
-```
-
-The dependencies are fetched at pinned tags by `benchmarks/competitors.cmake`.
-Nothing needs to be vendored or present locally.
-
-Environment: `clang version 22.1.8`, `-O3 -DNDEBUG` with vectorisation and FP contraction
-disabled, pinned to one core. Resolved dependencies:
-
-```
-fpm v1.1.0 /home/shared/ws/fixedwide/build_comp/_deps/fpm-src
-cnl v1.1.7 /home/shared/ws/fixedwide/build_comp/_deps/cnl-src
-boost 1.92.0
-```
-
-
-## Results
-
-### decimal fixed, matched scale
-
-The like-for-like comparison: the same scale, the same operand integers, and both
-results brought back to the declared type. Validated against an exact integer oracle.
-
-| library | type | operation | median ns/op | checked |
-|---|---|---|---:|---|
-| cnl | `scaled_integer<int64,power<-6,10>>` | mul_unchecked | 0.538 | no |
-| cnl | `scaled_integer<int64,power<-6,10>>` | div_unchecked | 1.194 | no |
-| fixedwide | `Fixed64<6>` | mul_nearest_even | 1.518 | yes |
-| fixedwide | `Fixed64<6>` | div_nearest_even | 1.995 | yes |
-
-### decimal fixed
-
-Decimal fixed point: an integer scaled by a power of ten. Note the CNL rows are
-scale 6 against fixedwide's scale 12 -- see the matched-scale class above for the
-comparison that controls for that.
-
-| library | type | operation | median ns/op | checked |
-|---|---|---|---:|---|
-| cnl | `scaled_integer<int64,power<-6,10>>` | mul_unchecked | 0.544 | no |
-| cnl | `scaled_integer<int64,power<-6,10>>` | div_unchecked | 1.090 | no |
-| fixedwide | `Fixed64<12>` | dependent_chain_mul | 2.039 | yes |
-| fixedwide | `Fixed64<12>` | div_nearest_even | 2.171 | yes |
-| fixedwide | `Fixed64<12>` | mul_div_one_rounding | 2.308 | yes |
-| fixedwide | `Fixed64<12>` | mul_nearest_even | 2.626 | yes |
-| fixedwide | `Fixed64<12>` | parse | 12.303 | yes |
-| fixedwide | `Fixed64<12>` | format | 14.098 | yes |
-
-### binary fixed
-
-Binary fixed point: an integer scaled by a power of two. Cannot represent 0.01 exactly.
-
-| library | type | operation | median ns/op | checked |
-|---|---|---|---:|---|
-| cnl | `scaled_integer<int64,power<-32>>` | mul_unchecked | 0.488 | no |
-| fpm | `fixed<int64,int128,32>` | mul_nearest_unchecked | 1.351 | no |
-| fpm | `fixed<int64,int128,32>` | div_nearest_unchecked | 1.945 | no |
-
-### decimal float
-
-IEEE 754 decimal floating point: a decimal significand with a moving exponent.
-
-| library | type | operation | median ns/op | checked |
-|---|---|---|---:|---|
-| boost.decimal | `decimal64_t` | mul | 3.540 | no |
-| boost.decimal | `decimal64_t` | div | 8.594 | no |
-| boost.decimal | `decimal64_t` | format | 12.574 | no |
-| boost.decimal | `decimal64_t` | parse | 13.669 | no |
-
-### raw integer
-
-Wide-integer arithmetic with no scale and no rounding. A floor, not a competitor.
-
-| library | type | operation | median ns/op | checked |
-|---|---|---|---:|---|
-| boost.multiprecision | `int128_t` | mul_unchecked | 0.888 | n/a |
-
-### binary float
-
-IEEE 754 binary floating point. The cost of not being deterministic in decimal.
-
-| library | type | operation | median ns/op | checked |
-|---|---|---|---:|---|
-| std | `double` | mul | 0.222 | n/a |
-| std | `double` | div | 0.739 | n/a |
-| std | `double` | parse | 5.403 | n/a |
-| std | `double` | format | 28.648 | n/a |
-
-### raw machine types
-
-Not competitors: the floor. What the hardware costs with no scale, no rounding mode,
-no overflow check and no decimal guarantee.
-
-| library | type | operation | median ns/op | checked |
-|---|---|---|---:|---|
-| std | `int64_t` | memcpy_load | 0.182 | n/a |
-| fixedwide | `Fixed64<12>` | from_bytes_little | 0.184 | yes |
-| std | `int64_t` | memcpy_store | 0.190 | n/a |
-| fixedwide | `Fixed64<12>` | to_bytes_little | 0.190 | yes |
-| std | `float` | mul | 0.203 | n/a |
-| std | `float` | add | 0.206 | n/a |
-| std | `double` | add | 0.260 | n/a |
-| std | `int64_t` | add_unchecked | 0.312 | n/a |
-| std | `int64_t` | mul_unchecked | 0.330 | n/a |
-| fixedwide | `Fixed64<12>` | add_checked | 0.384 | yes |
-| std | `int64_t` | div_unchecked | 1.090 | n/a |
-
-## The raw-type floor
-
-The `raw machine types` rows above exist because "fast for a checked decimal
-library" is not a claim anyone can act on. `std::int64_t`, `float` and `double`
-say what the hardware costs with no scale, no rounding mode and no overflow
-check, so the price of the contract is visible rather than argued:
-
-| | fixedwide `Fixed64<12>` | raw `int64_t` | `double` |
-|---|---:|---:|---:|
-| add | 0.388 | 0.272 | 0.217 |
-| store 8 bytes | 0.194 (`to_bytes`, byte order pinned) | 0.192 (`memcpy`, native order) | - |
-| load 8 bytes | 0.184 (`from_bytes`, validated) | 0.183 (`memcpy`) | - |
-
-Two things worth saying plainly about that table.
-
-**Serialization is at the floor.** `to_bytes` and `from_bytes` measure the same
-as a raw `memcpy` of the object representation, and they do strictly more: the
-byte order is named, so what one machine writes another reads, and `from_bytes`
-rejects a span of the wrong length. Under Valgrind the instruction counts are
-not equal — 110 against 54 per operation — so this is not "the same code". It is
-cheap ALU work that pipelines away at this size, and on a longer dependent chain
-the gap would show. The timed rows are what a caller feels; the instruction
-counts are in `benchmarks/baseline/`.
-
-**A checked add is close to a raw one, not equal to it.** 0.388 ns against
-0.272 ns, and exactly two extra instructions (4 marginal against 2, measured
-deterministically rather than timed). These rows are all a fraction of a
-nanosecond and throughput-bound, so read the ordering, not the ratio.
-
-## Reading these numbers honestly
-
-**Against CNL, at a matched scale, the multiply gap is about 2.8x — not the 8x
-this report used to claim.** The old figure compared fixedwide's
-multiply-widen-rescale-check against a CNL expression that never rescaled at
-all: `cnl::scaled_integer::operator*` returns a type whose exponent is the *sum*
-of the operands', so `a * b` is a bare 64-bit multiply leaving the product at a
-different scale. Bringing the result back to the declared type is the comparable
-operation, and the `decimal fixed, matched scale` rows above do that.
-
-CNL is still faster, and the reason is unchanged and worth stating plainly: it
-does not check for overflow. `fixedwide::mul` returns `std::expected` and
-reports it. That is the trade this library exists to make.
-
-**CNL cannot do twelve decimals at all**, which is the more important finding.
-It forms the product in its representation type, so a scale-12 multiply
-overflows `int64_t` for any value above roughly 0.003. Checked on every run of
-this benchmark:
-
-```
-123.456789012345 * 2, at 12 decimals
-  cnl        raw = -2111655         wrong, negative, and silent
-  fixedwide  raw = 246913578024690  exact
-```
-
-fixedwide forms the intermediate at twice the width, so it returns the right
-answer rather than either wrapping or erroring. That is why the matched-scale
-comparison above is at scale 6: it is the widest scale at which both libraries
-compute the same function.
-
-Against **Boost.Decimal** — the nearest thing here to the same use case:
-
-* multiply is faster (2.63 ns against 3.54), and divide about four times faster
-  (2.17 against 8.59);
-* **parsing is faster** (12.3 ns against 13.7);
-* formatting is slower (14.1 ns against 12.6), and that is an open item.
-
-Against the standard library's binary-float text routines:
-
-* **formatting is about twice as fast** as `std::to_chars` on a `double`;
-* **parsing is about twice as slow** as `std::from_chars` on a `double`. That
-  gap is real and reported, but it is not a like-for-like row:
-  `std::from_chars` produces a binary float and rejects nothing on a decimal
-  grid, while this parser produces an exact scaled integer and refuses input it
-  cannot represent. Boost.Decimal is the row to read against.
-
-## Corrections to the previous report
-
-* **The CNL rows did not rescale.** `scaled_integer::operator*` and
-  `operator/` return a type whose exponent is the sum or difference of the
-  operands', so the timed expression was a bare 64-bit multiply or divide with
-  the result left at the wrong scale. Every CNL row is now forced back to its
-  declared type, which is the operation fixedwide performs. The multiply gap
-  went from a reported 8x to a measured 2.8x at a matched scale.
-* **The CNL comparison was at the wrong scale.** `Fixed64<12>` was compared
-  against a scale-6 CNL type. There is now a `decimal fixed, matched scale`
-  class that pairs each scale with its own counterpart, seeds both libraries
-  from the identical raw integers, and validates against an exact integer
-  oracle instead of a 0.01 floating tolerance that could not tell a correct
-  decimal result from a wrong one.
-* **Operands were positive only.** The matched-scale fixture includes negatives,
-  and derives magnitudes from the scale so both scale points see the same
-  values.
-
-* **CNL is not base-2 only.** `cnl::scaled_integer` is radix-parameterised and is
-  benchmarked here in both a base-10 and a base-2 configuration. CNL's own
-  documentation notes decimal support is less exercised than binary; that is a
-  caveat on the row, not grounds for omitting it.
-* **fpm is not truncation-only.** `fpm::fixed` rounds multiply and divide to
-  nearest. It is compared as binary fixed point, which is what it is.
-* **Fixed-precision Boost.Multiprecision `int128_t` does not allocate** in its
-  allocator-free configuration. It appears here as a raw-integer floor.
-* **`cpp_dec_float_50` results were quoted but never benchmarked.** There is no
-  such row here, because this executable does not run one.
-* The previous helper returned the **minimum of five trials** while the report
-  called the results medians. These are medians, and the raw samples are kept.
-

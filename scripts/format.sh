@@ -59,6 +59,11 @@ if [ "${1:-}" = "--check" ]; then
         printf 'not formatted (%d files):\n' "${#bad[@]}" >&2
         printf '  %s\n' "${bad[@]}" >&2
         echo >&2
+        # Keep the gate failing, but expose the exact correction in its log.
+        # diff returns 1 for the expected mismatch; this is not a test pass.
+        for f in "${bad[@]}"; do
+            "$CLANG_FORMAT" "$f" | diff -u --label "$f" --label "formatted/$f" "$f" - || true
+        done
         echo "run scripts/format.sh to fix" >&2
         exit 1
     fi

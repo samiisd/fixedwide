@@ -58,8 +58,11 @@ integer.
 | `Fixed128<D>` | `wide::int128` | 128 | 0–38 | 16 | 8 |
 | `Fixed256<D>` | `wide::int256` | 256 | 0–76 | 32 | 8 |
 
-Two types with different `Bits` or different `Decimals` are different types. A
-price and a quantity cannot be added by accident; the compiler says so.
+Two types with different `Bits` or different `Decimals` are distinct types.
+Values carrying different scales cannot be combined implicitly without
+specifying the destination scale (e.g. via `mul_to` or `fixed_cast`).
+Note that `basic_fixed` enforces scale and bit-width distinctness, not
+semantic unit typing: values with identical width and scale are the same type.
 
 Members:
 
@@ -144,18 +147,19 @@ never a rounding artefact. Both are `constexpr` for every width.
 ---
 
 ## Error types
-
-Nothing throws, nothing sets `errno`, and no operation returns a wrong answer in
-place of an error. Every failure is a `std::expected` you have to look at.
-
+ 
+Core arithmetic, parsing, and serialization functions do not throw exceptions,
+do not set `errno`, and communicate failures exclusively through `std::expected`.
+No operation returns a wrong answer in place of an error.
+ 
 `ArithmeticError`: `overflow`, `division_by_zero`, `inexact`,
 `invalid_precision`, `invalid_value`.
-
+ 
 `ParseError`: `empty`, `invalid`, `too_precise`, `overflow`.
-
+ 
 `FormatError`: `buffer_too_small`, `invalid_precision`, `inexact`.
-
-`BinaryError`: `wrong_size`, `invalid_encoding`.
+ 
+`BinaryError`: `wrong_size` (returned when buffer size does not match representation size; `invalid_encoding` is reserved).
 
 **Precedence.** When more than one could apply, a result that does not fit the
 destination is `overflow` — even under `Rounding::exact`, and even when it is
