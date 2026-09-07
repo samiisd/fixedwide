@@ -279,8 +279,10 @@ template<class UQ, class UR, class UD>
     const auto r = rem < 0 ? 0ULL - rbits : rbits;
     const auto d = div < 0 ? 0ULL - dbits : dbits;
     const bool inc = nearest_even_inc(static_cast<std::uint64_t>(q), r, d);
-    const std::int64_t dir = neg ? -1 : 1;
-    return dir & -static_cast<std::int64_t>(inc);
+    // Map {increment, sign} to {-1, 0, +1} without materializing +/-1
+    // and selecting it afterward. Both intermediates are in {0, 1}.
+    const auto sign = static_cast<std::int64_t>(neg);
+    return (static_cast<std::int64_t>(inc) ^ sign) - sign;
 }
 // Round a signed-64 quotient into a signed-128 destination. The adjustment is
 // -1, 0 or +1, and is directed away from zero: q and adj cannot have opposite
