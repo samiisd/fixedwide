@@ -1,0 +1,29 @@
+name: Public fuzz dependency bundle
+on:
+  push:
+    branches: [ci/public-integration-deps-20260907]
+    paths: [.github/workflows/public-fuzz-deps.yml]
+permissions:
+  contents: read
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download only public pinned source packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir sources
+          curl -fL --retry 3 https://codeload.github.com/google/fuzztest/tar.gz/refs/tags/2026-06-29 -o sources/fuzztest.tar.gz
+          curl -fL --retry 3 https://codeload.github.com/abseil/abseil-cpp/tar.gz/refs/tags/20260526.0 -o sources/abseil-cpp.tar.gz
+          curl -fL --retry 3 https://codeload.github.com/google/re2/tar.gz/refs/tags/2025-11-05 -o sources/re2.tar.gz
+          curl -fL --retry 3 https://www.antlr.org/download/antlr4-cpp-runtime-4.13.2-source.zip -o sources/antlr_cpp.zip
+          sha256sum sources/* > SHA256SUMS
+      - uses: actions/upload-artifact@v7
+        with:
+          name: public-fuzz-dependencies
+          path: |
+            sources/
+            SHA256SUMS
+          retention-days: 3
