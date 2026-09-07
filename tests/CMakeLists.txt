@@ -56,6 +56,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         audit_text_targeted
         audit_portable_edges
         audit_portable_div128
+        audit_fastpath_rounding
     )
 
     # Two of the audit suites differential-test against Boost.Multiprecision.
