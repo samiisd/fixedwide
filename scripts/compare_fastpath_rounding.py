@@ -10,6 +10,7 @@ import csv
 import hashlib
 import io
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -19,6 +20,53 @@ import subprocess
 
 def run(args, **kwargs):
     return subprocess.run([str(arg) for arg in args], check=True, text=True, **kwargs)
+
+
+def sha256(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def matrix_keys():
+    return {(digits, f"{op}.Fixed64_{digits}.{mode}.{kind}.{sign}", mode)
+            for digits in (8, 12) for op in ("mul", "div", "mul_div")
+            for mode in ("toward_zero", "nearest_even")
+            for kind in ("exact", "inexact") for sign in ("positive", "mixed")}
+
+
+def validate_matrix(text, iterations, repetitions):
+    rows = list(csv.DictReader(io.StringIO(text)))
+    expected = {(*key, repeat) for key in matrix_keys() for repeat in range(repetitions)}
+    seen = set()
+    for row in rows:
+        key = (int(row["digits"]), row["workload"], row["mode"], int(row["repeat"]))
+        if key not in expected or key in seen:
+            raise ValueError(f"unexpected or duplicate matrix sample: {key}")
+        seen.add(key)
+        timing = float(row["cpu_ns_per_op"])
+        if int(row["iterations"]) != iterations or not math.isfinite(timing) or timing <= 0:
+            raise ValueError(f"invalid matrix sample: {key}")
+        if not 0 <= int(row["checksum"]) <= (1 << 64) - 1:
+            raise ValueError(f"invalid matrix checksum: {key}")
+    if seen != expected:
+        raise ValueError(f"missing {len(expected - seen)} matrix samples")
+    return rows
+
+
+def compare_matrix(rows):
+    groups = {}
+    for row in rows:
+        key = (int(row["digits"]), row["workload"], row["mode"])
+        group = groups.setdefault(key, {"base": [], "head": [], "checksums": set()})
+        group[row["variant"]].append(float(row["cpu_ns_per_op"]))
+        group["checksums"].add(int(row["checksum"]))
+    if set(groups) != matrix_keys():
+        raise ValueError("incomplete paired matrix")
+    for key, group in groups.items():
+        if not group["base"] or len(group["base"]) != len(group["head"]):
+            raise ValueError(f"unbalanced paired matrix: {key}")
+        if len(group["checksums"]) != 1:
+            raise ValueError(f"result checksum mismatch: {key}")
+    return groups
 
 
 def main():
@@ -70,20 +118,49 @@ def main():
     drivers[8].write_text(derived)
     drivers[12].write_text(original)
     flags = ["-O3", "-std=c++23", "-fno-tree-vectorize", "-fno-tree-slp-vectorize", "-ffp-contract=off"]
+    # No silent baseline/gate/workload changes in this safety comparison.
+    protected = ("benchmarks/icount.cpp", "benchmarks/baseline/x86_64-gcc-14.csv",
+                 "scripts/icount.sh", "scripts/compare_icount.py", ".github/workflows/ci.yml",
+                 "benchmarks/rounding_bench.cpp")
+    protected_hashes = {}
+    for relative in protected:
+        before, after = (sha256(root / relative) for root in roots.values())
+        if before != after:
+            raise RuntimeError(f"protected comparison input changed: {relative}")
+        protected_hashes[relative] = before
+    matrix_source = output / "fastpath_matrix.cpp"
+    matrix_source.write_bytes((roots["head"] / "benchmarks/fastpath_matrix.cpp").read_bytes())
     versions = {}
+    binaries = {}
+    libraries = {}
     for name, root in roots.items():
         versions[name] = run(["git", "-C", root, "rev-parse", "HEAD"], capture_output=True).stdout.strip()
         build = output / ("build-" + name)
         run(["cmake", "-S", root, "-B", build, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release",
-             f"-DCMAKE_CXX_COMPILER={args.compiler}", "-DFIXEDWIDE_BUILD_TESTS=OFF",
+             f"-DCMAKE_CXX_COMPILER={args.compiler}", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON", "-DFIXEDWIDE_BUILD_TESTS=OFF",
              "-DFIXEDWIDE_BUILD_EXAMPLES=OFF", "-DFIXEDWIDE_BUILD_ORACLE_TESTS=OFF",
              "-DFIXEDWIDE_BUILD_BENCHMARKS=OFF", "-DBUILD_SHARED_LIBS=OFF"])
         run(["cmake", "--build", build, "--parallel", "2"])
-        for digits, source in drivers.items():
-            run([args.compiler, *flags, f"-I{root / 'include'}", source,
-                 build / "libfixedwide.a", "-o", output / f"{name}-{digits}"])
+        database = build / "compile_commands.json"
+        retained_database = output / f"{name}-library-compile_commands.json"
+        retained_database.write_bytes(database.read_bytes())
+        libraries[name] = {"sha256": sha256(build / "libfixedwide.a"),
+                           "compile_commands": retained_database.name,
+                           "compile_commands_sha256": sha256(retained_database)}
+        for label, source in {**drivers, "matrix": matrix_source}.items():
+            binary = output / f"{name}-{label}"
+            command = [str(v) for v in (args.compiler, *flags, f"-I{root / 'include'}", source,
+                                       build / "libfixedwide.a", "-o", binary)]
+            run(command)
+            binaries[binary.name] = {"sha256": sha256(binary), "size": binary.stat().st_size,
+                                     "compile_link_command": command}
+            if label == "matrix":
+                with (output / f"{name}-matrix.asm").open("w") as stream:
+                    run(["objdump", "-d", "-C", binary], stdout=stream)
     metadata = {"commits": versions, "compiler": run([args.compiler, "--version"], capture_output=True).stdout,
                 "flags": flags, "platform": platform.platform(), "affinity_cpu": cpu,
+                "executables": binaries, "libraries": libraries, "protected_sha256": protected_hashes,
+                "matrix_sha256": sha256(matrix_source), "matrix_workloads": len(matrix_keys()),
                 "iterations": args.iterations, "balanced_rounds": args.rounds,
                 "driver_sha256": {str(d): hashlib.sha256(p.read_bytes()).hexdigest() for d, p in drivers.items()},
                 "note": "Hosted timing is evidence, not a zero-regression guarantee. No timing gate is weakened."}
@@ -92,6 +169,7 @@ def main():
         metadata["cpuinfo"] = cpu_info.read_text()
     (output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
     rows = []
+    matrix_rows = []
     for batch in range(args.rounds):
         order = ("base", "head") if batch % 2 == 0 else ("head", "base")
         for digits in (8, 12):
@@ -111,6 +189,22 @@ def main():
                 for row in csv.DictReader(io.StringIO(result.stdout)):
                     row.update(variant=name, batch=batch)
                     rows.append(row)
+        for name in order:
+            result = subprocess.run([str(output / f"{name}-matrix"), "--timing", str(args.iterations), "3"],
+                                    capture_output=True, text=True)
+            (output / f"matrix-{name}-{batch}.csv").write_text(result.stdout)
+            (output / f"matrix-{name}-{batch}.log").write_text(result.stderr)
+            result.check_returncode()
+            if "PASSED oracle_checks=12288" not in result.stderr:
+                raise RuntimeError("matrix preflight did not validate all 48 fixtures")
+            for row in validate_matrix(result.stdout, args.iterations, 3):
+                row.update(variant=name, batch=batch)
+                matrix_rows.append(row)
+    matrix_groups = compare_matrix(matrix_rows)
+    with (output / "matrix-samples.csv").open("w", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(matrix_rows[0]))
+        writer.writeheader()
+        writer.writerows(matrix_rows)
     with (output / "samples.csv").open("w", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
         writer.writeheader()
@@ -133,6 +227,18 @@ def main():
         before = statistics.median(values["base"])
         after = statistics.median(values["head"])
         summary.append(f"| {digits} | {workload} | {mode} | {before:.3f} | {after:.3f} | {(after / before - 1) * 100:+.2f}% |")
+    summary += ["", "## Constant-policy scale-8/12 matrix", "",
+                "48 additional independent-throughput workloads: each operation and rounding policy "
+                "has positive/mixed-sign and exact/inexact fixtures. The policy is a template constant "
+                "in these loops, complementing the historical runtime-policy driver above. "
+                "Every fixture has an independent signed-128 rational oracle and matching "
+                "base/head checksums. These are not dependent-operation latency measurements.", "",
+                "| Digits | Workload | Mode | Before | After | Change |",
+                "|---:|---|---|---:|---:|---:|"]
+    for (digits, workload, mode), values in sorted(matrix_groups.items()):
+        before, after = (statistics.median(values[v]) for v in ("base", "head"))
+        summary.append(f"| {digits} | {workload} | {mode} | {before:.3f} | {after:.3f} | "
+                       f"{(after / before - 1) * 100:+.2f}% |")
     if args.icount:
         counts = {}
         for name, root in roots.items():
@@ -162,6 +268,27 @@ def main():
             old_text = f"{old:.3f}" if old is not None else "n/a"
             summary.append(f"| {workload} | {old_text} | {before:.3f} | {after:.3f} | "
                            f"{(after / before - 1) * 100:+.2f}% |")
+        matrix_counts = {}
+        for name, root in roots.items():
+            result = run(["bash", root / "scripts/icount.sh", "--binary", output / f"{name}-matrix"],
+                         capture_output=True, env={**os.environ, "CXX": args.compiler})
+            (output / f"matrix-icount-{name}.csv").write_text(result.stdout)
+            (output / f"matrix-icount-{name}.log").write_text(result.stderr)
+            matrix_counts[name] = {row["workload"]: float(row["instructions_per_op"])
+                                   for row in csv.DictReader(io.StringIO(result.stdout))}
+        expected_names = {key[1] for key in matrix_keys()}
+        if any(set(values) != expected_names for values in matrix_counts.values()):
+            raise RuntimeError("missing supplementary instruction-count workloads")
+        summary += ["", "## Supplementary instruction counts", "",
+                    "Same-runner base/head only; these 48 new workloads do not overwrite or "
+                    "relax the existing committed 34-row baseline. Positive change is reported "
+                    "even when the original gate passes.", "",
+                    "| Workload | Base | Head | Change |", "|---|---:|---:|---:|"]
+        for workload in sorted(expected_names):
+            before, after = (matrix_counts[v][workload] for v in ("base", "head"))
+            if not all(math.isfinite(v) and v > 0 for v in (before, after)):
+                raise RuntimeError(f"invalid supplementary instruction count: {workload}")
+            summary.append(f"| {workload} | {before:.3f} | {after:.3f} | {(after / before - 1) * 100:+.2f}% |")
     text = "\n".join(summary) + "\n"
     (output / "summary.md").write_text(text)
     print(text)
