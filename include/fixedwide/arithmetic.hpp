@@ -776,8 +776,8 @@ remainder(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
 /// lands on a coarser grid: `quantize(Fixed64<4>(1.2345), 2)` is 1.2300.
 ///
 /// \param decimals how many decimals to keep, at most `D`.
-/// \param rounding how to resolve the single rounding.
-/// \return the result, or `ArithmeticError::invalid_precision` when
+/// \param rounding how to resolve the rounding.
+/// \return the rounded value, or `ArithmeticError::invalid_precision` when
 ///         `decimals > D`, or `overflow` / `inexact`.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
@@ -832,9 +832,9 @@ template<typename T, typename U>
     requires(!std::is_same_v<T, U>)
 void div(T, U) = delete;
 
-template<typename T, typename U>
-    requires(!std::is_same_v<T, U>)
-void mul_div(T, U) = delete;
+template<typename T, typename U, typename V>
+    requires(!std::is_same_v<T, U> || !std::is_same_v<T, V>)
+void mul_div(T, U, V) = delete;
 
 // 0.4 compatibility surface: fixed at 12 digits. Generic replacement:
 // mul_to<Dest>(a, b) in <fixedwide/mixed.hpp>. See fixed.hpp.
