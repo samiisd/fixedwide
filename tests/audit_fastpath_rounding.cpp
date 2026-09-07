@@ -83,6 +83,12 @@ void boundary(Op op, std::int64_t a, std::int64_t b, std::int64_t c, bool negati
 }
 
 void regressions() {
+    // Restricted helper contract, including the zero-to-negative transition.
+    const std::int64_t quotients[] = {INT64_MIN, INT64_MIN + 1, -2, -1, 0, 1, 2, INT64_MAX - 1, INT64_MAX};
+    for (auto q : quotients) for (std::int64_t adj : {std::int64_t{-1}, std::int64_t{0}, std::int64_t{1}}) {
+        if ((q < 0 && adj > 0) || (q > 0 && adj < 0)) continue;
+        CHECK(detail_arith::round_wide_quotient(q, adj) == wide::int128(q) + wide::int128(adj));
+    }
     for (std::int64_t sign : {std::int64_t{-1}, std::int64_t{1}}) {
         boundary<Fixed64<8>>(Op::mul, sign * mul_a, mul_b, 1, sign < 0);
         boundary<Fixed64<8>>(Op::div, sign * div_a, div_b, 1, sign < 0);
@@ -127,10 +133,11 @@ void regressions() {
     CHECK(mul(tiny, raw<Fixed128<8>>(runtime(1)), R::toward_zero) == Fixed128<8>{});
 }
 
-#if defined(__SIZEOF_INT128__)
+#if defined(__SIZEOF_INT128__) && !defined(_WIN32)
 // Independent rational oracle for RAW 64-bit operands: all products fit signed
 // 128 bits. It does not use fixedwide's arithmetic, rounding, or division helpers.
-// MSVC and the no-int128 job still execute all literal regressions above.
+// Windows (including clang-cl, which can expose __int128 without the division
+// runtime) and the no-int128 job still execute all literal regressions above.
 using I = __int128;
 using U = unsigned __int128;
 
@@ -217,7 +224,7 @@ void differential() {
 
 int main() {
     regressions();
-#if defined(__SIZEOF_INT128__)
+#if defined(__SIZEOF_INT128__) && !defined(_WIN32)
     differential<Fixed64<0>>();
     differential<Fixed64<1>>();
     differential<Fixed64<8>>();

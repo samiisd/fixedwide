@@ -27,6 +27,7 @@ def main():
     parser.add_argument("head", type=Path)
     parser.add_argument("--output", type=Path, default=Path("fastpath-results"))
     parser.add_argument("--compiler", default="g++-14")
+    parser.add_argument("--icount", action="store_true", help="also compare all existing Callgrind workloads")
     parser.add_argument("--rounds", type=int, default=4)
     parser.add_argument("--iterations", type=int, default=262144)
     args = parser.parse_args()
@@ -97,10 +98,14 @@ def main():
             for name in order:
                 # The benchmark itself alternates rounding modes and checks
                 # fixtures against Boost before timing either mode.
-                result = run([output / f"{name}-{digits}", "--iterations", args.iterations,
-                              "--repetitions", 3, "--seed", batch + 1], capture_output=True)
+                result = subprocess.run([str(output / f"{name}-{digits}"), "--iterations", str(args.iterations),
+                                         "--repetitions", "3", "--seed", str(batch + 1)],
+                                        capture_output=True, text=True)
                 (output / f"{name}-{digits}-{batch}.csv").write_text(result.stdout)
                 (output / f"{name}-{digits}-{batch}.log").write_text(result.stderr)
+                if result.returncode:
+                    print(result.stderr)
+                    result.check_returncode()
                 if "PASSED oracle_checks=" not in result.stderr:
                     raise RuntimeError("benchmark did not report a successful oracle preflight")
                 for row in csv.DictReader(io.StringIO(result.stdout)):
@@ -128,6 +133,35 @@ def main():
         before = statistics.median(values["base"])
         after = statistics.median(values["head"])
         summary.append(f"| {digits} | {workload} | {mode} | {before:.3f} | {after:.3f} | {(after / before - 1) * 100:+.2f}% |")
+    if args.icount:
+        counts = {}
+        for name, root in roots.items():
+            build = output / ("build-" + name)
+            run(["cmake", "-S", root, "-B", build, "-DFIXEDWIDE_BUILD_BENCHMARKS=ON"])
+            run(["cmake", "--build", build, "--target", "fixedwide_icount", "--parallel", "2"])
+            result = run(["bash", root / "scripts/icount.sh", "--binary", build / "benchmarks/fixedwide_icount"],
+                         capture_output=True, env={**os.environ, "CXX": args.compiler})
+            (output / f"icount-{name}.csv").write_text(result.stdout)
+            (output / f"icount-{name}.log").write_text(result.stderr)
+            counts[name] = {row["workload"]: float(row["instructions_per_op"])
+                            for row in csv.DictReader(io.StringIO(result.stdout))}
+        historical = roots["base"] / "benchmarks/baseline/x86_64-gcc-14.csv"
+        counts["committed"] = {row["workload"]: float(row["instructions_per_op"])
+                               for row in csv.DictReader(io.StringIO(historical.read_text()))}
+        if counts["base"].keys() != counts["head"].keys():
+            raise RuntimeError("instruction-count workload sets differ; do not silently compare a subset")
+        summary += ["", "## Instruction counts", "",
+                    "Same runner and compiler, all existing workloads unchanged. The committed column "
+                    "is the historical baseline; base/head isolate this PR from pre-existing baseline drift. "
+                    "This diagnostic comparison does not replace or relax the separate 1% CI gate.", "",
+                    "| Workload | Committed | Base now | Head now | Head vs base |",
+                    "|---|---:|---:|---:|---:|"]
+        for workload, before in counts["base"].items():
+            after = counts["head"][workload]
+            old = counts["committed"].get(workload)
+            old_text = f"{old:.3f}" if old is not None else "n/a"
+            summary.append(f"| {workload} | {old_text} | {before:.3f} | {after:.3f} | "
+                           f"{(after / before - 1) * 100:+.2f}% |")
     text = "\n".join(summary) + "\n"
     (output / "summary.md").write_text(text)
     print(text)
