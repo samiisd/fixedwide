@@ -282,18 +282,15 @@ namespace detail_arith {
     const std::int64_t dir = neg ? -1 : 1;
     return dir & -static_cast<std::int64_t>(inc);
 }
-// A constant positive decimal scale lets the comparison use its half directly,
-// without materializing the full divisor again. The remainder has the numerator's
-// sign, so reuse neg instead of rediscovering that sign after IDIV.
-// Preconditions: Divisor is the positive scale; neg is the numerator's sign.
+// A positive decimal scale permits signed comparisons against both half-way
+// boundaries. This avoids a sign-dependent branch when rounding mixed-sign
+// inputs, and does not need the numerator's sign after IDIV.
+// Preconditions: Divisor is 1 or a power of ten <= 10^18; |rem| < Divisor.
 template<std::uint64_t Divisor>
-[[nodiscard]] inline std::int64_t nearest_scaled_adj(std::int64_t q, std::int64_t rem, bool neg) noexcept {
-    const auto rbits = static_cast<std::uint64_t>(rem);
-    const auto r = neg ? 0ULL - rbits : rbits;
+[[nodiscard]] inline std::int64_t nearest_scaled_adj(std::int64_t q, std::int64_t rem) noexcept {
     const auto tie = static_cast<std::uint64_t>(q) & ~Divisor & 1;
-    const bool inc = r > Divisor / 2 - tie;
-    const std::int64_t dir = neg ? -1 : 1;
-    return dir & -static_cast<std::int64_t>(inc);
+    const auto threshold = static_cast<std::int64_t>(Divisor / 2 - tie);
+    return static_cast<std::int64_t>(rem > threshold) - static_cast<std::int64_t>(rem < -threshold);
 }
 // Round a signed-64 quotient into a signed-128 destination. The adjustment is
 // -1, 0 or +1, and is directed away from zero: q and adj cannot have opposite
@@ -505,7 +502,7 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
                 std::int64_t q, r;
                 __asm__("idivq %[div]" : "=a"(q), "=d"(r) : "a"(lo), "d"(hi), [div] "r"(scale_val) : "cc");
                 if (rounding == Rounding::nearest_even && r != 0) {
-                    q += detail_arith::nearest_scaled_adj<static_cast<std::uint64_t>(Fixed::scale())>(q, r, hi < 0);
+                    q += detail_arith::nearest_scaled_adj<static_cast<std::uint64_t>(Fixed::scale())>(q, r);
                 }
                 return Fixed::from_raw(q);
             }
@@ -536,7 +533,7 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
                     // increment is a coin flip on real data, and a mispredict on
                     // a dependent chain costs more than the whole division.
                     if (rounding == Rounding::nearest_even && r != 0) {
-                        q += detail_arith::nearest_scaled_adj<Fixed::scale().low>(q, r, hi < 0);
+                        q += detail_arith::nearest_scaled_adj<Fixed::scale().low>(q, r);
                     }
                     return Fixed::from_raw(wide::int128(q));
                 } else {

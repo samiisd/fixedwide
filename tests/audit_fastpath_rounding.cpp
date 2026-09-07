@@ -107,7 +107,7 @@ void rounding_comparison() {
         for (auto r : {std::int64_t{0}, std::int64_t{1}, std::int64_t{49'999'999},
                       std::int64_t{50'000'000}, std::int64_t{50'000'001}, std::int64_t{99'999'999}})
             for (bool neg : {false, true}) {
-                const auto actual = detail_arith::nearest_scaled_adj<100'000'000>(q, neg ? -r : r, neg);
+                const auto actual = detail_arith::nearest_scaled_adj<100'000'000>(q, neg ? -r : r);
                 const bool inc = r > 100'000'000 - r || (r == 100'000'000 - r && (q & 1) != 0);
                 CHECK(actual == (inc ? (neg ? -1 : 1) : 0));
             }

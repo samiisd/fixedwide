@@ -37,8 +37,7 @@ std::uint64_t next(std::uint64_t& state) {
 std::uint64_t number(std::string_view text) {
     std::uint64_t result = 0;
     auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    if (ec != std::errc{} || end != text.data() + text.size() || result == 0)
-        fail("expected a positive integer");
+    if (ec != std::errc{} || end != text.data() + text.size() || result == 0) fail("expected a positive integer");
     return result;
 }
 std::uint64_t clock_ns() {
@@ -58,7 +57,8 @@ std::int64_t oracle(I n, I d, Mode mode) {
     return static_cast<std::int64_t>(q);
 }
 
-template<unsigned D, Operation Op> struct Fixture {
+template<unsigned D, Operation Op>
+struct Fixture {
     using F = fw::Fixed64<D>;
     std::array<F, fixture_size> a{}, b{}, c{};
     std::array<std::int64_t, fixture_size> expected{};
@@ -70,7 +70,9 @@ template<unsigned D, Operation Op> struct Fixture {
             std::int64_t x, y, z;
             I n, d;
             do {
-                x = value(); y = value(); z = value();
+                x = value();
+                y = value();
+                z = value();
                 if (exact) {
                     if constexpr (Op == Operation::mul) {
                         x = (1 + static_cast<std::int64_t>(next(state) % 31)) * scale;
@@ -91,16 +93,22 @@ template<unsigned D, Operation Op> struct Fixture {
                 d = Op == Operation::mul ? scale : Op == Operation::div ? y : z;
             } while (!exact && n % d == 0);
             if ((n % d == 0) != exact) fail("incorrect exact/inexact fixture category");
-            a[i] = F::from_raw(x); b[i] = F::from_raw(y); c[i] = F::from_raw(z);
+            a[i] = F::from_raw(x);
+            b[i] = F::from_raw(y);
+            c[i] = F::from_raw(z);
             expected[i] = oracle(n, d, mode);
         }
     }
 };
 
-template<Operation Op, Mode M, class F> auto calculate(F a, F b, F c) {
-    if constexpr (Op == Operation::mul) return fw::mul(a, b, M);
-    else if constexpr (Op == Operation::div) return fw::div(a, b, M);
-    else return fw::mul_div(a, b, c, M);
+template<Operation Op, Mode M, class F>
+auto calculate(F a, F b, F c) {
+    if constexpr (Op == Operation::mul)
+        return fw::mul(a, b, M);
+    else if constexpr (Op == Operation::div)
+        return fw::div(a, b, M);
+    else
+        return fw::mul_div(a, b, c, M);
 }
 // Independent operations: the checksum depends on the results, but no result
 // feeds another arithmetic input. Never label these rows dependency latency.
@@ -125,41 +133,48 @@ struct Options {
     unsigned repetitions = 3;
 };
 
-template<unsigned D, Operation Op, Mode M> bool visit(const Options& options) {
+template<unsigned D, Operation Op, Mode M>
+bool visit(const Options& options) {
     bool found = false;
     const char* op = Op == Operation::mul ? "mul" : Op == Operation::div ? "div" : "mul_div";
     const char* mode = M == Mode::nearest_even ? "nearest_even" : "toward_zero";
-    for (bool exact : {true, false}) for (bool mixed : {false, true}) {
-        const std::string name = std::string(op) + ".Fixed64_" + std::to_string(D) + "." + mode +
-                                 (exact ? ".exact" : ".inexact") + (mixed ? ".mixed" : ".positive");
-        if (options.list) { std::puts(name.c_str()); found = true; continue; }
-        if (!options.selected.empty() && options.selected != name) continue;
-        found = true;
-        const Fixture<D, Op> f(exact, mixed, M);
-        for (std::size_t i = 0; i < fixture_size; ++i) {
-            const auto result = calculate<Op, M>(f.a[i], f.b[i], f.c[i]);
-            if (!result || result->raw() != f.expected[i]) fail(name.c_str());
-            ++checks;
+    for (bool exact : {true, false})
+        for (bool mixed : {false, true}) {
+            const std::string name = std::string(op) + ".Fixed64_" + std::to_string(D) + "." + mode +
+                                     (exact ? ".exact" : ".inexact") + (mixed ? ".mixed" : ".positive");
+            if (options.list) {
+                std::puts(name.c_str());
+                found = true;
+                continue;
+            }
+            if (!options.selected.empty() && options.selected != name) continue;
+            found = true;
+            const Fixture<D, Op> f(exact, mixed, M);
+            for (std::size_t i = 0; i < fixture_size; ++i) {
+                const auto result = calculate<Op, M>(f.a[i], f.b[i], f.c[i]);
+                if (!result || result->raw() != f.expected[i]) fail(name.c_str());
+                ++checks;
+            }
+            if (!options.timing) {
+                std::printf("%llu\n", static_cast<unsigned long long>(loop<D, Op, M>(f, options.iterations)));
+                continue;
+            }
+            loop<D, Op, M>(f, 4096);
+            for (unsigned repeat = 0; repeat < options.repetitions; ++repeat) {
+                const auto start = clock_ns();
+                const auto checksum = loop<D, Op, M>(f, options.iterations);
+                const auto elapsed = clock_ns() - start;
+                std::printf("%u,%s,%s,%u,%llu,%.9f,%llu\n", D, name.c_str(), mode, repeat,
+                            static_cast<unsigned long long>(options.iterations),
+                            static_cast<double>(elapsed) / static_cast<double>(options.iterations),
+                            static_cast<unsigned long long>(checksum));
+            }
+            std::fflush(stdout);
         }
-        if (!options.timing) {
-            std::printf("%llu\n", static_cast<unsigned long long>(loop<D, Op, M>(f, options.iterations)));
-            continue;
-        }
-        loop<D, Op, M>(f, 4096);
-        for (unsigned repeat = 0; repeat < options.repetitions; ++repeat) {
-            const auto start = clock_ns();
-            const auto checksum = loop<D, Op, M>(f, options.iterations);
-            const auto elapsed = clock_ns() - start;
-            std::printf("%u,%s,%s,%u,%llu,%.9f,%llu\n", D, name.c_str(), mode, repeat,
-                        static_cast<unsigned long long>(options.iterations),
-                        static_cast<double>(elapsed) / static_cast<double>(options.iterations),
-                        static_cast<unsigned long long>(checksum));
-        }
-        std::fflush(stdout);
-    }
     return found;
 }
-template<unsigned D> bool visit_scale(const Options& o) {
+template<unsigned D>
+bool visit_scale(const Options& o) {
     bool found = false;
     found |= visit<D, Operation::mul, Mode::toward_zero>(o);
     found |= visit<D, Operation::mul, Mode::nearest_even>(o);
@@ -173,16 +188,19 @@ template<unsigned D> bool visit_scale(const Options& o) {
 
 int main(int argc, char** argv) {
     Options o;
-    if (argc == 2 && std::string_view(argv[1]) == "--list") o.list = true;
+    if (argc == 2 && std::string_view(argv[1]) == "--list")
+        o.list = true;
     else if (argc == 3 && std::string_view(argv[1]) != "--timing") {
-        o.selected = argv[1]; o.iterations = number(argv[2]);
+        o.selected = argv[1];
+        o.iterations = number(argv[2]);
     } else {
         if (argc < 2 || std::string_view(argv[1]) != "--timing")
             fail("use --list, <workload> <iterations>, or --timing [iterations] [repetitions]");
         o.timing = true;
         if (argc > 2) o.iterations = number(argv[2]);
         if (argc > 3) {
-            auto n = number(argv[3]); if (n > 100) fail("too many repetitions");
+            auto n = number(argv[3]);
+            if (n > 100) fail("too many repetitions");
             o.repetitions = static_cast<unsigned>(n);
         }
         if (argc > 4) fail("unexpected argument");
