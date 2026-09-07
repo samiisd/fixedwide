@@ -1,0 +1,91 @@
+name: Prepare PR 6 finalization
+on:
+  push:
+    branches: [automation/pr6-finalization-check]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Apply the locally tested constant-scale candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('include/fixedwide/arithmetic.hpp')
+          s = p.read_text()
+          old = '''// A constant positive decimal scale lets the comparison use its half directly,
+          // without materializing the full divisor again. The remainder has the numerator's
+          // sign, so reuse neg instead of rediscovering that sign after IDIV.
+          // Preconditions: Divisor is the positive scale; neg is the numerator's sign.
+          template<std::uint64_t Divisor>
+          [[nodiscard]] inline std::int64_t nearest_scaled_adj(std::int64_t q, std::int64_t rem, bool neg) noexcept {
+              const auto rbits = static_cast<std::uint64_t>(rem);
+              const auto r = neg ? 0ULL - rbits : rbits;
+              const auto tie = static_cast<std::uint64_t>(q) & ~Divisor & 1;
+              const bool inc = r > Divisor / 2 - tie;
+              const std::int64_t dir = neg ? -1 : 1;
+              return dir & -static_cast<std::int64_t>(inc);
+          }'''
+          new = '''// A positive decimal scale permits signed comparisons against both half-way
+          // boundaries. This avoids a sign-dependent branch when rounding mixed-sign
+          // inputs, and does not need the numerator's sign after IDIV.
+          // Preconditions: Divisor is 1 or a power of ten <= 10^18; |rem| < Divisor.
+          template<std::uint64_t Divisor>
+          [[nodiscard]] inline std::int64_t nearest_scaled_adj(std::int64_t q, std::int64_t rem) noexcept {
+              const auto tie = static_cast<std::uint64_t>(q) & ~Divisor & 1;
+              const auto threshold = static_cast<std::int64_t>(Divisor / 2 - tie);
+              return static_cast<std::int64_t>(rem > threshold) - static_cast<std::int64_t>(rem < -threshold);
+          }'''
+          assert s.count(old) == 1
+          s = s.replace(old, new)
+          assert s.count('>(q, r, hi < 0);') == 2
+          s = s.replace('>(q, r, hi < 0);', '>(q, r);')
+          p.write_text(s)
+          p = Path('tests/audit_fastpath_rounding.cpp')
+          s = p.read_text()
+          assert s.count('(q, neg ? -r : r, neg)') == 1
+          p.write_text(s.replace('(q, neg ? -r : r, neg)', '(q, neg ? -r : r)'))
+          PY
+      - name: Format and validate the prepared source
+        run: |
+          python3 -m pip install clang-format==22.1.8
+          clang-format -i include/fixedwide/arithmetic.hpp benchmarks/fastpath_matrix.cpp
+          scripts/format.sh --check
+          python3 -m unittest discover -s scripts -p test_compare_fastpath_rounding.py
+          git diff --check
+      - name: Preserve prepared source on this isolated branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add include/fixedwide/arithmetic.hpp benchmarks/fastpath_matrix.cpp tests/audit_fastpath_rounding.cpp
+          git commit -m 'perf: prepare signed constant-scale rounding candidate'
+          git push origin HEAD:automation/pr6-finalization-check
+          mkdir -p candidate-evidence
+          git rev-parse HEAD > candidate-evidence/commit.txt
+          git rev-parse HEAD^{tree} > candidate-evidence/tree.txt
+          git ls-tree -r HEAD > candidate-evidence/files.txt
+          git archive --format=tar.gz HEAD > candidate-evidence/source.tar.gz
+      - name: Build regression audit and original instruction driver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build valgrind
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-14 -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=OFF -DFIXEDWIDE_BUILD_BENCHMARKS=ON
+          cmake --build build --target audit_fastpath_rounding fixedwide_icount --parallel 2
+          ./build/tests/audit_fastpath_rounding | tee candidate-evidence/audit.log
+      - name: Run the original unchanged 1 percent gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          CXX=g++-14 scripts/icount.sh --binary build/benchmarks/fixedwide_icount > candidate-evidence/current.csv
+          python3 scripts/compare_icount.py benchmarks/baseline/x86_64-gcc-14.csv candidate-evidence/current.csv | tee candidate-evidence/gate.log
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pr6-prepared-candidate
+          path: candidate-evidence/
+          if-no-files-found: error

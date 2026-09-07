@@ -8,6 +8,8 @@ on:
       - 'src/arithmetic.cpp'
       - 'scripts/compare_fastpath_rounding.py'
       - 'benchmarks/rounding_bench.cpp'
+      - 'benchmarks/fastpath_matrix.cpp'
+      - 'scripts/test_compare_fastpath_rounding.py'
       - '.github/workflows/fastpath-rounding.yml'
 
 permissions:
@@ -20,7 +22,7 @@ concurrency:
 jobs:
   compare:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
         with:
@@ -33,6 +35,8 @@ jobs:
           persist-credentials: false
       - name: Install compiler and oracle
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build valgrind
+      - name: Test comparison validation
+        run: python3 -m unittest discover -s scripts -p test_compare_fastpath_rounding.py
       - name: Retain exact source snapshots for reproduction
         run: |
           mkdir -p fastpath-results
@@ -57,4 +61,5 @@ jobs:
             fastpath-results/*.md
             fastpath-results/*.cpp
             fastpath-results/*.tar.gz
+            fastpath-results/*.asm
           if-no-files-found: error
