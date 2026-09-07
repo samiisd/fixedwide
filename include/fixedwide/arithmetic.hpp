@@ -261,10 +261,10 @@ template<typename Target, typename Integer>
 }
 
 namespace detail_arith {
-template<class UQ, class UR, class UD>
-[[nodiscard]] constexpr bool nearest_even_inc(UQ q, UR r, UD d) noexcept {
-    const auto tie = q & ~d & 1;
-    return r > d / 2 - tie;
+// The divisor is a signed-64 magnitude (or a decimal scale <= 10^18),
+// so r < d <= 2^63. Doubling r and adding the parity cannot overflow uint64_t.
+[[nodiscard]] constexpr bool nearest_even_inc(std::uint64_t q, std::uint64_t r, std::uint64_t d) noexcept {
+    return (r << 1) + (q & 1) > d;
 }
 // A 128-bit value is representable in signed 64 bits exactly when its high limb
 // is the sign extension of the low one. Written as a sum rather than the two
@@ -281,6 +281,26 @@ template<class UQ, class UR, class UD>
     const bool inc = nearest_even_inc(static_cast<std::uint64_t>(q), r, d);
     const std::int64_t dir = neg ? -1 : 1;
     return dir & -static_cast<std::int64_t>(inc);
+}
+// A positive decimal scale permits signed comparisons against both half-way
+// boundaries. This avoids a sign-dependent branch when rounding mixed-sign
+// inputs, and does not need the numerator's sign after IDIV.
+// Preconditions: Divisor is 1 or a power of ten <= 10^18; |rem| < Divisor.
+template<std::uint64_t Divisor>
+[[nodiscard]] inline std::int64_t nearest_scaled_adj(std::int64_t q, std::int64_t rem) noexcept {
+    const auto tie = static_cast<std::uint64_t>(q) & ~Divisor & 1;
+    const auto threshold = static_cast<std::int64_t>(Divisor / 2 - tie);
+    return static_cast<std::int64_t>(rem > threshold) - static_cast<std::int64_t>(rem < -threshold);
+}
+// Round a signed-64 quotient into a signed-128 destination. The adjustment is
+// -1, 0 or +1, and is directed away from zero: q and adj cannot have opposite
+// nonzero signs. The high limb therefore comes from their ORIGINAL signs,
+// not from the low limb after addition (+2^63 must keep a zero high limb).
+// This restricted rounding operation needs no general 128-bit carry chain.
+[[nodiscard]] constexpr wide::int128 round_wide_quotient(std::int64_t q, std::int64_t adj) noexcept {
+    const auto uq = static_cast<std::uint64_t>(q);
+    const auto ua = static_cast<std::uint64_t>(adj);
+    return wide::int128(uq + ua, 0ULL - ((uq | ua) >> 63));
 }
 #if defined(FIXEDWIDE_HAS_X86_64_ASM)
 inline std::uint64_t div128by64_asm(std::uint64_t high, std::uint64_t low, std::uint64_t divisor,
@@ -473,11 +493,16 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
             __asm__("imulq %[rhs]" : "=a"(lo), "=d"(hi) : "a"(a.raw()), [rhs] "r"(b.raw()) : "cc");
             std::uint64_t half = static_cast<std::uint64_t>(scale_val) / 2;
             std::uint64_t uhi = static_cast<std::uint64_t>(hi);
-            if (uhi + half < 2 * half) {
+            // Reserve rounding headroom in the EXISTING range check. For S =
+            // 10^D >= 10, this admits high limbs [-S/2, S/2-2], hence
+            // INT64_MIN <= numerator/S < 2^63 - 2^64/S. Any rounding fits.
+            // S == 1 makes the bound zero (not an unsigned underflow).
+            // The excluded boundary slab uses the checked compiled kernel.
+            if (uhi + half < static_cast<std::uint64_t>(scale_val) - 1) {
                 std::int64_t q, r;
                 __asm__("idivq %[div]" : "=a"(q), "=d"(r) : "a"(lo), "d"(hi), [div] "r"(scale_val) : "cc");
                 if (rounding == Rounding::nearest_even && r != 0) {
-                    q += detail_arith::nearest_adj(q, r, scale_val, hi < 0);
+                    q += detail_arith::nearest_scaled_adj<static_cast<std::uint64_t>(Fixed::scale())>(q, r);
                 }
                 return Fixed::from_raw(q);
             }
@@ -491,21 +516,24 @@ mul(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
         if (rounding == Rounding::toward_zero || rounding == Rounding::nearest_even) {
             auto alow = static_cast<std::int64_t>(a.raw().low);
             auto blow = static_cast<std::int64_t>(b.raw().low);
-            if (detail_arith::fits64(a.raw()) && detail_arith::fits64(b.raw()) && Fixed::scale().high == 0) {
+            // A scale fitting uint64_t is not enough for signed IDIV (10^19).
+            if (detail_arith::fits64(a.raw()) && detail_arith::fits64(b.raw()) && D <= detail::max_scaled_decimals_64) {
                 std::int64_t scale_val = static_cast<std::int64_t>(Fixed::scale().low);
                 std::uint64_t lo;
                 std::int64_t hi;
                 __asm__("imulq %[rhs]" : "=a"(lo), "=d"(hi) : "a"(alow), [rhs] "r"(blow) : "cc");
                 std::uint64_t half = static_cast<std::uint64_t>(scale_val) / 2;
                 std::uint64_t uhi = static_cast<std::uint64_t>(hi);
-                if (uhi + half < 2 * half) {
+                // Same rounding-safe bound as Fixed64. The existing unsigned
+                // wide-result path below handles the excluded boundary slab.
+                if (uhi + half < static_cast<std::uint64_t>(scale_val) - 1) {
                     std::int64_t q, r;
                     __asm__("idivq %[div]" : "=a"(q), "=d"(r) : "a"(lo), "d"(hi), [div] "r"(scale_val) : "cc");
                     // Branchless, like the 64-bit and mul_div paths: the
                     // increment is a coin flip on real data, and a mispredict on
                     // a dependent chain costs more than the whole division.
                     if (rounding == Rounding::nearest_even && r != 0) {
-                        q += detail_arith::nearest_adj(q, r, scale_val, hi < 0);
+                        q += detail_arith::nearest_scaled_adj<Fixed::scale().low>(q, r);
                     }
                     return Fixed::from_raw(wide::int128(q));
                 } else {
@@ -602,7 +630,8 @@ div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding
                     std::int64_t q, r;
                     __asm__("idivq %[div]" : "=a"(q), "=d"(r) : "a"(lo), "d"(hi), [div] "r"(b.raw()) : "cc");
                     if (rounding == Rounding::nearest_even && r != 0) {
-                        q += detail_arith::nearest_adj(q, r, b.raw(), (hi < 0) != (b.raw() < 0));
+                        const auto adj = detail_arith::nearest_adj(q, r, b.raw(), (hi < 0) != (b.raw() < 0));
+                        if (detail::add_overflow(q, adj, &q)) return std::unexpected(ArithmeticError::overflow);
                     }
                     return Fixed::from_raw(q);
                 }
@@ -684,7 +713,8 @@ mul_div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, basic_fixed<Bits, D> c,
                     std::int64_t q, r;
                     __asm__("idivq %[div]" : "=a"(q), "=d"(r) : "a"(lo), "d"(hi), [div] "r"(c.raw()) : "cc");
                     if (rounding == Rounding::nearest_even && r != 0) {
-                        q += detail_arith::nearest_adj(q, r, c.raw(), (hi < 0) != (c.raw() < 0));
+                        const auto adj = detail_arith::nearest_adj(q, r, c.raw(), (hi < 0) != (c.raw() < 0));
+                        if (detail::add_overflow(q, adj, &q)) return std::unexpected(ArithmeticError::overflow);
                     }
                     return Fixed::from_raw(q);
                 }
@@ -713,7 +743,8 @@ mul_div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, basic_fixed<Bits, D> c,
                     std::int64_t q, r;
                     __asm__("idivq %[div]" : "=a"(q), "=d"(r) : "a"(lo), "d"(hi), [div] "r"(clow) : "cc");
                     if (rounding == Rounding::nearest_even && r != 0) {
-                        q += detail_arith::nearest_adj(q, r, clow, (hi < 0) != (clow < 0));
+                        const auto adj = detail_arith::nearest_adj(q, r, clow, (hi < 0) != (clow < 0));
+                        return Fixed::from_raw(detail_arith::round_wide_quotient(q, adj));
                     }
                     return Fixed::from_raw(wide::int128(q));
                 }
@@ -837,7 +868,9 @@ mul_wide(basic_fixed<64, 12> a, basic_fixed<64, 12> b, Rounding rounding = Round
     __asm__("imulq %[rhs]" : "=a"(lo), "=d"(hi) : "a"(a.raw()), [rhs] "r"(b.raw()) : "cc");
     std::uint64_t uhi = static_cast<std::uint64_t>(hi);
     std::uint64_t half = static_cast<std::uint64_t>(scale_val) / 2;
-    if (uhi + half < 2 * half) {
+    // Rounding-safe narrow quotient, including ceil/floor/nearest-away.
+    // A result at or above +2^63 goes through the wide path below.
+    if (uhi + half < static_cast<std::uint64_t>(scale_val) - 1) {
         std::int64_t q, r;
         __asm__("idivq %[div]" : "=a"(q), "=d"(r) : "a"(lo), "d"(hi), [div] "r"(scale_val) : "cc");
         if (r != 0) {

@@ -1,0 +1,65 @@
+name: Fast-path rounding comparison
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'include/fixedwide/arithmetic.hpp'
+      - 'src/arithmetic.cpp'
+      - 'scripts/compare_fastpath_rounding.py'
+      - 'benchmarks/rounding_bench.cpp'
+      - 'benchmarks/fastpath_matrix.cpp'
+      - 'scripts/test_compare_fastpath_rounding.py'
+      - '.github/workflows/fastpath-rounding.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fastpath-rounding-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: baseline
+          persist-credentials: false
+      - name: Install compiler and oracle
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build valgrind
+      - name: Test comparison validation
+        run: python3 -m unittest discover -s scripts -p test_compare_fastpath_rounding.py
+      - name: Retain exact source snapshots for reproduction
+        run: |
+          mkdir -p fastpath-results
+          git archive --format=tar.gz HEAD > fastpath-results/head-source.tar.gz
+          git -C baseline archive --format=tar.gz HEAD > fastpath-results/base-source.tar.gz
+      - name: Compare identical oracle-backed drivers at scales 8 and 12
+        run: python3 scripts/compare_fastpath_rounding.py baseline . --output fastpath-results --icount
+      - name: Publish summary
+        if: always()
+        run: |
+          if [ -f fastpath-results/summary.md ]; then
+            cat fastpath-results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fastpath-rounding-comparison
+          path: |
+            fastpath-results/*.csv
+            fastpath-results/*.log
+            fastpath-results/*.json
+            fastpath-results/*.md
+            fastpath-results/*.cpp
+            fastpath-results/*.tar.gz
+            fastpath-results/*.asm
+          if-no-files-found: error
