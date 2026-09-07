@@ -82,8 +82,38 @@ void boundary(Op op, std::int64_t a, std::int64_t b, std::int64_t c, bool negati
     check_boundary<F>([&](R mode) { return calculate<F>(op, a, b, c, mode); }, negative);
 }
 
+// Independent oracle for the runtime-divisor rounding comparison. It covers
+// every remainder/parity at small divisors plus the largest signed magnitude.
+void rounding_comparison() {
+    auto check_increment = [](std::uint64_t q, std::uint64_t r, std::uint64_t d) {
+        const bool expected = r > d - r || (r == d - r && (q & 1) != 0);
+        CHECK(detail_arith::nearest_even_inc(q, r, d) == expected);
+    };
+    for (std::uint64_t d = 1; d <= 512; ++d)
+        for (std::uint64_t r = 0; r < d; ++r)
+            for (std::uint64_t q = 0; q < 2; ++q) check_increment(q, r, d);
+    const std::uint64_t divisors[] = {2, 3, 100'000'000, 1'000'000'000'000ULL,
+        1'000'000'000'000'000'000ULL, 0x7fff'ffff'ffff'ffffULL, 0x8000'0000'0000'0000ULL};
+    for (auto d : divisors) {
+        const std::uint64_t remainders[] = {0, 1, d / 2 - 1, d / 2, d / 2 + 1, d - 1};
+        for (auto r : remainders) if (r < d) {
+            check_increment(0, r, d);
+            check_increment(1, r, d);
+            check_increment(UINT64_MAX, r, d);
+        }
+    }
+    // Positive decimal divisor: IDIV's remainder has the numerator's sign.
+    for (auto q : {INT64_MIN, std::int64_t{-1}, std::int64_t{0}, std::int64_t{1}, INT64_MAX})
+        for (auto r : {std::int64_t{0}, std::int64_t{1}, std::int64_t{49'999'999},
+                      std::int64_t{50'000'000}, std::int64_t{50'000'001}, std::int64_t{99'999'999}})
+            for (bool neg : {false, true}) {
+                const auto actual = detail_arith::nearest_scaled_adj<100'000'000>(q, neg ? -r : r, neg);
+                const bool inc = r > 100'000'000 - r || (r == 100'000'000 - r && (q & 1) != 0);
+                CHECK(actual == (inc ? (neg ? -1 : 1) : 0));
+            }
+}
+
 void regressions() {
-    // Restricted helper contract, including the zero-to-negative transition.
     const std::int64_t quotients[] = {INT64_MIN, INT64_MIN + 1, -2, -1, 0, 1, 2, INT64_MAX - 1, INT64_MAX};
     for (auto q : quotients) for (std::int64_t adj : {std::int64_t{-1}, std::int64_t{0}, std::int64_t{1}}) {
         if ((q < 0 && adj > 0) || (q > 0 && adj < 0)) continue;
@@ -211,6 +241,20 @@ void differential() {
         for (std::int64_t c : {std::int64_t{2}, std::int64_t{3}, std::int64_t{-2}, INT64_MIN})
             exercise(runtime(a), runtime(b), runtime(c));
     }
+    if constexpr (F::fractional_digits >= 1 && F::fractional_digits <= 18) {
+        for (I offset : {I{1}, I{2}, I{7}}) {
+            const I b = scale_value + offset;
+            const I boundary_a = I{INT64_MAX} * scale_value / b;
+            for (int delta = -4; delta <= 4; ++delta) {
+                const I a = boundary_a + delta;
+                if (a < 0 || a > I{INT64_MAX}) continue;
+                for (std::int64_t sign : {std::int64_t{-1}, std::int64_t{1}})
+                    exercise(runtime(sign * static_cast<std::int64_t>(a)),
+                             runtime(static_cast<std::int64_t>(b)),
+                             runtime(static_cast<std::int64_t>(scale_value)));
+            }
+        }
+    }
     std::uint64_t state = 0x71a9'f034'91d5'7c23ULL;
     for (unsigned i = 0; i < 512; ++i) {
         auto a = static_cast<std::int64_t>(next(state));
@@ -223,6 +267,7 @@ void differential() {
 } // namespace
 
 int main() {
+    rounding_comparison();
     regressions();
 #if defined(__SIZEOF_INT128__) && !defined(_WIN32)
     differential<Fixed64<0>>();
