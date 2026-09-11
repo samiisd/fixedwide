@@ -379,6 +379,59 @@ bool dispatch(std::string_view name, std::uint64_t n) {
     return false;
 }
 
+// Midpoints also need full-width, mixed-sign inputs: they cannot overflow.
+template<typename Fixed>
+std::array<Fixed, fixture_size> midpoint_fixture(std::uint64_t seed) {
+    Splitmix rng{seed};
+    std::array<Fixed, fixture_size> out{};
+    for (auto& value : out) {
+        using Raw = typename Fixed::raw_type;
+        if constexpr (Fixed::bits == 64)
+            value = Fixed::from_raw(static_cast<Raw>(rng()));
+        else if constexpr (Fixed::bits == 128)
+            value = Fixed::from_raw(Raw{rng(), rng()});
+        else
+            value = Fixed::from_raw(Raw{rng(), rng(), rng(), rng()});
+    }
+    out[0] = Fixed::min();
+    out[1] = Fixed::max();
+    return out;
+}
+
+template<typename Fixed, fw::Rounding Mode = fw::Rounding::nearest_even>
+void midpoint_workload(std::uint64_t n) {
+    static const auto a = midpoint_fixture<Fixed>(21);
+    static const auto b = midpoint_fixture<Fixed>(22);
+    run(n, a, b, [](auto x, auto y) { return fw::midpoint(x, y, Mode); });
+}
+
+struct MidpointWorkload {
+    const char* name;
+    void (*run)(std::uint64_t);
+};
+
+constexpr MidpointWorkload midpoint_workloads[] = {
+    {"midpoint.Fixed64.d8.nearest_even", midpoint_workload<fw::Fixed64<8>>},
+    {"midpoint.Fixed64.d8.toward_zero", midpoint_workload<fw::Fixed64<8>, fw::Rounding::toward_zero>},
+    {"midpoint.Fixed64.d8.floor", midpoint_workload<fw::Fixed64<8>, fw::Rounding::floor>},
+    {"midpoint.Fixed64.d8.ceil", midpoint_workload<fw::Fixed64<8>, fw::Rounding::ceil>},
+    {"midpoint.Fixed64.d8.nearest_away", midpoint_workload<fw::Fixed64<8>, fw::Rounding::nearest_away>},
+    {"midpoint.Fixed64.d8.exact", midpoint_workload<fw::Fixed64<8>, fw::Rounding::exact>},
+    {"midpoint.Fixed64.d12.nearest_even", midpoint_workload<fw::Fixed64<12>>},
+    {"midpoint.Fixed128.nearest_even", midpoint_workload<fw::Fixed128<12>>},
+    {"midpoint.Fixed256.nearest_even", midpoint_workload<fw::Fixed256<12>>},
+};
+
+bool dispatch_midpoint(std::string_view name, std::uint64_t n) {
+    for (const auto& workload : midpoint_workloads) {
+        if (name == workload.name) {
+            workload.run(n);
+            return true;
+        }
+    }
+    return false;
+}
+
 constexpr const char* workloads[] = {
     "baseline.empty",     "add.Fixed64",
     "sub.Fixed64",        "mul.Fixed64",
@@ -404,6 +457,7 @@ constexpr const char* workloads[] = {
 int main(int argc, char** argv) {
     if (argc == 2 && std::strcmp(argv[1], "--list") == 0) {
         for (const char* name : workloads) std::puts(name);
+        for (const auto& workload : midpoint_workloads) std::puts(workload.name);
         return 0;
     }
     if (argc != 3) {
@@ -411,7 +465,7 @@ int main(int argc, char** argv) {
         return 2;
     }
     const std::uint64_t iterations = std::strtoull(argv[2], nullptr, 10);
-    if (!dispatch(argv[1], iterations)) {
+    if (!dispatch_midpoint(argv[1], iterations) && !dispatch(argv[1], iterations)) {
         std::fprintf(stderr, "unknown workload: %s\n", argv[1]);
         return 2;
     }

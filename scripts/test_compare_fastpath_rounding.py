@@ -2,8 +2,11 @@
 import csv
 import io
 import unittest
+from pathlib import Path
+import tempfile
 
-from compare_fastpath_rounding import compare_matrix, matrix_keys, validate_matrix
+from compare_fastpath_rounding import (compare_matrix, matrix_keys, validate_matrix,
+                                      prepare_icount_driver, validate_baseline_extension)
 
 
 def fixtures():
@@ -18,6 +21,49 @@ def csv_text(rows):
     writer.writeheader()
     writer.writerows(rows)
     return stream.getvalue()
+
+
+class HistoricalCounterTests(unittest.TestCase):
+    baseline = b"workload,instructions_per_op\nold,10.000\n"
+
+    def test_unchanged_or_appended_baseline(self):
+        for suffix in (b"", b"midpoint,16.000\n"):
+            validate_baseline_extension(self.baseline, self.baseline + suffix)
+
+    def test_rewritten_or_removed_baseline(self):
+        for changed in (self.baseline.replace(b"10.000", b"11.000"),
+                        b"workload,instructions_per_op\n"):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                validate_baseline_extension(self.baseline, changed)
+
+    def test_duplicate_rows_cannot_override_history(self):
+        for suffix in (b"old,100.000\n", b"new,16.000\nnew,17.000\n"):
+            with self.subTest(suffix=suffix), self.assertRaises(ValueError):
+                validate_baseline_extension(self.baseline, self.baseline + suffix)
+
+    def test_invalid_appended_measurement(self):
+        for count in (b"nan", b"inf", b"-inf", b"0", b"-1", b"", b"garbage"):
+            with self.subTest(count=count), self.assertRaises(ValueError):
+                validate_baseline_extension(self.baseline, self.baseline + b"new," + count + b"\n")
+
+    def test_malformed_appended_row(self):
+        for row in (b"new\n", b",16.0\n", b"new,16.0,extra\n"):
+            with self.subTest(row=row), self.assertRaises(ValueError):
+                validate_baseline_extension(self.baseline, self.baseline + row)
+
+    def test_driver_is_pinned_to_base_not_head(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base, head, output = (Path(directory) / name for name in ("base", "head", "output"))
+            for root in (base, head):
+                (root / "benchmarks/baseline").mkdir(parents=True)
+                (root / "benchmarks/baseline/x86_64-gcc-14.csv").write_bytes(self.baseline)
+            output.mkdir()
+            (base / "benchmarks/icount.cpp").write_bytes(b"historical driver")
+            (head / "benchmarks/icount.cpp").write_bytes(b"driver requiring a new API")
+            (head / "benchmarks/baseline/x86_64-gcc-14.csv").write_bytes(self.baseline + b"midpoint,16.000\n")
+            driver = prepare_icount_driver(base, head, output)
+            self.assertEqual(driver.read_bytes(), b"historical driver")
+            self.assertEqual((head / "benchmarks/icount.cpp").read_bytes(), b"driver requiring a new API")
 
 
 class MatrixEvidenceTests(unittest.TestCase):
