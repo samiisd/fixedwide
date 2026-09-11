@@ -106,6 +106,7 @@ the **same** type and returning `std::expected<T, ArithmeticError>`.
 |---|---|
 | `add(a, b)` / `sub(a, b)` | Exact; the only failure is overflow |
 | `negate(a)` / `abs(a)` | Fail only for `min()` |
+| `midpoint(a, b, rounding = nearest_even)` | `(a+b)/2`, rounded once; no intermediate overflow, at any width |
 | `mul(a, b, rounding = nearest_even)` | Product formed at twice the width, then rescaled once |
 | `div(a, b, rounding = nearest_even)` | Quotient carries every digit the type can hold |
 | `mul_div(a, b, c, rounding = nearest_even)` | `a*b/c` with **one** rounding, not two |
@@ -116,6 +117,17 @@ the **same** type and returning `std::expected<T, ArithmeticError>`.
 `add`, `sub`, `mul`, `div` and `mul_div` are **deleted** for operands of
 different types. Calling one is a compile error naming the deleted overload and
 pointing at `mul_to<Dest>` and friends — never a silent conversion.
+
+`midpoint` takes two values of the **same** width and scale, and returns
+`std::expected<T, ArithmeticError>`. It is symmetric in its operands, including
+half-unit ties. All six rounding modes apply at the raw integer's last decimal
+place; `exact` rejects an odd raw sum with `inexact`. It cannot overflow,
+including `midpoint(T::min(), T::min())` and `midpoint(T::max(), T::max())`.
+Unlike integer `std::midpoint`, tie-breaking does not depend on operand order.
+
+For `Fixed64<8>`, the midpoint of `1.00000001` and `1.00000003` is
+`1.00000002`, not the `1.00000001` obtained by truncating each half first.
+See [midpoint validation and benchmarks](../reports/midpoint/README.md).
 
 > See [`examples/08_constexpr.cpp`](../examples/08_constexpr.cpp).
 

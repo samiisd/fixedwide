@@ -4,6 +4,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         wide
         rounding
         core
+        midpoint
         mixed
         chars
         binary
@@ -49,6 +50,7 @@ if(FIXEDWIDE_BUILD_TESTS)
 
     set(AUDIT_TESTS
         audit_same_domain
+        audit_midpoint
         audit_mixed
         audit_known
         audit_floating
@@ -59,18 +61,18 @@ if(FIXEDWIDE_BUILD_TESTS)
         audit_fastpath_rounding
     )
 
-    # Two of the audit suites differential-test against Boost.Multiprecision.
+    # The same-domain, mixed and midpoint audits use Boost.Multiprecision.
     # Boost is header-only here and never a runtime dependency; when it is
-    # absent (a cross build without a Boost sysroot, say) those two are skipped
+    # absent (a cross build without a Boost sysroot, say) they are skipped
     # and the rest of the matrix still runs.
     # Host Boost headers are not valid for a cross build, so do not reach for
-    # them there: the two Boost-backed suites are skipped and the remaining 21
-    # still run on the target.
+    # them there: the Boost-backed suites are skipped; the rest still run on
+    # the target, including the dependency-free midpoint tests.
     if(NOT CMAKE_CROSSCOMPILING)
         find_package(Boost QUIET)
     endif()
     foreach(NAME ${AUDIT_TESTS})
-        if(NAME MATCHES "audit_(same_domain|mixed)" AND NOT Boost_FOUND)
+        if(NAME MATCHES "audit_(same_domain|mixed|midpoint)" AND NOT Boost_FOUND)
             message(STATUS "fixedwide: skipping ${NAME} (Boost headers not found)")
             continue()
         endif()

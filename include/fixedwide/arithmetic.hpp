@@ -762,6 +762,41 @@ mul_div(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, basic_fixed<Bits, D> c,
     }
 }
 
+/// `(a + b) / 2`, rounded once at the operands' scale, without overflow.
+///
+/// Both operands must have the same type. The result is symmetric in `a` and
+/// `b`, including ties: unlike std::midpoint on integers, ties do not favour
+/// the first operand. No wider intermediate, division or rescaling is needed.
+///
+/// \param rounding how to resolve a half-unit in the last decimal place;
+///                 `nearest_even` by default.
+/// \return the midpoint, or `ArithmeticError::inexact` when `exact` is requested
+///         and the raw sum is odd. No valid rounding mode can overflow.
+template<std::size_t Bits, unsigned D>
+[[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
+midpoint(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rounding::nearest_even) noexcept {
+    using Fixed = basic_fixed<Bits, D>;
+    using Raw = typename Fixed::raw_type;
+    const Raw differing = static_cast<Raw>(a.raw() ^ b.raw());
+    // The arithmetic shift gives floor((a + b) / 2) without forming the sum.
+    // This identity also holds for the signed, two's-complement wide types.
+    const Raw lower = static_cast<Raw>((a.raw() & b.raw()) + (differing >> 1));
+    const bool odd = (differing & Raw{1}) != Raw{0};
+    bool increment = false;
+    switch (rounding) {
+    case Rounding::toward_zero: increment = lower < Raw{0}; break;
+    case Rounding::floor: break;
+    case Rounding::ceil: increment = true; break;
+    case Rounding::nearest_even: increment = (lower & Raw{1}) != Raw{0}; break;
+    case Rounding::nearest_away: increment = lower >= Raw{0}; break;
+    case Rounding::exact:
+        if (odd) return std::unexpected(ArithmeticError::inexact);
+        break;
+    }
+    // An odd sum has lower < max(), so this final one-unit adjustment fits.
+    return Fixed::from_raw(static_cast<Raw>(lower + Raw(odd && increment)));
+}
+
 /// `a % b`: what is left of `a` after removing whole multiples of `b`, with the
 /// sign of `a`. Exact, so no rounding mode is taken.
 /// \return the remainder, or `ArithmeticError::division_by_zero`.
