@@ -26,6 +26,34 @@ def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def validate_baseline_extension(before, after):
+    """Allow new rows, never a rewrite or a duplicate overriding an old row."""
+    if not before.endswith(b"\n") or not after.startswith(before):
+        raise ValueError("historical instruction-count baseline changed")
+    reader = csv.DictReader(io.StringIO(after.decode("utf-8")))
+    fields = ["workload", "instructions_per_op"]
+    if reader.fieldnames != fields:
+        raise ValueError("invalid instruction-count baseline header")
+    seen = set()
+    for row in reader:
+        if set(row) != set(fields) or not row["workload"] or row["workload"] in seen:
+            raise ValueError("invalid or duplicate instruction-count baseline row")
+        seen.add(row["workload"])
+        count = float(row["instructions_per_op"] or "nan")
+        if not math.isfinite(count) or count <= 0:
+            raise ValueError("invalid instruction-count baseline measurement")
+
+
+def prepare_icount_driver(base, head, output):
+    relative = "benchmarks/baseline/x86_64-gcc-14.csv"
+    validate_baseline_extension((base / relative).read_bytes(), (head / relative).read_bytes())
+    # A new operation may not exist in base. Compile base's unchanged driver
+    # against BOTH libraries; the normal CI gate covers head's new workloads.
+    driver = output / "icount.cpp"
+    driver.write_bytes((base / "benchmarks/icount.cpp").read_bytes())
+    return driver
+
+
 def matrix_keys():
     return {(digits, f"{op}.Fixed64_{digits}.{mode}.{kind}.{sign}", mode)
             for digits in (8, 12) for op in ("mul", "div", "mul_div")
@@ -118,11 +146,16 @@ def main():
     drivers[8].write_text(derived)
     drivers[12].write_text(original)
     flags = ["-O3", "-std=c++23", "-fno-tree-vectorize", "-fno-tree-slp-vectorize", "-ffp-contract=off"]
-    # No silent baseline/gate/workload changes in this safety comparison.
-    protected = ("benchmarks/icount.cpp", "benchmarks/baseline/x86_64-gcc-14.csv",
-                 "scripts/icount.sh", "scripts/compare_icount.py", ".github/workflows/ci.yml",
+    # Pin the historical driver and protect all old baseline rows. Gate scripts
+    # and rounding fixtures must still match byte-for-byte between checkouts.
+    counter_source = prepare_icount_driver(roots["base"], roots["head"], output)
+    protected = ("scripts/icount.sh", "scripts/compare_icount.py", ".github/workflows/ci.yml",
                  "benchmarks/rounding_bench.cpp")
-    protected_hashes = {}
+    protected_hashes = {
+        "benchmarks/icount.cpp": sha256(counter_source),
+        "benchmarks/baseline/x86_64-gcc-14.csv":
+            sha256(roots["base"] / "benchmarks/baseline/x86_64-gcc-14.csv"),
+    }
     for relative in protected:
         before, after = (sha256(root / relative) for root in roots.values())
         if before != after:
@@ -147,9 +180,13 @@ def main():
         libraries[name] = {"sha256": sha256(build / "libfixedwide.a"),
                            "compile_commands": retained_database.name,
                            "compile_commands_sha256": sha256(retained_database)}
-        for label, source in {**drivers, "matrix": matrix_source}.items():
+        sources = {**drivers, "matrix": matrix_source}
+        if args.icount:
+            sources["icount"] = counter_source
+        for label, source in sources.items():
             binary = output / f"{name}-{label}"
-            command = [str(v) for v in (args.compiler, *flags, f"-I{root / 'include'}", source,
+            extra_flags = ["-DNDEBUG"] if label == "icount" else []
+            command = [str(v) for v in (args.compiler, *flags, *extra_flags, f"-I{root / 'include'}", source,
                                        build / "libfixedwide.a", "-o", binary)]
             run(command)
             binaries[binary.name] = {"sha256": sha256(binary), "size": binary.stat().st_size,
@@ -242,10 +279,7 @@ def main():
     if args.icount:
         counts = {}
         for name, root in roots.items():
-            build = output / ("build-" + name)
-            run(["cmake", "-S", root, "-B", build, "-DFIXEDWIDE_BUILD_BENCHMARKS=ON"])
-            run(["cmake", "--build", build, "--target", "fixedwide_icount", "--parallel", "2"])
-            result = run(["bash", root / "scripts/icount.sh", "--binary", build / "benchmarks/fixedwide_icount"],
+            result = run(["bash", roots["base"] / "scripts/icount.sh", "--binary", output / f"{name}-icount"],
                          capture_output=True, env={**os.environ, "CXX": args.compiler})
             (output / f"icount-{name}.csv").write_text(result.stdout)
             (output / f"icount-{name}.log").write_text(result.stderr)
@@ -257,7 +291,8 @@ def main():
         if counts["base"].keys() != counts["head"].keys():
             raise RuntimeError("instruction-count workload sets differ; do not silently compare a subset")
         summary += ["", "## Instruction counts", "",
-                    "Same runner and compiler, all existing workloads unchanged. The committed column "
+                    "Same runner and compiler, identical base-revision counter source for both libraries. "
+                    "New operations are covered by the normal CI gate, not this historical comparison. The committed column "
                     "is the historical baseline; base/head isolate this PR from pre-existing baseline drift. "
                     "This diagnostic comparison does not replace or relax the separate 1% CI gate.", "",
                     "| Workload | Committed | Base now | Head now | Head vs base |",
@@ -281,7 +316,7 @@ def main():
             raise RuntimeError("missing supplementary instruction-count workloads")
         summary += ["", "## Supplementary instruction counts", "",
                     "Same-runner base/head only; these 48 new workloads do not overwrite or "
-                    "relax the existing committed 34-row baseline. Positive change is reported "
+                    "relax the existing committed baseline. Positive change is reported "
                     "even when the original gate passes.", "",
                     "| Workload | Base | Head | Change |", "|---|---:|---:|---:|"]
         for workload in sorted(expected_names):
