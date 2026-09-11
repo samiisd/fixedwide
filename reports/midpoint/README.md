@@ -23,7 +23,7 @@ works with the existing signed wide types: no wider storage, division, scale
 conversion, native extension, allocation or extra header is required.
 
 The function has 35 added lines including its API/proof comments. It does not
-change any existing arithmetic path or instruction-count baseline.
+change any existing arithmetic path or previously recorded instruction-count baseline.
 
 ## Executed local validation
 
@@ -101,8 +101,32 @@ ctest --test-dir build-midpoint --output-on-failure
 # test_midpoint and audit_midpoint, then run ctest -R midpoint.
 ```
 
-The dedicated `Midpoint benchmarks` PR workflow runs both backends and retains
-all timing rows/raw samples, test and oracle logs, exact source snapshots,
-compiler/CPU metadata, compile commands, and binary/library hashes in Actions
-artifacts. Existing CI and its 1% instruction-count regression gate are
-unchanged.
+## Regression protection
+
+Midpoint uses the existing **instruction-count regression gate** in `ci.yml`,
+not a separate workflow. `fixedwide_icount` now includes nine midpoint rows:
+all six rounding policies at scale 8, nearest-even at scale 12, and nearest-even
+for Fixed128/Fixed256. Full-width, mixed-sign fixtures include equal minimum
+and maximum endpoints. Each value or error feeds the existing digest/sink.
+
+The original 34 workload implementations, fixtures and baseline rows are
+unchanged, as are `scripts/icount.sh`, `scripts/compare_icount.py` and the 1%
+threshold. New midpoint baselines are recorded from the same GCC 14/Valgrind
+job; its existing `instruction-counts` artifact retains the measured CSV.
+
+The standalone wall-clock executable above remains an optional local diagnostic.
+Correctness, including native/portable runs, stays in the existing test matrix.
+There is no midpoint-specific CI job.
+
+
+The nine new baseline rows were recorded from the existing job in
+[CI run 34624169260](https://github.com/samiisd/fixedwide/actions/runs/34624169260/job/103345115837),
+using GCC 14 on ubuntu-24.04 and the unchanged default 20,000/40,000-iteration
+Callgrind measurement. All 34 historical workloads passed against their original
+baselines. Only the nine new rows were appended; none of the old numbers changed.
+Applying the updated baseline to the retained measurement passes all 43 rows.
+A synthetic +2% midpoint measurement correctly fails the unchanged 1% comparator.
+
+The added counter workloads were also checked locally: 90 checksum comparisons
+against an independent Python exact-integer oracle, 102 comparisons confirming
+unchanged results for the old workloads, and a strict GCC 14 warnings build.

@@ -33,3 +33,12 @@ mul.int64_raw,7.000
 div.int64_raw,8.000
 to_bytes.Fixed64,115.001
 memcpy.int64_raw,59.000
+midpoint.Fixed64.d8.nearest_even,16.000
+midpoint.Fixed64.d8.toward_zero,17.000
+midpoint.Fixed64.d8.floor,12.000
+midpoint.Fixed64.d8.ceil,15.000
+midpoint.Fixed64.d8.nearest_away,18.000
+midpoint.Fixed64.d8.exact,14.469
+midpoint.Fixed64.d12.nearest_even,16.000
+midpoint.Fixed128.nearest_even,30.000
+midpoint.Fixed256.nearest_even,68.864
