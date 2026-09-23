@@ -7,6 +7,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         midpoint
         mixed
         chars
+        literal
         binary
         floating
         no_alloc
@@ -25,6 +26,19 @@ if(FIXEDWIDE_BUILD_TESTS)
         target_include_directories(test_${NAME} PRIVATE ${CMAKE_SOURCE_DIR})
         add_test(NAME fixedwide.${NAME} COMMAND test_${NAME})
     endforeach()
+
+    # Literal-only consumers need neither the compiled library nor exceptions.
+    # Do not link fixedwide here: that would hide accidental runtime references.
+    add_executable(test_literal_header_only test_literal_header_only.cpp)
+    target_compile_features(test_literal_header_only PRIVATE cxx_std_23)
+    target_include_directories(test_literal_header_only PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    if(FIXEDWIDE_FORCE_PORTABLE)
+        target_compile_definitions(test_literal_header_only PRIVATE FIXEDWIDE_FORCE_PORTABLE)
+    endif()
+    if(NOT MSVC)
+        target_compile_options(test_literal_header_only PRIVATE -fno-exceptions)
+    endif()
+    add_test(NAME fixedwide.literal_header_only COMMAND test_literal_header_only)
 
     # test_format asserts that an impossible precision throws std::format_error,
     # which is what the standard requires formatter::parse to do. Throwing and
@@ -109,6 +123,13 @@ if(FIXEDWIDE_BUILD_TESTS)
         invalid_bits        "Bits must be one of"
         invalid_scale       "Decimals exceeds maximum capacity"
         runtime_scale       "scale_member"
+        literal_empty       "literal_empty"
+        literal_invalid     "literal_invalid"
+        literal_too_precise  "literal_too_precise"
+        literal_overflow    "literal_overflow"
+        literal_embedded_nul "literal_invalid"
+        literal_unterminated "literal_invalid"
+        literal_runtime     "constant expression|constant-expression"
     )
 
     list(LENGTH NEGATIVE_TESTS _neg_count)

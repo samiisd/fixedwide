@@ -1,4 +1,5 @@
 #include <fixedwide/chars.hpp>
+#include <fixedwide/detail/decimal_scan.hpp>
 #include "detail.hpp"
 #include "limbs.hpp"
 #include "text_detail.hpp"
@@ -15,15 +16,6 @@ u512_limbs pow10_512(unsigned exp) noexcept {
         v = (v << 3) + (v << 1);
     }
     return v;
-}
-
-std::int64_t max_digits_for_bits(std::size_t bits) noexcept {
-    if (bits == 8) return 3;
-    if (bits == 16) return 5;
-    if (bits == 32) return 10;
-    if (bits == 64) return 19;
-    if (bits == 128) return 39;
-    return 78; // 256
 }
 
 u256_limbs limit_magnitude_limbs(std::size_t bits, bool negative) noexcept {
@@ -43,51 +35,9 @@ template<std::size_t Bits>
 std::expected<wide::int256, ParseError> parse_fixed_kernel(std::string_view text, unsigned decimals,
                                                            Rounding rounding) noexcept {
     constexpr std::size_t bits = Bits;
-    if (text.empty()) return std::unexpected(ParseError::empty);
-    if (text.size() > 4096) return std::unexpected(ParseError::invalid);
-
-    bool negative = text.front() == '-';
-    if (negative || text.front() == '+') text.remove_prefix(1);
-    if (text.empty()) return std::unexpected(ParseError::invalid);
-
-    bool dot = false;
-    std::int64_t digits = 0, fractional = 0, significant = 0;
-    std::size_t mantissa_end = 0;
-
-    for (; mantissa_end < text.size(); ++mantissa_end) {
-        const char c = text[mantissa_end];
-        if (c >= '0' && c <= '9') {
-            ++digits;
-            fractional += static_cast<int>(dot);
-            if (significant != 0 || c != '0') ++significant;
-        } else if (c == '.' && !dot) {
-            dot = true;
-        } else if (c == 'e' || c == 'E') {
-            break;
-        } else {
-            return std::unexpected(ParseError::invalid);
-        }
-    }
-    if (digits == 0) return std::unexpected(ParseError::invalid);
-
-    std::int64_t exponent = 0;
-    if (mantissa_end != text.size()) {
-        std::size_t pos = mantissa_end + 1;
-        bool exponent_negative = false;
-        if (pos < text.size() && (text[pos] == '+' || text[pos] == '-')) {
-            exponent_negative = text[pos] == '-';
-            ++pos;
-        }
-        if (pos == text.size()) return std::unexpected(ParseError::invalid);
-        const auto cap = static_cast<std::int64_t>(text.size()) + 256;
-        for (; pos < text.size(); ++pos) {
-            const char c = text[pos];
-            if (c < '0' || c > '9') return std::unexpected(ParseError::invalid);
-            const int digit = c - '0';
-            exponent = exponent > (cap - digit) / 10 ? cap : exponent * 10 + digit;
-        }
-        if (exponent_negative) exponent = -exponent;
-    }
+    const auto scanned = scan_decimal(text);
+    if (!scanned) return std::unexpected(scanned.error());
+    const auto [negative, significant, fractional, exponent, mantissa_end] = *scanned;
 
     if (significant == 0) return wide::int256(0);
 
