@@ -139,13 +139,13 @@ The instruction-count CI gate checks core workloads against its committed baseli
 
 ## Install
 
-This README describes the development API. `literal<T>()` is new and is not available in `v0.6.0`; use a checkout containing this change. The example below follows the development branch. Pin a reviewed commit for reproducible builds, or a release tag once it contains the APIs you use.
+The current stable release is `v0.6.1`.
 
 ```cmake
 include(FetchContent)
 FetchContent_Declare(fixedwide
     GIT_REPOSITORY https://github.com/samiisd/fixedwide.git
-    GIT_TAG        main)
+    GIT_TAG        v0.6.1)
 FetchContent_MakeAvailable(fixedwide)
 target_link_libraries(app PRIVATE fixedwide::fixedwide)
 ```

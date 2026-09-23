@@ -1,6 +1,6 @@
-# fixedwide 0.6.0 — status
+# fixedwide 0.6.1 — status
 
-**Version**: 0.6.0
+**Version**: 0.6.1
 **Standard**: C++23
 **Disposition**: pre-1.0. The API may still change; `CHANGELOG.md` will say when.
 

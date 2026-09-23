@@ -7,17 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Add a comprehensive five-part numerical boundary suite with independent
-  integer/rational oracles and always-active assertions.
+## [0.6.1] - 2026-09-23
+
+A maintenance release over 0.6.0 that also adds two opt-in, backwards-compatible
+numeric APIs: overflow-safe midpoint calculation and exact compile-time decimal
+constants.
+
+### Added
+- Add `midpoint(a, b, rounding)` for every fixed-width type. It computes
+  `(a + b) / 2` with one rounding step and without forming an overflowing
+  intermediate sum; `Rounding::exact` reports `inexact` for half-unit results.
+- Add `literal<T>("...")`, an exact `consteval` decimal constructor for source
+  constants. It shares the runtime parser's decimal grammar, supports every width
+  and scale, returns `T` directly, and rejects malformed, inexact or overflowing
+  constants during compilation.
+- Add a comprehensive numerical-boundary suite with independent integer/rational
+  oracles and always-active assertions.
+- Add focused midpoint validation, benchmarks and instruction-count coverage,
+  while preserving the existing regression threshold.
+
+### Fixed
+- Fix native rounding overflow boundaries and signed division at scale 19.
+- Fix signed 256/128-bit `min / -1` overflow reporting.
+- Preserve remainders when rounding reduced-digit `Fixed128` formatting.
+- Fix fixed-to-float NaNs from zero high limbs and directed rounding of tiny
+  nonzero floating inputs; preserve extended `long double` significands.
+- Fix stale quotient-correction products in the generic Knuth divider.
+- Honor the forced-portable backend consistently in wide arithmetic and remove
+  unreachable legacy native helpers.
+
+### Changed
+- Share decimal lexical scanning between runtime parsing and compile-time
+  literals so both APIs accept and reject the same grammar without replacing the
+  optimized runtime accumulation and rounding kernels.
 - Measure native and portable coverage separately, retain raw LLVM totals and
   distinct source-line counts, and fail on empty or mismatched coverage maps.
-- Fix signed 256/128-bit `min / -1` overflow reporting.
-- Preserve remainders when rounding reduced-digit Fixed128 formatting.
-- Fix fixed-to-float NaNs from zero high limbs and directed rounding of tiny
-  nonzero floating inputs; preserve extended long-double significands.
-- Fix stale quotient-correction products in the generic Knuth divider.
-- Honor the forced-portable backend in wide arithmetic and remove unreachable
-  legacy native helpers.
+- Extend the historical instruction-count baseline append-only for the new
+  midpoint workloads; existing rows and the 1% regression gate remain unchanged.
 
 ## [0.6.0] - 2026-09-04
 
