@@ -12,6 +12,7 @@
 #include <fixedwide/arithmetic.hpp>
 #include <fixedwide/mixed.hpp>
 #include <fixedwide/chars.hpp>
+#include <fixedwide/literal.hpp>
 #include <fixedwide/binary.hpp>
 #include <fixedwide/floating.hpp>
 #include <fixedwide/string.hpp>
@@ -24,11 +25,11 @@
 //   <fixedwide/iostream.hpp>   pulls <iostream>    450 ms
 //   <fixedwide/hash.hpp>       pulls <functional>  103 ms
 //
-// (clang 22, -O2, medians; this header without them is 199 ms and was 558 ms
-// with them.) They are adapters to standard-library facilities, not part of the
-// numeric API, and most translation units that want fixed-point arithmetic do
-// not format with std::format, stream to std::ostream, or use the values as
-// unordered-container keys. Include whichever you need, next to this one:
+// (clang 22, -O2, medians, before literal.hpp was added; this header without
+// them was 199 ms and was 558 ms with them.) They are adapters to standard-library
+// facilities, not part of the numeric API, and most translation units that want
+// fixed-point arithmetic do not format with std::format, stream to std::ostream,
+// or use the values as unordered-container keys. Include whichever you need:
 //
 //   #include <fixedwide/all.hpp>
 //   #include <fixedwide/iostream.hpp>   // only where you actually stream

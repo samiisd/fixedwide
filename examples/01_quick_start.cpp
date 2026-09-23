@@ -1,52 +1,47 @@
-// 01 - Quick start: parse text, multiply across scales, print the result.
-//
-// The three steps almost every use of this library goes through. Note that
-// every fallible step returns std::expected, so nothing throws and nothing
-// silently produces a wrong number.
-//
-// Docs: ../docs/api_reference.md#primary-types
-
+// 01 - Quick start: runtime input, a source constant, mixed multiply, output.
+// Run without arguments for the built-in example, or pass a decimal price.
 #include <fixedwide/all.hpp>
 #include <cstdio>
 
-int main() {
+int main(int argc, char* argv[]) {
     using namespace fixedwide;
+    if (argc > 2) {
+        std::puts("usage: example_01_quick_start [price]");
+        return 1;
+    }
 
-    // Distinct domain types. A price is not a quantity, and the compiler knows.
-    using Price = Fixed64<4>;     // 4 decimals, 64-bit
-    using Quantity = Fixed32<2>;  // 2 decimals, 32-bit
-    using Notional = Fixed128<6>; // 6 decimals, 128-bit
+    // Different widths/scales are distinct types; aliases alone are not units.
+    using Price = Fixed64<4>;
+    using Quantity = Fixed32<2>;
+    using Notional = Fixed128<6>;
 
-    // parse defaults to Rounding::exact: text that does not land on the type's
-    // decimal grid is rejected rather than quietly rounded.
-    const auto price = parse<Price>("123.4567");
-    const auto qty = parse<Quantity>("10.50");
-    if (!price || !qty) {
+    // Source constants are checked during compilation and return the value.
+    constexpr auto qty = literal<Quantity>("10.50");
+
+    // External text remains fallible. Parsing is exact unless told otherwise.
+    const auto price = parse<Price>(argc == 2 ? argv[1] : "123.4567");
+    if (!price) {
         std::puts("parse failed");
         return 1;
     }
 
-    // Different widths and scales, so the destination must be named. The exact
-    // rational product is formed first and rounded once, straight to Notional.
-    const auto notional = mul_to<Notional>(*price, *qty, Rounding::nearest_even);
+    // Name the destination scale and round once into it. Arithmetic remains
+    // checked even when one operand came from a compile-time literal.
+    const auto notional = mul_to<Notional>(*price, qty, Rounding::nearest_even);
     if (!notional) {
         std::puts("multiply overflowed");
         return 1;
     }
 
-    std::printf("price     %s\n", to_string(*price).value().c_str());
-    std::printf("quantity  %s\n", to_string(*qty).value().c_str());
-    std::printf("notional  %s\n", to_string(*notional).value().c_str());
+    std::printf("price:    %s\n", to_string(*price).value().c_str());
+    std::printf("quantity: %s\n", to_string(qty).value().c_str());
+    std::printf("notional: %s\n", to_string(*notional).value().c_str());
 
-    // Comparison across scales is exact and needs no destination: nothing is
-    // rounded to make the two sides comparable.
-    if (*price > Quantity::from_raw(10000)) { // 100.00
+    // Comparisons across scales are exact too.
+    if (*price > literal<Fixed32<2>>("100")) {
         std::puts("price is above 100.00");
     }
-
-    if (to_string(*notional).value() != "1296.295350") {
-        return 1;
-    }
+    if (argc == 1 && to_string(*notional).value() != "1296.295350") return 1;
     std::puts("OK");
     return 0;
 }
