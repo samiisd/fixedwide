@@ -10,6 +10,7 @@ build writes `build/compile_commands.json`, which is where `clangd` looks.
 | `<fixedwide/arithmetic.hpp>` | Checked arithmetic on two operands of the same type |
 | `<fixedwide/mixed.hpp>` | Cross-width, cross-scale operations and comparison |
 | `<fixedwide/chars.hpp>` | `parse`, `to_chars`, `from_chars`, `FormatOptions` |
+| `<fixedwide/literal.hpp>` | `literal<T>("...")` — exact decimal constants checked during compilation |
 | `<fixedwide/string.hpp>` | `to_string` — the one function here that allocates |
 | `<fixedwide/binary.hpp>` | `to_bytes` / `from_bytes` with an explicit byte order |
 | `<fixedwide/floating.hpp>` | Explicit conversion to and from `float` / `double` |
@@ -20,7 +21,7 @@ build writes `build/compile_commands.json`, which is where `clangd` looks.
 | `<fixedwide/all.hpp>` | Everything above **except** the three standard-library adapters |
 
 `all.hpp` deliberately omits `format.hpp`, `iostream.hpp` and `hash.hpp`.
-Measured on clang 22 at `-O2`:
+Historical measurements on clang 22 at `-O2`, before `literal.hpp` was added:
 
 | translation unit | |
 |---|---:|
@@ -28,9 +29,9 @@ Measured on clang 22 at `-O2`:
 | the same, with the three adapters back | 558 ms |
 | `#include <fixedwide/arithmetic.hpp>` alone | 42 ms |
 
-`<format>` costs 435 ms on its own and `<iostream>` 450 ms — each more than
-everything else in this library put together. They are adapters to standard
-facilities rather than part of the numeric API, so you ask for them:
+In those measurements, `<format>` cost 435 ms on its own and `<iostream>`
+450 ms. They are adapters to standard facilities rather than part of the
+numeric API, so you ask for them:
 
 ```cpp
 #include <fixedwide/all.hpp>
@@ -78,11 +79,66 @@ Members:
 
 ---
 
+## Compile-time constants
+
+In `<fixedwide/literal.hpp>`, also included by `all.hpp`:
+
+```cpp
+#include <fixedwide/literal.hpp>
+
+using Money = fixedwide::Fixed64<2>;
+constexpr auto price = fixedwide::literal<Money>("19.99");
+static_assert(price.raw() == 1999);
+```
+
+`literal<T>(text)` is a `consteval`, `noexcept` function returning `T` directly.
+`T` must be one of the library's fixed-point types; all supported widths and
+scales use the same API. The destination type supplies the scale. There is no
+UDL suffix, conversion wrapper, inferred scale or rounding argument.
+
+| Expression | Result |
+|---|---|
+| `literal<Money>("1.25")` | exactly 1.25 |
+| `literal<Money>("+001.2500")` | exactly 1.25; extra zero digits are harmless |
+| `literal<Money>("125e-2")` | exactly 1.25 |
+| `literal<Money>("-0.00")` | zero |
+| `literal<Fixed8<2>>("-1.28")` | the signed minimum, accepted |
+| `literal<Money>("1.251")` | compile error: not exactly representable |
+| `literal<Fixed8<2>>("1.28")` | compile error: overflow |
+| `literal<Money>("1.25xyz")` | compile error: invalid text |
+
+The input is a string literal or a null-terminated character array whose
+contents can be evaluated at compile time. Conversion is immediate even when
+the result initializes an ordinary `auto` variable; runtime input is rejected.
+No compiled-library linkage is needed for literal-only consumers, and the API
+works without exceptions. Decimal conversion does not pass through `float`,
+`double` or `long double`.
+
+The shared decimal grammar accepts an optional sign, a mantissa with at least
+one digit and at most one decimal point, and an optional signed decimal
+exponent. `.5` and `1.` are accepted. The entire input is validated: whitespace,
+digit separators, hexadecimal notation, special floating values, embedded NULs
+and trailing junk are rejected. The maximum is 4096 characters, excluding the
+terminating NUL. A nonterminated array is rejected rather than losing its last
+character. Diagnostics identify empty, invalid, inexact or overflowing input;
+the compiler controls their precise wording.
+
+Use `parse<T>(text, rounding)` for runtime text and its `std::expected<T,
+ParseError>` result. Literals are always exact; subsequent arithmetic remains
+checked and uses the existing explicit rounding policies. Use `T::from_raw`
+only when a value is already a scaled storage integer, not as an alternative
+spelling for a human-readable decimal.
+
+> See [`examples/08_constexpr.cpp`](../examples/08_constexpr.cpp) for constants
+> composed with checked compile-time arithmetic.
+
+---
+
 ## Rounding modes
 
 `Rounding` is taken by every operation that can lose information. There is no
 hidden default inside the library: arithmetic defaults to `nearest_even`,
-parsing and `fixed_cast` default to `exact`.
+parsing and `fixed_cast` default to `exact`. Literals never round.
 
 | Mode | 0.5 → | −0.5 → | Use |
 |---|---|---|---|
@@ -160,9 +216,10 @@ never a rounding artefact. Both are `constexpr` for every width.
 
 ## Error types
  
-Core arithmetic, parsing, and serialization functions do not throw exceptions,
-do not set `errno`, and communicate failures exclusively through `std::expected`.
-No operation returns a wrong answer in place of an error.
+Core arithmetic, runtime parsing, and serialization functions do not throw
+exceptions, do not set `errno`, and communicate failures exclusively through
+`std::expected`. Source constants built by `literal<T>()` instead fail during
+compilation. No operation returns a wrong answer in place of an error.
  
 `ArithmeticError`: `overflow`, `division_by_zero`, `inexact`,
 `invalid_precision`, `invalid_value`.
@@ -195,6 +252,7 @@ Three of these are easy to confuse, and they are three different things:
 ## Text conversion
 
 In `<fixedwide/chars.hpp>`; `to_string` is in `<fixedwide/string.hpp>`.
+For source constants, see [compile-time constants](#compile-time-constants).
 
 | Function | |
 |---|---|
@@ -265,9 +323,10 @@ Every public name obeys four rules:
 3. **Conversions come in `from_X` / `to_X` pairs**: `from_chars`/`to_chars`,
    `from_bytes`/`to_bytes`, `from_float`/`to_float`, `from_raw`/`raw`. Two names
    sit outside the pattern on purpose. `to_string`'s inverse is `parse` — one
-   name for text-to-value is enough, and it already takes a `string_view`. And
+   name for runtime text-to-value is enough, and it already takes a `string_view`.
    `from_integer` has no inverse, because going back has to choose a rounding:
-   that is `quantize(v, 0)` or `fixed_cast<FixedN<0>>`.
+   that is `quantize(v, 0)` or `fixed_cast<FixedN<0>>`. `literal` is the separate
+   compile-time constant entry point, not another runtime conversion spelling.
 4. **One word per concept.** The count of fractional digits is `decimals`
    everywhere. Two older spellings survive because callers write them:
    `basic_fixed::fractional_digits` (the member) and `FormatOptions::digits` (a

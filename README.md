@@ -30,7 +30,7 @@ When values live on a **discrete decimal grid**, a scaled integer can represent 
 | mpdecimal | Runtime decimal precision and a configurable arithmetic context | Different storage/allocation and context costs. |
 | fixedwide | Compile-time decimal scale, checked rescaling, fixed-size storage | Bounded range; division/multiplication can still require rounding. |
 
-Core arithmetic, decimal parsing and caller-buffer formatting allocate no heap memory and return errors as values. Convenience string formatting such as `to_string` may allocate. The guarantee does not extend to throwing adapters or to `.value()` on an unsuccessful `std::expected`.
+Core arithmetic, runtime decimal parsing and caller-buffer formatting allocate no heap memory and return errors as values. Convenience string formatting such as `to_string` may allocate. The guarantee does not extend to throwing adapters or to `.value()` on an unsuccessful `std::expected`.
 
 ## Domains
 
@@ -52,23 +52,46 @@ std::int64_t a = 5'000'000'000'000'000'000;
 // a + a would overflow signed int64_t: undefined behaviour, not a checked result.
 ```
 
-Inside a function with the arithmetic, chars and string headers included:
+Inside a function after including `<fixedwide/all.hpp>`:
 
 ```cpp
 using Money = fixedwide::Fixed64<2>;
-auto checked_total = Money::from_raw(0);
+constexpr auto cent = fixedwide::literal<Money>("0.01");
+Money checked_total{};
 for (int i = 0; i < 100; ++i) {
-    checked_total = fixedwide::add(
-        checked_total, fixedwide::parse<Money>("0.01").value()).value();
+    checked_total = fixedwide::add(checked_total, cent).value();
 }
 // fixedwide::to_string(checked_total) == "1.00"
-auto overflow = fixedwide::add(Money::max(), fixedwide::parse<Money>("0.01").value());
+auto overflow = fixedwide::add(Money::max(), cent);
 // overflow.error() == fixedwide::ArithmeticError::overflow
 ```
 
-These known constants make the successful `.value()` calls safe in this example. Check results before dereferencing when processing external values.
+`literal<Money>("0.01")` is checked during compilation and returns a `Money` directly. Arithmetic still returns `std::expected`: the additions in this bounded example are known to fit, so their `.value()` calls are safe. Check results before dereferencing when processing external values.
 
 Different widths/scales are distinct types. Two aliases with identical width and scale are the **same** type: this is scale safety, not dimensional analysis.
+
+## Constants and runtime text
+
+Use `literal<T>()` for a number written in your source, and `parse<T>()` for text supplied at runtime:
+
+```cpp
+#include <fixedwide/literal.hpp>
+#include <fixedwide/chars.hpp>
+
+using Money = fixedwide::Fixed64<2>;
+constexpr auto price = fixedwide::literal<Money>("19.99");
+static_assert(price.raw() == 1999);
+
+auto read_price(std::string_view text) {
+    return fixedwide::parse<Money>(text); // std::expected<Money, ParseError>
+}
+```
+
+The type chooses the width and scale; the text does not. `literal<Money>("19.9900")` is the same exact value. `literal<Money>("19.999")` fails to compile rather than silently rounding. Signs and decimal exponents work too, and conversion never passes through binary floating point.
+
+There are no suffixes or additional namespaces to learn. `literal<T>()` always runs during compilation, even in an ordinary `auto` initializer; it returns the existing fixed-point type, not a wrapper. Runtime parsing keeps its error-returning API and optional rounding policy.
+
+See the [quick start](examples/01_quick_start.cpp) for checked runtime input, or the [constant API contract](docs/api_reference.md#compile-time-constants) for accepted input and diagnostics.
 
 ## Intermediate precision widening vs single-word fixed point
 
@@ -84,8 +107,8 @@ fixedwide widens the `Fixed64` multiplication intermediate to 128 bits, rescales
 
 ```cpp
 using F = fixedwide::Fixed64<12>;
-auto a = fixedwide::parse<F>("123.456789012345").value();
-auto b = fixedwide::parse<F>("2.000000000000").value();
+constexpr auto a = fixedwide::literal<F>("123.456789012345");
+constexpr auto b = fixedwide::literal<F>("2.000000000000");
 auto result = fixedwide::mul(a, b); // 246.913578024690
 ```
 
@@ -116,11 +139,13 @@ The instruction-count CI gate checks core workloads against its committed baseli
 
 ## Install
 
+This README describes the development API. `literal<T>()` is new and is not available in `v0.6.0`; use a checkout containing this change. The example below follows the development branch. Pin a reviewed commit for reproducible builds, or a release tag once it contains the APIs you use.
+
 ```cmake
 include(FetchContent)
 FetchContent_Declare(fixedwide
     GIT_REPOSITORY https://github.com/samiisd/fixedwide.git
-    GIT_TAG        v0.6.0)
+    GIT_TAG        main)
 FetchContent_MakeAvailable(fixedwide)
 target_link_libraries(app PRIVATE fixedwide::fixedwide)
 ```
@@ -144,38 +169,38 @@ A value is its scaled integer, with no runtime scale member.
 
 ```cpp
 using namespace fixedwide;
-auto price = parse<Fixed64<4>>("19.9900").value();
-auto rate = parse<Fixed64<8>>("1.07500000").value();
+constexpr auto price = literal<Fixed64<4>>("19.9900");
+constexpr auto rate = literal<Fixed64<8>>("1.07500000");
 
 // mul(price, rate);              // rejected: two different types
 auto total = mul_to<Fixed128<2>>(price, rate); // 21.49; one final rounding
-bool same = price == parse<Fixed64<8>>("19.99000000").value(); // true
+bool same = price == literal<Fixed64<8>>("19.99000000"); // true
 
-auto zero = div(price, Fixed64<4>::from_raw(0)); // division_by_zero
-auto inexact = div(price, parse<Fixed64<4>>("3.0000").value(), Rounding::exact);
+auto zero = div(price, Fixed64<4>{}); // division_by_zero
+auto inexact = div(price, literal<Fixed64<4>>("3.0000"), Rounding::exact);
 // inexact.error() == ArithmeticError::inexact
 
 // Nearest-even is the arithmetic default. Only exact halfway cases use parity.
-auto even = quantize(parse<Fixed64<2>>("2.50").value(), 0); // 2.00
-auto odd = quantize(parse<Fixed64<2>>("3.50").value(), 0);  // 4.00
+auto even = quantize(literal<Fixed64<2>>("2.50"), 0); // 2.00
+auto odd = quantize(literal<Fixed64<2>>("3.50"), 0);  // 4.00
 ```
 
 Nearest-even reduces systematic tie-breaking bias; it does **not** prevent accumulated rounding error. Rounding `0.005` individually to two places gives `0.00`, whereas adding 100 original values and rounding once gives `0.50`. Preserve intermediates and round at the intended calculation boundary.
 
-All six rounding policies remain available. Decimal parsing and `fixed_cast` default to exact; full-precision serialization does not discard digits. Raw binary encoding contains no scale tag, so both endpoints must agree on the type.
+All six rounding policies remain available. Runtime decimal parsing and `fixed_cast` default to exact; literals are always exact. Full-precision serialization does not discard digits. Raw binary encoding contains no scale tag, so both endpoints must agree on the type.
 
 ## Examples
 
 | | | |
 |---|---|---|
-| 01 | [Quick start](examples/01_quick_start.cpp) | parse → mixed multiply → format |
+| 01 | [Quick start](examples/01_quick_start.cpp) | runtime text and constants → mixed multiply → format |
 | 02 | [Rounding](examples/02_rounding_modes.cpp) | all six policies |
 | 03 | [Errors](examples/03_error_handling.cpp) | failures as values |
 | 04 | [Mixed scales](examples/04_mixed_scales.cpp) | explicit destinations |
 | 05 | [Text](examples/05_text_io.cpp) | chars, format and streams |
 | 06 | [Binary](examples/06_binary_roundtrip.cpp) | both byte orders |
 | 07 | [Money ledger](examples/07_money_ledger.cpp) | invoice example |
-| 08 | [constexpr](examples/08_constexpr.cpp) | compile-time arithmetic |
+| 08 | [constexpr](examples/08_constexpr.cpp) | compile-time constants and arithmetic |
 
 ## Verification
 
