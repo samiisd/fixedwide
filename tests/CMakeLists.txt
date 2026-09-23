@@ -114,6 +114,8 @@ if(FIXEDWIDE_BUILD_TESTS)
     # PASS_REGULAR_EXPRESSION makes ctest ignore the exit code and pass only if
     # the output matches, which asserts both that it failed and why. A build that
     # unexpectedly SUCCEEDS produces no such message and therefore fails.
+    # Literal diagnostics deliberately differ from their source filenames, so
+    # a successful build's progress output cannot satisfy their expressions.
     set(NEGATIVE_TESTS
         # Three compilers, three phrasings for the same diagnostic:
         #   clang: call to deleted function 'mul'
@@ -123,13 +125,13 @@ if(FIXEDWIDE_BUILD_TESTS)
         invalid_bits        "Bits must be one of"
         invalid_scale       "Decimals exceeds maximum capacity"
         runtime_scale       "scale_member"
-        literal_empty       "literal_empty"
-        literal_invalid     "literal_invalid"
-        literal_too_precise  "literal_too_precise"
-        literal_overflow    "literal_overflow"
-        literal_embedded_nul "literal_invalid"
-        literal_unterminated "literal_invalid"
-        literal_runtime     "constant expression|constant-expression"
+        literal_empty       "literal_error_empty"
+        literal_invalid     "literal_error_invalid"
+        literal_too_precise  "literal_error_too_precise"
+        literal_overflow    "literal_error_overflow"
+        literal_embedded_nul "literal_error_invalid"
+        literal_unterminated "literal_error_invalid"
+        literal_runtime     "constant expression|constant-expression|did not evaluate to a constant"
     )
 
     list(LENGTH NEGATIVE_TESTS _neg_count)

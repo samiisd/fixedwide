@@ -9,6 +9,16 @@
 
 namespace fixedwide::detail {
 
+// Width-only constants, evaluated once per instantiation rather than repeated
+// inside every literal evaluation (notably when building constexpr tables).
+template<std::size_t Bits>
+struct LiteralLimits {
+    static constexpr auto positive = limit_magnitude_u256<Bits>(false);
+    static constexpr auto negative = limit_magnitude_u256<Bits>(true);
+    static constexpr auto positive_cutoff = positive / wide::uint256{10};
+    static constexpr auto negative_cutoff = negative / wide::uint256{10};
+};
+
 // Only exact assembly belongs here. Runtime rounding and its width-specific
 // fast paths stay in chars.cpp; both paths use the same scanner and limits.
 template<class T>
@@ -21,12 +31,9 @@ template<class T>
     const auto keep = significant + static_cast<std::int64_t>(T::fractional_digits) + exponent - fractional;
     if (keep > max_digits_for_bits(T::bits)) return std::unexpected(ParseError::overflow);
 
-    constexpr auto positive_limit = limit_magnitude_u256<T::bits>(false);
-    constexpr auto negative_limit = limit_magnitude_u256<T::bits>(true);
-    constexpr auto positive_cutoff = positive_limit / wide::uint256{10};
-    constexpr auto negative_cutoff = negative_limit / wide::uint256{10};
-    const auto limit = negative ? negative_limit : positive_limit;
-    const auto cutoff = negative ? negative_cutoff : positive_cutoff;
+    using Limits = LiteralLimits<T::bits>;
+    const auto limit = negative ? Limits::negative : Limits::positive;
+    const auto cutoff = negative ? Limits::negative_cutoff : Limits::positive_cutoff;
     const auto last_digit = static_cast<unsigned>((limit - ((cutoff << 3) + (cutoff << 1))).limbs[0]);
     wide::uint256 value{};
     auto append = [&](unsigned digit) constexpr {
@@ -63,10 +70,18 @@ template<class T>
 // A failing immediate invocation names the reason in the compiler diagnostic.
 // These non-constexpr functions can never be reached by a valid literal call;
 // using abort rather than throw also supports -fno-exceptions consumers.
-[[noreturn]] inline void literal_empty() noexcept { std::abort(); }
-[[noreturn]] inline void literal_invalid() noexcept { std::abort(); }
-[[noreturn]] inline void literal_too_precise() noexcept { std::abort(); }
-[[noreturn]] inline void literal_overflow() noexcept { std::abort(); }
+[[noreturn]] inline void literal_error_empty() noexcept {
+    std::abort();
+}
+[[noreturn]] inline void literal_error_invalid() noexcept {
+    std::abort();
+}
+[[noreturn]] inline void literal_error_too_precise() noexcept {
+    std::abort();
+}
+[[noreturn]] inline void literal_error_overflow() noexcept {
+    std::abort();
+}
 
 } // namespace fixedwide::detail
 
@@ -86,14 +101,14 @@ namespace fixedwide {
 template<class T, std::size_t N>
     requires std::is_same_v<T, basic_fixed<T::bits, T::fractional_digits>>
 [[nodiscard]] consteval T literal(const char (&text)[N]) noexcept {
-    if (text[N - 1] != '\0') detail::literal_invalid();
+    if (text[N - 1] != '\0') detail::literal_error_invalid();
     const auto result = detail::parse_literal_exact<T>(std::string_view{text, N - 1});
     if (!result) {
         switch (result.error()) {
-        case ParseError::empty: detail::literal_empty();
-        case ParseError::invalid: detail::literal_invalid();
-        case ParseError::too_precise: detail::literal_too_precise();
-        case ParseError::overflow: detail::literal_overflow();
+        case ParseError::empty: detail::literal_error_empty();
+        case ParseError::invalid: detail::literal_error_invalid();
+        case ParseError::too_precise: detail::literal_error_too_precise();
+        case ParseError::overflow: detail::literal_error_overflow();
         }
     }
     return *result;
