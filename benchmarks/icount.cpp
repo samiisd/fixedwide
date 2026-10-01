@@ -159,6 +159,24 @@ using MixedFast = fw::Fixed128<6>;
 
 constexpr auto nearest = fw::Rounding::nearest_even;
 
+// Isolate the control loop from dispatcher inlining and register allocation.
+// Adding unrelated workloads must not add instructions to this empty loop.
+// The one call per run cancels in the N/2N subtraction, unlike a loop change.
+#if defined(_MSC_VER)
+__declspec(noinline)
+#elif defined(__clang__)
+[[gnu::noinline]]
+#elif defined(__GNUC__)
+[[gnu::noipa]]
+#endif
+void empty_workload(std::uint64_t n) noexcept {
+    std::uint64_t accumulator = 0;
+    for (std::uint64_t i = 0; i < n; ++i) {
+        accumulator ^= static_cast<std::uint64_t>(i) & fixture_mask;
+    }
+    sink = accumulator;
+}
+
 // ---------------------------------------------------------------------------
 // The workload table. Adding a row here and re-recording the baseline is the
 // whole procedure for putting a new operation under the regression gate.
@@ -369,11 +387,7 @@ bool dispatch(std::string_view name, std::uint64_t n) {
     // sink -- the floor every other row sits on, recorded so a change in the
     // harness itself is visible instead of being blamed on the library.
     if (name == "baseline.empty") {
-        std::uint64_t accumulator = 0;
-        for (std::uint64_t i = 0; i < n; ++i) {
-            accumulator ^= static_cast<std::uint64_t>(i) & fixture_mask;
-        }
-        sink = accumulator;
+        empty_workload(n);
         return true;
     }
 
