@@ -4,7 +4,7 @@
 
 # fixedwide
 
-**Checked decimal fixed-point arithmetic for C++23.**  
+**Decimal fixed-point arithmetic for C++23: checked when needed, straightforward when bounded.**  
 *For discrete measurements, deterministic simulation, coordinates and financial ledgers.*
 
 [![CI](https://github.com/samiisd/fixedwide/actions/workflows/ci.yml/badge.svg)](https://github.com/samiisd/fixedwide/actions/workflows/ci.yml)
@@ -12,7 +12,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)
 
-[Why fixedwide?](#why-fixedwide) • [Domains](#domains) • [Quick Start](#the-problem-in-three-snippets) • [Performance](#performance) • [The Types](#the-types) • [Install](#install)
+[Why fixedwide?](#why-fixedwide) • [Safety choice](#checked-or-unchecked) • [Domains](#domains) • [Quick Start](#the-problem-in-three-snippets) • [Performance](#performance) • [The Types](#the-types) • [Install](#install)
 
 </div>
 
@@ -20,7 +20,7 @@
 
 ## Why fixedwide?
 
-When values live on a **discrete decimal grid**, a scaled integer can represent them exactly. fixedwide makes the scale part of the type, checks arithmetic overflow, and makes rounding policy explicit. It does not eliminate quantization error or the need to choose where a calculation rounds.
+When values live on a **discrete decimal grid**, a scaled integer can represent them exactly. fixedwide makes the scale part of the type, offers checked and caller-responsibility arithmetic on that same type, and makes rounding policy explicit. It does not eliminate quantization error or the need to choose where a calculation rounds.
 
 | Approach | Useful properties | Trade-offs |
 |---|---|---|
@@ -28,14 +28,14 @@ When values live on a **discrete decimal grid**, a scaled integer can represent 
 | Manually scaled `int64_t` | Exact discrete values and compact storage | Scale management and overflow checks belong to the caller. |
 | Boost.Decimal | Decimal significand with a moving exponent | Different range, precision and error semantics from fixed point. |
 | mpdecimal | Runtime decimal precision and a configurable arithmetic context | Different storage/allocation and context costs. |
-| fixedwide | Compile-time decimal scale, checked rescaling, fixed-size storage | Bounded range; division/multiplication can still require rounding. |
+| fixedwide | Compile-time decimal scale, checked or unchecked arithmetic, fixed-size storage | Bounded range; division/multiplication can still require rounding. |
 
-Core arithmetic, runtime decimal parsing and caller-buffer formatting allocate no heap memory and return errors as values. Convenience string formatting such as `to_string` may allocate. The guarantee does not extend to throwing adapters or to `.value()` on an unsuccessful `std::expected`.
+Core arithmetic, runtime decimal parsing and caller-buffer formatting allocate no heap memory. Checked functions return errors as values; unchecked arithmetic instead requires the caller to establish its preconditions. Convenience string formatting such as `to_string` may allocate. The no-throw guarantee does not extend to throwing adapters or to `.value()` on an unsuccessful `std::expected`.
 
 ## Domains
 
 - **Instrumentation:** store measurements on a declared decimal grid while preserving their recorded resolution. Calibration and conversion still need an explicit rounding boundary.
-- **Simulation and coordinates:** use deterministic checked integer arithmetic for quantities represented on fixed grids. Coordinate transformations are not automatically lossless.
+- **Simulation and coordinates:** use deterministic integer arithmetic for quantities represented on fixed grids, with checks or established domain bounds. Coordinate transformations are not automatically lossless.
 - **Ledgers and billing:** preserve decimal amounts and apply the rounding rule required by the application. Nearest-even is the library default, not a universal tax or settlement rule.
 
 ## The Problem in Three Snippets
@@ -57,18 +57,33 @@ Inside a function after including `<fixedwide/all.hpp>`:
 ```cpp
 using Money = fixedwide::Fixed64<2>;
 constexpr Money cent = "0.01";
-Money checked_total{};
-for (int i = 0; i < 100; ++i) {
-    checked_total = fixedwide::add(checked_total, cent).value();
-}
-// fixedwide::to_string(checked_total) == "1.00"
+Money total{};
+for (int i = 0; i < 100; ++i) total += cent; // every sum is bounded by 1.00
+// fixedwide::to_string(total) == "1.00"
 auto overflow = fixedwide::add(Money::max(), cent);
 // overflow.error() == fixedwide::ArithmeticError::overflow
 ```
 
-The string initializer is checked during compilation and constructs a `Money` directly. Arithmetic still returns `std::expected`: the additions in this bounded example are known to fit, so their `.value()` calls are safe. Check results before dereferencing when processing external values.
+The string initializer is checked during compilation and constructs a `Money` directly. The bounded loop uses ordinary caller-responsibility arithmetic. `fixedwide::add` remains checked and returns `std::expected`; check its result before dereferencing when processing values that might overflow.
 
 Different widths/scales are distinct types. Two aliases with identical width and scale are the **same** type: this is scale safety, not dimensional analysis.
+
+## Checked or unchecked
+
+The unchecked API is a development-branch addition after v0.6.3, not part of that stable release. Include `<fixedwide/unchecked.hpp>` or `<fixedwide/all.hpp>` for same-type `+`, `-`, `*`, `/`, `%`, unary signs and compound assignments. Existing checked calls do not change.
+
+```cpp
+using Price = fixedwide::Fixed64<8>;
+Price price = "125.50";
+constexpr Price delta = "0.0025";
+price += delta;
+auto change = price - Price{"125.50"};
+auto rounded = fixedwide::unchecked::mul(price, Price{"1.01"}, fixedwide::Rounding::ceil);
+```
+
+The caller guarantees representable rounded results, nonzero divisors, valid precision and exactness when asking for `Rounding::exact`. Violations are undefined behaviour, not wrapping or saturation. Debug assertions are diagnostic, not recoverable input validation. Operators `*` and `/` use nearest-even; named functions allow explicit rounding. Mixed widths/scales still require an explicit `*_to<Dest>` or `fixed_cast<Dest>`.
+
+Use checked operations at uncertain boundaries, and ordinary arithmetic where domain bounds establish safety. Linear arithmetic and native narrow product/division paths remove overflow checks in release builds. Some portable/wide and mixed helpers retain checked numerical kernels: simpler call sites do not imply every internal check disappears. See the [full contract and performance scope](docs/unchecked.md) and the [executable bounded-input example](examples/09_bounded_arithmetic.cpp).
 
 ## Constants and runtime text
 
@@ -116,7 +131,7 @@ a * b <= (2^63 - 1) / S^2
 
 At `D = 12`, that limit is approximately `9.223372e-6`. For **equal positive operands**, the largest value that can be squared without such intermediate overflow is approximately `0.003037`. This is not a universal limit for each operand independently.
 
-fixedwide widens the `Fixed64` multiplication intermediate to 128 bits, rescales, and checks the destination:
+fixedwide widens the `Fixed64` multiplication intermediate to 128 bits, rescales, and checks the destination in the checked API. Unchecked multiplication retains the widened intermediate and rounding, but makes destination representability the caller's responsibility:
 
 ```cpp
 using F = fixedwide::Fixed64<12>;
@@ -129,7 +144,7 @@ Other fixed-point libraries can be configured with widened representations or ov
 
 ## Performance
 
-[Full report and contracts](reports/BENCHMARK_COMPETITORS.md). The summary below is generated from the same retained CSV as that report. Exact-result throughput is not a claim about all rounding modes, widths, or dependency-chain latency. The separate rounding benchmark covers inexact arithmetic.
+[Full report and contracts](reports/BENCHMARK_COMPETITORS.md). The summary below is generated from the same retained CSV as that report. Exact-result throughput is not a claim about all rounding modes, widths, or dependency-chain latency. The separate rounding benchmark covers inexact arithmetic. These retained results describe the checked API, not the new unchecked paths.
 
 <!-- BEGIN GENERATED COMPETITOR SUMMARY -->
 
@@ -152,7 +167,7 @@ The instruction-count CI gate checks core workloads against its committed baseli
 
 ## Install
 
-The current stable release is `v0.6.3`.
+The current stable release is `v0.6.3`. To use the new unchecked API before its next release, build a checkout of the development branch containing it; the stable tag below does not contain that addition.
 
 ```cmake
 include(FetchContent)
@@ -214,6 +229,7 @@ All six rounding policies remain available. Runtime decimal parsing and `fixed_c
 | 06 | [Binary](examples/06_binary_roundtrip.cpp) | both byte orders |
 | 07 | [Money ledger](examples/07_money_ledger.cpp) | invoice example |
 | 08 | [constexpr](examples/08_constexpr.cpp) | compile-time constants and arithmetic |
+| 09 | [Bounded arithmetic](examples/09_bounded_arithmetic.cpp) | checked input, simple arithmetic in the bounded domain |
 
 ## Verification
 
@@ -222,6 +238,7 @@ The repository's [CI documentation](docs/ci.md) and [execution matrix](reports/E
 | Documentation | |
 |---|---|
 | [API reference](docs/api_reference.md) | public functions and headers |
+| [Checked or unchecked](docs/unchecked.md) | caller responsibility, rounding and performance scope |
 | [Architecture](docs/architecture.md) | storage and arithmetic backends |
 | [Benchmarks](docs/benchmarks.md) | methods and limitations |
 | [STATUS](STATUS.md) | executed work and open items |
