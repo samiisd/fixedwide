@@ -132,6 +132,13 @@ if(FIXEDWIDE_BUILD_TESTS)
         literal_embedded_nul "literal_error_invalid"
         literal_unterminated "literal_error_invalid"
         literal_runtime     "constant expression|constant-expression|did not evaluate to a constant"
+        constructor_empty       "literal_error_empty"
+        constructor_invalid     "literal_error_invalid"
+        constructor_too_precise "literal_error_too_precise"
+        constructor_overflow    "literal_error_overflow"
+        constructor_embedded_nul "literal_error_invalid"
+        constructor_unterminated "literal_error_invalid"
+        constructor_runtime     "constant expression|constant-expression|did not evaluate to a constant"
     )
 
     list(LENGTH NEGATIVE_TESTS _neg_count)

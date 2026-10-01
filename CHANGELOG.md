@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.3] - 2026-10-01
+
+### Added
+- Add implicit `consteval` character-array construction: `constexpr Money value =
+  "1.25"`, `Money{"1.25"}`, and string arguments to concrete fixed-point parameters.
+  It delegates to `literal<T>` with the same exact grammar and diagnostics, without
+  runtime parsing, floating intermediates or changes to the stored representation.
+  Include `literal.hpp` or `all.hpp`; numeric and runtime-string constructors remain
+  unavailable.
+- Test construction across every supported width and scale, malformed and inexact
+  constants, boundaries, header-only consumers and exceptions-disabled builds.
+
+### Changed
+- Teach string construction in the README, API reference and executable examples,
+  while keeping checked parsing for runtime input and typed constants in deduced
+  templates. Document the Clang 22 generic-lambda temporary limitation and its
+  compile-time-only alternatives.
+
 ## [0.6.2] - 2026-10-01
 
 ### Added

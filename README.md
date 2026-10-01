@@ -56,7 +56,7 @@ Inside a function after including `<fixedwide/all.hpp>`:
 
 ```cpp
 using Money = fixedwide::Fixed64<2>;
-constexpr auto cent = fixedwide::literal<Money>("0.01");
+constexpr Money cent = "0.01";
 Money checked_total{};
 for (int i = 0; i < 100; ++i) {
     checked_total = fixedwide::add(checked_total, cent).value();
@@ -66,20 +66,24 @@ auto overflow = fixedwide::add(Money::max(), cent);
 // overflow.error() == fixedwide::ArithmeticError::overflow
 ```
 
-`literal<Money>("0.01")` is checked during compilation and returns a `Money` directly. Arithmetic still returns `std::expected`: the additions in this bounded example are known to fit, so their `.value()` calls are safe. Check results before dereferencing when processing external values.
+The string initializer is checked during compilation and constructs a `Money` directly. Arithmetic still returns `std::expected`: the additions in this bounded example are known to fit, so their `.value()` calls are safe. Check results before dereferencing when processing external values.
 
 Different widths/scales are distinct types. Two aliases with identical width and scale are the **same** type: this is scale safety, not dimensional analysis.
 
 ## Constants and runtime text
 
-Use `literal<T>()` for a number written in your source, and `parse<T>()` for text supplied at runtime:
+String construction is available since v0.6.3; earlier releases use `literal<T>()`.
+
+Use a typed string initializer (or `literal<T>()`) for a number written in your source,
+and `parse<T>()` for text supplied at runtime:
 
 ```cpp
 #include <fixedwide/literal.hpp>
 #include <fixedwide/chars.hpp>
 
 using Money = fixedwide::Fixed64<2>;
-constexpr auto price = fixedwide::literal<Money>("19.99");
+constexpr Money price = "19.99";
+auto threshold = Money{"19.99"};
 static_assert(price.raw() == 1999);
 
 auto read_price(std::string_view text) {
@@ -89,7 +93,16 @@ auto read_price(std::string_view text) {
 
 The type chooses the width and scale; the text does not. `literal<Money>("19.9900")` is the same exact value. `literal<Money>("19.999")` fails to compile rather than silently rounding. Signs and decimal exponents work too, and conversion never passes through binary floating point.
 
-There are no suffixes or additional namespaces to learn. `literal<T>()` always runs during compilation, even in an ordinary `auto` initializer; it returns the existing fixed-point type, not a wrapper. Runtime parsing keeps its error-returning API and optional rounding policy.
+There are no suffixes or additional namespaces to learn. Both the string constructor
+and `literal<T>()` always run during compilation, even without a `constexpr`
+initializer; they produce the existing fixed-point type, not a wrapper. Runtime
+parsing keeps its error-returning API and optional rounding policy.
+
+Functions taking a concrete fixed-point type accept constants directly:
+`set_price("19.99")`. In deduced templates, use the typed spelling, such as
+`EXPECT_EQ(actual, Money{"19.99"})`: forwarding the bare string through a runtime
+function loses the compile-time conversion context. No runtime string conversion
+is provided. Include `literal.hpp` or `all.hpp` for the string constructor.
 
 See the [quick start](examples/01_quick_start.cpp) for checked runtime input, or the [constant API contract](docs/api_reference.md#compile-time-constants) for accepted input and diagnostics.
 
@@ -107,8 +120,8 @@ fixedwide widens the `Fixed64` multiplication intermediate to 128 bits, rescales
 
 ```cpp
 using F = fixedwide::Fixed64<12>;
-constexpr auto a = fixedwide::literal<F>("123.456789012345");
-constexpr auto b = fixedwide::literal<F>("2.000000000000");
+constexpr F a = "123.456789012345";
+constexpr F b = "2.000000000000";
 auto result = fixedwide::mul(a, b); // 246.913578024690
 ```
 
@@ -139,13 +152,13 @@ The instruction-count CI gate checks core workloads against its committed baseli
 
 ## Install
 
-The current stable release is `v0.6.1`.
+The current stable release is `v0.6.3`.
 
 ```cmake
 include(FetchContent)
 FetchContent_Declare(fixedwide
     GIT_REPOSITORY https://github.com/samiisd/fixedwide.git
-    GIT_TAG        v0.6.1)
+    GIT_TAG        v0.6.3)
 FetchContent_MakeAvailable(fixedwide)
 target_link_libraries(app PRIVATE fixedwide::fixedwide)
 ```

@@ -43,7 +43,7 @@ int main() {
     }
 
     // 8.25% tax, applied with a single rounding for the whole expression.
-    const auto rate = parse<Rate>("0.082500").value();
+    constexpr Rate rate = "0.082500";
     const auto tax = mul_to<Money>(fw_subtotal, rate, Rounding::nearest_away).value();
     const auto total = add(fw_subtotal, tax).value();
 

@@ -14,7 +14,7 @@ int main() {
     using namespace fixedwide;
     using Money = Fixed128<6>;
 
-    const auto value = parse<Money>("-1234567.891234").value();
+    constexpr Money value = "-1234567.891234";
 
     // Little-endian wire format.
     const auto le = to_bytes<endian::little>(value);

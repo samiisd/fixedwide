@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
     using Notional = Fixed128<6>;
 
     // Source constants are checked during compilation and return the value.
-    constexpr auto qty = literal<Quantity>("10.50");
+    constexpr Quantity qty = "10.50";
 
     // External text remains fallible. Parsing is exact unless told otherwise.
     const auto price = parse<Price>(argc == 2 ? argv[1] : "123.4567");
@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
     std::printf("notional: %s\n", to_string(*notional).value().c_str());
 
     // Comparisons across scales are exact too.
-    if (*price > literal<Fixed32<2>>("100")) {
+    if (*price > Fixed32<2>{"100"}) {
         std::puts("price is above 100.00");
     }
     if (argc == 1 && to_string(*notional).value() != "1296.295350") return 1;

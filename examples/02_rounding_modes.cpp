@@ -24,9 +24,9 @@ int main() {
 
     // Two exact ties, one positive and one negative, so the modes that differ
     // only on ties are actually distinguished. 0.05 / 2 == 0.025, a half-cent.
-    const auto tie_pos = parse<Money>("0.05").value();
-    const auto tie_neg = parse<Money>("-0.05").value();
-    const auto two = parse<Money>("2.00").value();
+    constexpr Money tie_pos = "0.05";
+    constexpr Money tie_neg = "-0.05";
+    constexpr Money two = "2.00";
 
     std::puts("  mode          0.05/2    -0.05/2");
     for (const auto& m : modes) {
@@ -42,10 +42,10 @@ int main() {
 
     // nearest_even is the arithmetic default because it does not drift over a
     // long sum: half the ties go up, half go down.
-    if (div(tie_pos, two, Rounding::nearest_even).value() != parse<Money>("0.02").value()) return 1;
-    if (div(tie_pos, two, Rounding::nearest_away).value() != parse<Money>("0.03").value()) return 1;
-    if (div(tie_neg, two, Rounding::floor).value() != parse<Money>("-0.03").value()) return 1;
-    if (div(tie_neg, two, Rounding::toward_zero).value() != parse<Money>("-0.02").value()) return 1;
+    if (div(tie_pos, two, Rounding::nearest_even).value() != "0.02") return 1;
+    if (div(tie_pos, two, Rounding::nearest_away).value() != "0.03") return 1;
+    if (div(tie_neg, two, Rounding::floor).value() != "-0.03") return 1;
+    if (div(tie_neg, two, Rounding::toward_zero).value() != "-0.02") return 1;
 
     std::puts("OK");
     return 0;

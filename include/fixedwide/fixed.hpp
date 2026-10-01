@@ -176,6 +176,12 @@ struct basic_fixed {
     /// Zero.
     constexpr basic_fixed() noexcept : m_raw(0) {}
 
+    /// Exact decimal constant, converted during compilation. Include
+    /// <fixedwide/literal.hpp> (or all.hpp) for the definition. Invalid,
+    /// overflowing or inexact text fails to compile; runtime text needs parse.
+    template<std::size_t N>
+    consteval basic_fixed(const char (&text)[N]) noexcept;
+
     /// Widening conversion at the same scale: every value of the narrower type
     /// is representable, so this cannot fail. Explicit, because widening is a
     /// change of type the reader should see. Use `fixed_cast` from

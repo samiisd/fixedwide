@@ -17,14 +17,14 @@ Read them in order; each assumes the one before it.
 
 | # | Example | What it shows | Reference |
 |---|---|---|---|
-| 01 | [`01_quick_start.cpp`](01_quick_start.cpp) | Parse text, multiply across scales, format the result — the three steps almost every use goes through | [Primary types](../docs/api_reference.md#primary-types) |
+| 01 | [`01_quick_start.cpp`](01_quick_start.cpp) | Compile-time string constants and checked runtime text, mixed multiply, format | [Compile-time constants](../docs/api_reference.md#compile-time-constants) |
 | 02 | [`02_rounding_modes.cpp`](02_rounding_modes.cpp) | All six `Rounding` values on the same division, side by side, including the one that refuses | [Rounding modes](../docs/api_reference.md#rounding-modes) |
 | 03 | [`03_error_handling.cpp`](03_error_handling.cpp) | Overflow, divide-by-zero and inexact as values; chaining with `and_then` / `transform` / `value_or` | [Error types](../docs/api_reference.md#error-types) |
 | 04 | [`04_mixed_scales.cpp`](04_mixed_scales.cpp) | `mul_to` / `div_to` / `add_to` / `fixed_cast`, exact cross-scale comparison, and what is compile-rejected | [Mixed-scale operations](../docs/api_reference.md#mixed-scale-operations) |
 | 05 | [`05_text_io.cpp`](05_text_io.cpp) | `to_chars` into your own buffer, `FormatOptions`, `std::format`, `operator<<` | [Text conversion](../docs/api_reference.md#text-conversion) |
 | 06 | [`06_binary_roundtrip.cpp`](06_binary_roundtrip.cpp) | `to_bytes` / `from_bytes` with the byte order named, and unaligned packet access | [Binary serialization](../docs/api_reference.md#binary-serialization) |
 | 07 | [`07_money_ledger.cpp`](07_money_ledger.cpp) | An invoice with tax, computed twice — in `double` and in `Fixed64<2>` — so the drift is visible | [Primary types](../docs/api_reference.md#primary-types) |
-| 08 | [`08_constexpr.cpp`](08_constexpr.cpp) | The whole arithmetic surface at compile time, errors included | [Arithmetic functions](../docs/api_reference.md#arithmetic-functions) |
+| 08 | [`08_constexpr.cpp`](08_constexpr.cpp) | Typed string initializers, direct function arguments and comparisons, checked compile-time arithmetic | [Compile-time constants](../docs/api_reference.md#compile-time-constants) |
 
 ## `consumer/`
 

@@ -2,6 +2,7 @@
 // with nothing on the include path but the installed package.
 #include <fixedwide/arithmetic.hpp>
 #include <fixedwide/chars.hpp>
+#include <fixedwide/literal.hpp>
 #include <fixedwide/mixed.hpp>
 #include <cstdio>
 
@@ -11,14 +12,14 @@ int main() {
     using Money = fixedwide::Fixed128<12>;
 
     const auto price = fixedwide::parse<Price>("123.45678901");
-    const auto rate = fixedwide::parse<Rate>("1.012345678901");
-    if (!price || !rate) {
+    constexpr Rate rate = "1.012345678901";
+    if (!price) {
         std::puts("parse failed");
         return 1;
     }
 
     // Mixed widths and scales require an explicit destination domain.
-    const auto notional = fixedwide::mul_to<Money>(*price, *rate);
+    const auto notional = fixedwide::mul_to<Money>(*price, rate);
     if (!notional) {
         std::puts("multiply failed");
         return 1;

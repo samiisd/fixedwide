@@ -26,17 +26,17 @@ const char* name(ArithmeticError e) {
 int main() {
     // 1. Overflow. Fixed32<2> tops out near 21,474,836.47.
     const auto big = Money::max();
-    const auto over = add(big, parse<Money>("0.01").value());
+    const auto over = add(big, Money{"0.01"});
     if (over || over.error() != ArithmeticError::overflow) return 1;
     std::printf("max + 0.01        -> %s\n", name(over.error()));
 
     // 2. Division by zero is an error, not undefined behaviour and not a NaN.
-    const auto dz = div(parse<Money>("1.00").value(), Money::from_raw(0));
+    const auto dz = div(Money{"1.00"}, Money{"0"});
     if (dz || dz.error() != ArithmeticError::division_by_zero) return 1;
     std::printf("1.00 / 0          -> %s\n", name(dz.error()));
 
     // 3. Rounding::exact refuses to lose a digit rather than choosing for you.
-    const auto ex = div(parse<Money>("1.00").value(), parse<Money>("3.00").value(), Rounding::exact);
+    const auto ex = div(Money{"1.00"}, Money{"3.00"}, Rounding::exact);
     if (ex || ex.error() != ArithmeticError::inexact) return 1;
     std::printf("1.00 / 3.00 exact -> %s\n", name(ex.error()));
 
@@ -44,21 +44,21 @@ int main() {
     //    and the first error falls straight through to the end.
     const auto chained = parse<Money>("100.00")
                              .transform_error([](ParseError) { return ArithmeticError::invalid_value; })
-                             .and_then([](Money m) { return mul(m, parse<Money>("1.20").value()); })
-                             .and_then([](Money m) { return div(m, parse<Money>("4.00").value()); });
+                             .and_then([](Money m) { return mul(m, Money{"1.20"}); })
+                             .and_then([](Money m) { return div(m, Money{"4.00"}); });
     if (!chained || to_string(*chained).value() != "30.00") return 1;
     std::printf("100 * 1.20 / 4    -> %s\n", to_string(*chained).value().c_str());
 
     // The same chain, where the middle step overflows: nothing after it runs.
     const auto failed = std::expected<Money, ArithmeticError>{Money::max()}
-                            .and_then([](Money m) { return mul(m, parse<Money>("2.00").value()); })
-                            .and_then([](Money m) { return div(m, parse<Money>("4.00").value()); });
+                            .and_then([](Money m) { return mul(m, Money{"2.00"}); })
+                            .and_then([](Money m) { return div(m, Money{"4.00"}); });
     if (failed || failed.error() != ArithmeticError::overflow) return 1;
     std::printf("max * 2 / 4       -> %s\n", name(failed.error()));
 
     // value_or, when a default really is the right answer.
-    const auto fallback = div(parse<Money>("1.00").value(), Money::from_raw(0)).value_or(Money::from_raw(0));
-    if (fallback != Money::from_raw(0)) return 1;
+    const auto fallback = div(Money{"1.00"}, Money{"0"}).value_or(Money{"0"});
+    if (fallback != "0") return 1;
 
     std::puts("OK");
     return 0;

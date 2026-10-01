@@ -88,6 +88,8 @@ In `<fixedwide/literal.hpp>`, also included by `all.hpp`:
 
 using Money = fixedwide::Fixed64<2>;
 constexpr auto price = fixedwide::literal<Money>("19.99");
+constexpr Money same_price = "19.99";
+auto threshold = Money{"19.99"};
 static_assert(price.raw() == 1999);
 ```
 
@@ -95,6 +97,22 @@ static_assert(price.raw() == 1999);
 `T` must be one of the library's fixed-point types; all supported widths and
 scales use the same API. The destination type supplies the scale. There is no
 UDL suffix, conversion wrapper, inferred scale or rounding argument.
+
+The implicit character-array constructor is also `consteval` and `noexcept`,
+delegates to `literal<T>`, and has the same input contract and diagnostics. Its
+definition requires `literal.hpp` or `all.hpp`; `fixed.hpp` stays lightweight.
+Direct calls with a concrete destination type, such as `set_price("19.99")`,
+convert during compilation. Use `Money{"19.99"}` in deduced templates and test
+assertions, where a bare string would reach the conversion as a runtime parameter.
+Pointers, strings, string views and runtime array contents are not accepted;
+use `parse<T>` for runtime input. Numeric constructors remain unavailable.
+The constructor is available since v0.6.3; v0.6.1 and v0.6.2 use `literal<T>` instead.
+
+Clang 22 incorrectly emits an immediate-function call for a nondependent
+temporary such as `Money{"1.25"}` inside a generic lambda. In that context,
+use a typed initializer (`Money value = "1.25"`) or pass the string directly
+to a function taking `Money`. Both keep conversion at compile time; no runtime
+parsing fallback is provided.
 
 | Expression | Result |
 |---|---|

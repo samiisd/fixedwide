@@ -16,6 +16,21 @@ static_assert(HasLiteral<Money>);
 static_assert(!HasLiteral<int> && !HasLiteral<double>);
 static_assert(std::is_same_v<decltype(fw::literal<Money>("1.25")), Money>);
 static_assert(noexcept(fw::literal<Money>("1.25")));
+constexpr Money constructed = "1.25";
+static_assert(constructed == fw::literal<Money>("1.25"));
+static_assert(Money{"+001.2500"} == constructed);
+static_assert(Money{"125e-2"} == constructed);
+static_assert(Money{".25"}.raw() == 25);
+static_assert(Money{"1."}.raw() == 100);
+static_assert(Money{"-0.00"} == Money{});
+static_assert(noexcept(Money{"1.25"}));
+static_assert(std::is_trivially_copyable_v<Money> && std::is_standard_layout_v<Money>);
+static_assert(sizeof(Money) == sizeof(Money::raw_type));
+static_assert(!std::is_constructible_v<Money, double> && !std::is_constructible_v<Money, bool>);
+static_assert(!std::is_constructible_v<Money, int> && !std::is_constructible_v<Money, unsigned>);
+static_assert(!std::is_constructible_v<Money, const char*>);
+static_assert(!std::is_constructible_v<Money, std::string_view>);
+static_assert(!std::is_constructible_v<Money, std::string>);
 static_assert(fw::literal<Money>("1.25").raw() == 125);
 static_assert(fw::literal<Money>("+001.2500").raw() == 125);
 static_assert(fw::literal<Money>("125e-2").raw() == 125);
@@ -26,10 +41,12 @@ static_assert(fw::literal<Money>("0e999999999999999999999999") == Money{});
 static_assert(fw::literal<Money>("0e-999999999999999999999999") == Money{});
 constexpr char named[] = "-1.25";
 static_assert(fw::literal<Money>(named).raw() == -125);
+static_assert(Money{named}.raw() == -125);
 
 template<class T, std::size_t N, std::size_t M>
 consteval bool boundaries(const char (&minimum)[N], const char (&maximum)[M]) {
-    return fw::literal<T>(minimum) == T::min() && fw::literal<T>(maximum) == T::max();
+    return fw::literal<T>(minimum) == T::min() && fw::literal<T>(maximum) == T::max() && T{minimum} == T::min() &&
+           T{maximum} == T::max();
 }
 
 static_assert(boundaries<fw::Fixed8<0>>("-128", "127"));
@@ -59,6 +76,12 @@ void all_scales() {
     using T = fw::basic_fixed<Bits, D>;
     constexpr auto one = fw::literal<T>("1");
     constexpr auto negative_one = fw::literal<T>("-1");
+    constexpr T constructed_one = "1";
+    constexpr T constructed_negative_one = "-1";
+    static_assert(constructed_one == one && constructed_negative_one == negative_one);
+    static_assert(T{"0"} == T{});
+    static_assert(std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>);
+    static_assert(sizeof(T) == sizeof(typename T::raw_type));
     static_assert(one.raw() == T::scale());
     static_assert(negative_one.raw() == -T::scale());
     static_assert(fw::literal<T>("0") == T{});
@@ -169,6 +192,11 @@ void differential() {
 } // namespace
 
 int main() {
+    auto identity = [](Money value) { return value; };
+    const auto ordinary = Money{"1.25"};
+    CHECK(identity("1.25") == ordinary);
+    CHECK(ordinary == "1.25");
+    CHECK("1.25" == ordinary);
     all_scales<8, 2>();
     all_scales<16, 4>();
     all_scales<32, 9>();

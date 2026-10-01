@@ -20,7 +20,7 @@ void test_readme_opening_snippet() {
 
     // 3. Checked decimal Fixed64<2>
     using Money = fixedwide::Fixed64<2>;
-    constexpr auto cent = fixedwide::literal<Money>("0.01");
+    constexpr Money cent = "0.01";
     Money checked_total{};
     for (int i = 0; i < 100; ++i) {
         checked_total = fixedwide::add(checked_total, cent).value();
@@ -34,7 +34,9 @@ void test_readme_opening_snippet() {
 
 void test_readme_constants_snippet() {
     using Money = fixedwide::Fixed64<2>;
-    constexpr auto price = fixedwide::literal<Money>("19.99");
+    constexpr Money price = "19.99";
+    auto threshold = Money{"19.99"};
+    CHECK(threshold == price);
     static_assert(price.raw() == 1999);
     static_assert(fixedwide::literal<Money>("19.9900") == price);
     auto read_price = [](std::string_view text) { return fixedwide::parse<Money>(text); };
@@ -48,8 +50,8 @@ void test_readme_constants_snippet() {
 
 void test_readme_scale12_snippet() {
     using FW12 = fixedwide::Fixed64<12>;
-    constexpr auto a = fixedwide::literal<FW12>("123.456789012345");
-    constexpr auto b = fixedwide::literal<FW12>("2.000000000000");
+    constexpr FW12 a = "123.456789012345";
+    constexpr FW12 b = "2.000000000000";
     const auto product = fixedwide::mul(a, b);
     CHECK(product.has_value());
     CHECK(product->raw() == 246'913578024690LL);
