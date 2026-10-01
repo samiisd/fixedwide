@@ -5,7 +5,7 @@ fixedwide separates decimal representation from error-handling policy. The same
 arithmetic inside a domain whose bounds are already established. There is no
 second storage type, wrapper, runtime policy flag or conversion between modes.
 
-This API is on the development branch after v0.6.3; it is not in the v0.6.3 release.
+This API is available since v0.6.4; earlier releases retain the checked API only.
 
 ```cpp
 #include <fixedwide/all.hpp>

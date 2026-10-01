@@ -88,7 +88,7 @@ The same types support two call-site policies. Existing `fixedwide::add`, `mul`,
 `fixed_cast` and related functions remain checked. Include `unchecked.hpp` or
 `all.hpp` for ordinary same-type `+`, `-`, `*`, `/`, `%`, unary signs and compound
 assignments, or use the corresponding `fixedwide::unchecked` named functions.
-These additions are on the development branch after v0.6.3.
+These additions are available since v0.6.4.
 
 Unchecked calls return values, not `std::expected`. The caller guarantees a
 representable rounded result, nonzero divisors, valid precision/rounding and

@@ -70,7 +70,7 @@ Different widths/scales are distinct types. Two aliases with identical width and
 
 ## Checked or unchecked
 
-The unchecked API is a development-branch addition after v0.6.3, not part of that stable release. Include `<fixedwide/unchecked.hpp>` or `<fixedwide/all.hpp>` for same-type `+`, `-`, `*`, `/`, `%`, unary signs and compound assignments. Existing checked calls do not change.
+The unchecked API is available since v0.6.4. Include `<fixedwide/unchecked.hpp>` or `<fixedwide/all.hpp>` for same-type `+`, `-`, `*`, `/`, `%`, unary signs and compound assignments. Existing checked calls do not change.
 
 ```cpp
 using Price = fixedwide::Fixed64<8>;
@@ -167,13 +167,13 @@ The instruction-count CI gate checks core workloads against its committed baseli
 
 ## Install
 
-The current stable release is `v0.6.3`. To use the new unchecked API before its next release, build a checkout of the development branch containing it; the stable tag below does not contain that addition.
+The current stable release is `v0.6.4`, including the checked and unchecked APIs.
 
 ```cmake
 include(FetchContent)
 FetchContent_Declare(fixedwide
     GIT_REPOSITORY https://github.com/samiisd/fixedwide.git
-    GIT_TAG        v0.6.3)
+    GIT_TAG        v0.6.4)
 FetchContent_MakeAvailable(fixedwide)
 target_link_libraries(app PRIVATE fixedwide::fixedwide)
 ```

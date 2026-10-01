@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.4] - 2026-10-01
+
+### Added
+- Add opt-in ordinary arithmetic operators and `fixedwide::unchecked` value-returning
+  arithmetic on existing fixed-point types. Callers establish representability,
+  nonzero divisors, valid precision/rounding and exactness; violations are undefined
+  behaviour. Checked APIs, representation and rounding policies remain unchanged.
+- Add valid-domain independent-oracle tests, compile-time/operator regressions and
+  executable example 09 showing checked input followed by bounded arithmetic.
+- Add unchecked workloads to instruction-count reporting without changing historical
+  baselines or the existing 1% regression gate. Documentation distinguishes check-free
+  native paths from adapters that retain checked numerical kernels.
+
 ## [0.6.3] - 2026-10-01
 
 ### Added
