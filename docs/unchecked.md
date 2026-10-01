@@ -16,7 +16,7 @@ constexpr Price initial = "125.50";
 constexpr Price delta = "0.0025";
 Price price = initial;
 price += delta;                         // caller guarantees the sum fits
-const Price change = price - initial;   // a value, not std::expected
+const Price change = price - "125.50"; // a value, not std::expected
 
 auto checked = fw::add(Price::max(), delta);
 // checked.error() == fw::ArithmeticError::overflow
@@ -79,6 +79,12 @@ changes still need an explicit destination. No implicit integer or floating-poin
 conversion is added. Write `Price{"0"}`, `Price{}`, or a typed constant rather than
 expecting `price += 1` to choose whether `1` means one raw unit or one whole unit.
 Prefer qualified `fw::unchecked::...` names over importing both function families.
+
+The left operand supplies the type, so `price + "0.20"` and `price += "0.20"`
+use the existing exact compile-time string constructor. Include `literal.hpp`
+as well (or `all.hpp`). Runtime strings and mixed fixed-point types are still
+rejected. This shorthand applies to right-hand source constants; runtime text
+must first pass through `parse<T>`.
 
 For a same-scale midpoint with a compile-time, non-exact rounding policy, the
 existing `fw::midpoint<fw::Rounding::nearest_even>(a, b)` is already value-returning

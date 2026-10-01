@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   arithmetic on existing fixed-point types. Callers establish representability,
   nonzero divisors, valid precision/rounding and exactness; violations are undefined
   behaviour. Checked APIs, representation and rounding policies remain unchanged.
+- Let the left operand supply the type for right-hand source constants, including
+  `price + "0.20"` and `price += "0.20"`, using the existing consteval constructor.
+  Runtime strings, numeric conversions and implicit mixed-scale arithmetic remain
+  unavailable.
 - Add valid-domain independent-oracle tests, compile-time/operator regressions and
   executable example 09 showing checked input followed by bounded arithmetic.
 - Add unchecked workloads to instruction-count reporting without changing historical

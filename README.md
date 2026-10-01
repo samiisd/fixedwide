@@ -77,7 +77,8 @@ using Price = fixedwide::Fixed64<8>;
 Price price = "125.50";
 constexpr Price delta = "0.0025";
 price += delta;
-auto change = price - Price{"125.50"};
+auto change = price - "125.50";
+price += "0.20"; // exact compile-time construction at the left operand's scale
 auto rounded = fixedwide::unchecked::mul(price, Price{"1.01"}, fixedwide::Rounding::ceil);
 ```
 

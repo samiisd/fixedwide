@@ -40,6 +40,7 @@ int main() {
 
     translate(prices, *delta);
     constexpr Price first = "125.5025";
+    static_assert(Price{"125.50"} + "0.0025" == first);
     constexpr Price second = "125.4925";
     constexpr Price third = "125.4825";
     constexpr std::array<Price, 3> expected{first, second, third};

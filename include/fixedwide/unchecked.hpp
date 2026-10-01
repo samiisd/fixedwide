@@ -11,6 +11,7 @@
 #include <fixedwide/arithmetic.hpp>
 #include <fixedwide/mixed.hpp>
 #include <cassert>
+#include <type_traits>
 #include <utility>
 
 namespace fixedwide::detail {
@@ -245,28 +246,33 @@ namespace fixedwide {
 
 /// Operators use the unchecked contract. Mixed widths/scales still require an explicit destination.
 template<std::size_t Bits, unsigned D>
-[[nodiscard]] constexpr basic_fixed<Bits, D> operator+(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
+[[nodiscard]] constexpr basic_fixed<Bits, D> operator+(basic_fixed<Bits, D> a,
+                                                       std::type_identity_t<basic_fixed<Bits, D>> b) noexcept {
     return unchecked::add(a, b);
 }
 
 template<std::size_t Bits, unsigned D>
-[[nodiscard]] constexpr basic_fixed<Bits, D> operator-(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
+[[nodiscard]] constexpr basic_fixed<Bits, D> operator-(basic_fixed<Bits, D> a,
+                                                       std::type_identity_t<basic_fixed<Bits, D>> b) noexcept {
     return unchecked::sub(a, b);
 }
 
 /// Multiplication and division operators round once, nearest-even, at the existing scale.
 template<std::size_t Bits, unsigned D>
-[[nodiscard]] constexpr basic_fixed<Bits, D> operator*(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
+[[nodiscard]] constexpr basic_fixed<Bits, D> operator*(basic_fixed<Bits, D> a,
+                                                       std::type_identity_t<basic_fixed<Bits, D>> b) noexcept {
     return unchecked::mul(a, b);
 }
 
 template<std::size_t Bits, unsigned D>
-[[nodiscard]] constexpr basic_fixed<Bits, D> operator/(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
+[[nodiscard]] constexpr basic_fixed<Bits, D> operator/(basic_fixed<Bits, D> a,
+                                                       std::type_identity_t<basic_fixed<Bits, D>> b) noexcept {
     return unchecked::div(a, b);
 }
 
 template<std::size_t Bits, unsigned D>
-[[nodiscard]] constexpr basic_fixed<Bits, D> operator%(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
+[[nodiscard]] constexpr basic_fixed<Bits, D> operator%(basic_fixed<Bits, D> a,
+                                                       std::type_identity_t<basic_fixed<Bits, D>> b) noexcept {
     return unchecked::remainder(a, b);
 }
 
@@ -281,27 +287,32 @@ template<std::size_t Bits, unsigned D>
 }
 
 template<std::size_t Bits, unsigned D>
-constexpr basic_fixed<Bits, D>& operator+=(basic_fixed<Bits, D>& a, basic_fixed<Bits, D> b) noexcept {
+constexpr basic_fixed<Bits, D>& operator+=(basic_fixed<Bits, D>& a,
+                                           std::type_identity_t<basic_fixed<Bits, D>> b) noexcept {
     return a = a + b;
 }
 
 template<std::size_t Bits, unsigned D>
-constexpr basic_fixed<Bits, D>& operator-=(basic_fixed<Bits, D>& a, basic_fixed<Bits, D> b) noexcept {
+constexpr basic_fixed<Bits, D>& operator-=(basic_fixed<Bits, D>& a,
+                                           std::type_identity_t<basic_fixed<Bits, D>> b) noexcept {
     return a = a - b;
 }
 
 template<std::size_t Bits, unsigned D>
-constexpr basic_fixed<Bits, D>& operator*=(basic_fixed<Bits, D>& a, basic_fixed<Bits, D> b) noexcept {
+constexpr basic_fixed<Bits, D>& operator*=(basic_fixed<Bits, D>& a,
+                                           std::type_identity_t<basic_fixed<Bits, D>> b) noexcept {
     return a = a * b;
 }
 
 template<std::size_t Bits, unsigned D>
-constexpr basic_fixed<Bits, D>& operator/=(basic_fixed<Bits, D>& a, basic_fixed<Bits, D> b) noexcept {
+constexpr basic_fixed<Bits, D>& operator/=(basic_fixed<Bits, D>& a,
+                                           std::type_identity_t<basic_fixed<Bits, D>> b) noexcept {
     return a = a / b;
 }
 
 template<std::size_t Bits, unsigned D>
-constexpr basic_fixed<Bits, D>& operator%=(basic_fixed<Bits, D>& a, basic_fixed<Bits, D> b) noexcept {
+constexpr basic_fixed<Bits, D>& operator%=(basic_fixed<Bits, D>& a,
+                                           std::type_identity_t<basic_fixed<Bits, D>> b) noexcept {
     return a = a % b;
 }
 

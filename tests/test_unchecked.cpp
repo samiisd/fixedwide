@@ -1,4 +1,5 @@
 #include <fixedwide/unchecked.hpp>
+#include <fixedwide/literal.hpp>
 #include "check.hpp"
 #include <array>
 #include <type_traits>
@@ -27,6 +28,8 @@ static_assert(!CanMultiply<Price, fw::Fixed64<4>>);
 static_assert(!CanAddAssign<Price, fw::Fixed128<8>>);
 static_assert(!CanAdd<Price, int>);
 static_assert(!CanMultiply<Price, double>);
+static_assert(!CanAdd<Price, std::string_view>);
+static_assert(!CanAdd<Price, const char*>);
 static_assert(sizeof(Price) == sizeof(std::int64_t));
 static_assert(std::is_trivially_copyable_v<Price>);
 
@@ -43,6 +46,19 @@ constexpr bool constant_arithmetic() {
            fast::midpoint(a, b).raw() == 175 && fast::from_integer<F>(1).raw() == 100;
 }
 static_assert(constant_arithmetic());
+constexpr bool string_operand_arithmetic() {
+    using F = fw::Fixed64<2>;
+    F value = "1.20";
+    if (value + "0.20" != "1.40" || value - "0.20" != "1.00") return false;
+    if (value * "2" != "2.40" || value / "2" != "0.60" || value % "1" != "0.20") return false;
+    value += "0.20";
+    value -= "0.20";
+    value *= "2";
+    value /= "2";
+    value %= "1";
+    return value == "0.20";
+}
+static_assert(string_operand_arithmetic());
 static_assert((fw::Fixed256<0>::max() + fw::Fixed256<0>::min()).raw() == fw::wide::int256(-1));
 
 constexpr std::array modes{fw::Rounding::nearest_even, fw::Rounding::nearest_away, fw::Rounding::toward_zero,
@@ -91,6 +107,12 @@ void pair(F a, F b) {
 template<class F>
 void type_cases() {
     using Raw = typename F::raw_type;
+    constexpr F whole = "1";
+    CHECK(whole + "0" == whole);
+    CHECK(whole - "0" == whole);
+    CHECK(whole * "1" == whole);
+    CHECK(whole / "1" == whole);
+    CHECK(whole % "1" == F{});
     const auto one = F::from_raw(Raw{1});
     const auto minus_one = F::from_raw(Raw{-1});
     const auto a = F::from_raw(Raw{3});
@@ -147,6 +169,7 @@ void mixed_cases() {
 }
 
 int main() {
+    CHECK(string_operand_arithmetic());
     type_cases<fw::Fixed8<0>>();
     type_cases<fw::Fixed8<2>>();
     type_cases<fw::Fixed16<0>>();
