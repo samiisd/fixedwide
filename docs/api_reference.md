@@ -163,6 +163,8 @@ the **same** type and returning `std::expected<T, ArithmeticError>`.
 | `add(a, b)` / `sub(a, b)` | Exact; the only failure is overflow |
 | `negate(a)` / `abs(a)` | Fail only for `min()` |
 | `midpoint(a, b, rounding = nearest_even)` | `(a+b)/2`, rounded once; no intermediate overflow, at any width |
+| `midpoint<rounding>(a, b)` | Returns `T` directly; compile-time non-exact policy guarantees no failure |
+| `midpoint(a, b, decimals, rounding = nearest_even)` | Rounds once onto the requested decimal grid, without a wider intermediate; coarser grids can overflow at storage limits |
 | `mul(a, b, rounding = nearest_even)` | Product formed at twice the width, then rescaled once |
 | `div(a, b, rounding = nearest_even)` | Quotient carries every digit the type can hold |
 | `mul_div(a, b, c, rounding = nearest_even)` | `a*b/c` with **one** rounding, not two |
@@ -180,6 +182,11 @@ half-unit ties. All six rounding modes apply at the raw integer's last decimal
 place; `exact` rejects an odd raw sum with `inexact`. It cannot overflow,
 including `midpoint(T::min(), T::min())` and `midpoint(T::max(), T::max())`.
 Unlike integer `std::midpoint`, tie-breaking does not depend on operand order.
+
+The precision overload avoids double rounding: for example, averaging
+`1.23449999` and `1.2345` directly to three decimals gives `1.234`, whereas
+rounding first at eight decimals and then quantizing can incorrectly give `1.235`.
+Its errors are `invalid_precision`, `inexact` and final-grid `overflow`.
 
 For `Fixed64<8>`, the midpoint of `1.00000001` and `1.00000003` is
 `1.00000002`, not the `1.00000001` obtained by truncating each half first.
@@ -308,7 +315,8 @@ lose information and the loss should be in the source.
 `from_float<Target>(value, rounding = nearest_even)` returns
 `std::expected<Target, ArithmeticError>` — NaN and infinity are
 `invalid_value`. `to_float<Float>(v)` and `to_double(v)` go the other way and
-cannot fail.
+cannot fail. `v.to_double()` is the equivalent explicit member spelling, also
+defined in this header; including only `fixed.hpp` remains lightweight.
 
 ---
 

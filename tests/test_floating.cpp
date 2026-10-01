@@ -34,6 +34,12 @@ void test_floating_conversions() {
 
 int main() {
     test_floating_conversions();
+    CHECK(Fixed8<2>::min().to_double() == to_double(Fixed8<2>::min()));
+    CHECK(Fixed16<4>::max().to_double() == to_double(Fixed16<4>::max()));
+    CHECK(Fixed32<9>::min().to_double() == to_double(Fixed32<9>::min()));
+    CHECK(Fixed64<8>::max().to_double() == to_double(Fixed64<8>::max()));
+    CHECK(Fixed128<12>::min().to_double() == to_double(Fixed128<12>::min()));
+    CHECK(Fixed256<76>::max().to_double() == to_double(Fixed256<76>::max()));
     std::printf("test_floating passed (%lu checks)\n", checks);
     return 0;
 }

@@ -797,6 +797,13 @@ midpoint(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, Rounding rounding = Rou
     return Fixed::from_raw(static_cast<Raw>(lower + Raw(odd && increment)));
 }
 
+/// Infallible midpoint for a compile-time rounding policy other than exact.
+template<Rounding rounding, std::size_t Bits, unsigned D>
+    requires(rounding != Rounding::exact)
+[[nodiscard]] constexpr basic_fixed<Bits, D> midpoint(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
+    return *midpoint(a, b, rounding);
+}
+
 /// `a % b`: what is left of `a` after removing whole multiples of `b`, with the
 /// sign of `a`. Exact, so no rounding mode is taken.
 /// \return the remainder, or `ArithmeticError::division_by_zero`.
@@ -864,6 +871,36 @@ quantize(basic_fixed<Bits, D> a, unsigned decimals, Rounding rounding = Rounding
         if (!res) return std::unexpected(res.error());
         return Fixed::from_raw(*res);
     }
+}
+
+/// `(a + b) / 2`, rounded once to `decimals` places in the same type.
+/// No widened intermediate and no preliminary rounding at the source scale.
+/// Coarser grids can overflow at the storage limits, just as with quantize.
+template<std::size_t Bits, unsigned D>
+[[nodiscard]] constexpr std::expected<basic_fixed<Bits, D>, ArithmeticError>
+midpoint(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b, unsigned decimals,
+         Rounding rounding = Rounding::nearest_even) noexcept {
+    using Fixed = basic_fixed<Bits, D>;
+    using Raw = typename Fixed::raw_type;
+    if (decimals > D) return std::unexpected(ArithmeticError::invalid_precision);
+    if (decimals == D) return midpoint(a, b, rounding);
+    auto lower = midpoint<Rounding::floor>(a, b);
+    const bool odd = ((a.raw() ^ b.raw()) & Raw{1}) != Raw{0};
+    if (odd) {
+        if (rounding == Rounding::exact) return std::unexpected(ArithmeticError::inexact);
+        if (rounding == Rounding::ceil || (rounding == Rounding::toward_zero && lower < Fixed{})) {
+            // An odd sum guarantees that lower + 1 fits.
+            lower = Fixed::from_raw(static_cast<Raw>(lower.raw() + Raw{1}));
+        } else if (rounding == Rounding::nearest_even || rounding == Rounding::nearest_away) {
+            const Raw grid = compute_pow10<Raw>(D - decimals);
+            const Raw rem = remainder(lower, Fixed::from_raw(grid))->raw();
+            if (rem == (grid >> 1) || rem == -(grid >> 1)) {
+                // The exact midpoint is just above this coarse-grid tie.
+                rounding = Rounding::ceil;
+            }
+        }
+    }
+    return quantize(lower, decimals, rounding);
 }
 
 // Disallow mixed same-name arithmetic without explicit result type.

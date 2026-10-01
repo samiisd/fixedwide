@@ -131,7 +131,68 @@ void boundaries() {
 }
 } // namespace
 
+// Independent integer-rational reference for one rounding onto a coarse grid.
+void coarse_grid() {
+    using F = fw::Fixed8<2>;
+    for (unsigned digits = 0; digits <= 2; ++digits) {
+        const int grid = digits == 0 ? 100 : digits == 1 ? 10 : 1;
+        for (int a = -128; a <= 127; ++a) {
+            for (int b = -128; b <= 127; ++b) {
+                for (auto mode : modes) {
+                    const int sum = a + b;
+                    const int denom = 2 * grid;
+                    int q = sum / denom;
+                    const int rem = sum % denom;
+                    bool inexact = false;
+                    if (rem != 0) {
+                        const int sign = sum < 0 ? -1 : 1;
+                        const int magnitude = rem < 0 ? -rem : rem;
+                        switch (mode) {
+                        case Mode::exact: inexact = true; break;
+                        case Mode::floor:
+                            if (sum < 0) --q;
+                            break;
+                        case Mode::ceil:
+                            if (sum > 0) ++q;
+                            break;
+                        case Mode::toward_zero: break;
+                        case Mode::nearest_even:
+                        case Mode::nearest_away:
+                            if (magnitude > grid || (magnitude == grid && (mode == Mode::nearest_away || q % 2 != 0)))
+                                q += sign;
+                            break;
+                        }
+                    }
+                    const int expected = q * grid;
+                    const auto result = fw::midpoint(raw<F>(a), raw<F>(b), digits, mode);
+                    if (inexact) {
+                        CHECK(!result && result.error() == fw::ArithmeticError::inexact);
+                    } else if (expected < -128 || expected > 127) {
+                        CHECK(!result && result.error() == fw::ArithmeticError::overflow);
+                    } else {
+                        CHECK(result && *result == raw<F>(expected));
+                    }
+                }
+            }
+        }
+    }
+    CHECK(fw::midpoint(F{}, F{}, 3).error() == fw::ArithmeticError::invalid_precision);
+}
+
+template<class F>
+constexpr bool coarse_wide_checks() {
+    const auto low = raw<F>(-150);
+    const auto high = raw<F>(-149);
+    return fw::midpoint(low, high, F::fractional_digits - 2, Mode::nearest_away) == raw<F>(-100) &&
+           fw::midpoint(F::min(), F::max(), F::fractional_digits - 1, Mode::nearest_even) == F{} &&
+           fw::midpoint<Mode::nearest_away>(F::min(), F::max()) == raw<F>(-1);
+}
+static_assert(coarse_wide_checks<fw::Fixed64<8>>());
+static_assert(coarse_wide_checks<fw::Fixed128<12>>());
+static_assert(coarse_wide_checks<fw::Fixed256<76>>());
+
 int main() {
+    coarse_grid();
     small_range<fw::Fixed8<0>>(-128, 127);
     small_range<fw::Fixed8<1>>(-128, 127);
     small_range<fw::Fixed8<2>>(-128, 127);

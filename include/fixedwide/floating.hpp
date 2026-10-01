@@ -90,4 +90,9 @@ template<std::size_t Bits, unsigned D>
     return to_float<double>(value);
 }
 
+template<std::size_t Bits, unsigned D>
+inline double basic_fixed<Bits, D>::to_double() const noexcept {
+    return fixedwide::to_double(*this);
+}
+
 } // namespace fixedwide

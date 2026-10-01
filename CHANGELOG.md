@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.2] - 2026-10-01
+
+### Added
+- Add explicit `value.to_double()` as the member spelling of `to_double(value)`;
+  include `fixedwide/floating.hpp` when using it.
+- Add `midpoint<rounding>(a, b)`, returning a value directly for non-exact
+  compile-time rounding policies. The midpoint cannot overflow.
+- Add `midpoint(a, b, decimals, rounding)`, preserving half-unit information
+  until one final rounding onto the requested decimal grid. Invalid precision
+  and coarse-grid overflow remain checked errors.
+
 ## [0.6.1] - 2026-09-23
 
 A maintenance release over 0.6.0 that also adds two opt-in, backwards-compatible

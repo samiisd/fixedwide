@@ -15,11 +15,26 @@ void audit() {
             ref::agrees(result, ref::rounded(a + b, 2, mode, F::bits));
             CHECK(result == fw::midpoint(y, x, mode));
             if (result) CHECK(*result >= (x < y ? x : y) && *result <= (x < y ? y : x));
+            for (unsigned digits : {0u, F::fractional_digits / 2, F::fractional_digits}) {
+                ref::cpp_int grid = 1;
+                for (unsigned i = digits; i < F::fractional_digits; ++i) grid *= 10;
+                auto expected = ref::rounded(a + b, 2 * grid, mode, F::bits);
+                if (expected) {
+                    *expected *= grid;
+                    const ref::cpp_int limit = ref::cpp_int{1} << (F::bits - 1);
+                    if (*expected < -limit || *expected >= limit)
+                        expected = std::unexpected(fw::ArithmeticError::overflow);
+                }
+                const auto coarse = fw::midpoint(x, y, digits, mode);
+                ref::agrees(coarse, expected);
+                CHECK(coarse == fw::midpoint(y, x, digits, mode));
+            }
         }
         CHECK(fw::midpoint(x, y) == fw::midpoint(x, y, fw::Rounding::nearest_even));
     };
     const auto edges = ref::boundaries(F::bits);
-    for (const auto& a : edges) for (const auto& b : edges) verify(a, b);
+    for (const auto& a : edges)
+        for (const auto& b : edges) verify(a, b);
     std::mt19937_64 rng{0x6d6964706f696e74ULL + F::bits + F::fractional_digits};
     auto random = [&] {
         ref::cpp_int value = ref::random_bits(rng, F::bits);

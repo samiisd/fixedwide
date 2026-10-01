@@ -210,6 +210,10 @@ struct basic_fixed {
     /// The underlying scaled integer, unchanged. The inverse of `from_raw()`.
     [[nodiscard]] constexpr raw_type raw() const noexcept { return m_raw; }
 
+    /// Explicit, approximate conversion to the nearest double.
+    /// Include <fixedwide/floating.hpp> when using this member.
+    [[nodiscard]] double to_double() const noexcept;
+
     /// The most negative representable value.
     [[nodiscard]] static constexpr basic_fixed min() noexcept {
         if constexpr (Bits == 8) return from_raw(INT8_MIN);
