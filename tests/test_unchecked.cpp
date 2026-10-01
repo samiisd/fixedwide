@@ -46,7 +46,7 @@ static_assert(constant_arithmetic());
 static_assert((fw::Fixed256<0>::max() + fw::Fixed256<0>::min()).raw() == fw::wide::int256(-1));
 
 constexpr std::array modes{fw::Rounding::nearest_even, fw::Rounding::nearest_away, fw::Rounding::toward_zero,
-                          fw::Rounding::floor,        fw::Rounding::ceil,         fw::Rounding::exact};
+                           fw::Rounding::floor,        fw::Rounding::ceil,         fw::Rounding::exact};
 
 template<class F>
 void pair(F a, F b) {
