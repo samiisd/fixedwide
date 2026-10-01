@@ -39,7 +39,10 @@ int main() {
     if (!delta) return 1;
 
     translate(prices, *delta);
-    const std::array<Price, 3> expected{Price{"125.5025"}, Price{"125.4925"}, Price{"125.4825"}};
+    constexpr Price first = "125.5025";
+    constexpr Price second = "125.4925";
+    constexpr Price third = "125.4825";
+    constexpr std::array<Price, 3> expected{first, second, third};
     if (prices != expected) return 1;
 
     if (read_bounded("1000001", -price_limit, price_limit)) return 1;
