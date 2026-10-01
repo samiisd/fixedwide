@@ -1,7 +1,7 @@
 # Examples
 
-Eight short programs, each one file, each about a single idea. Every one of them
-is a `ctest` test: `ctest -R fixedwide.example` compiles and runs all eight, and
+Nine short programs, each one file, each about a single idea. Every one of them
+is a `ctest` test: after building, `ctest -R fixedwide.example` runs all nine, and
 each checks its own output before printing `OK`. An example that stops being
 correct fails the build, so nothing here can drift away from the library.
 
@@ -25,6 +25,7 @@ Read them in order; each assumes the one before it.
 | 06 | [`06_binary_roundtrip.cpp`](06_binary_roundtrip.cpp) | `to_bytes` / `from_bytes` with the byte order named, and unaligned packet access | [Binary serialization](../docs/api_reference.md#binary-serialization) |
 | 07 | [`07_money_ledger.cpp`](07_money_ledger.cpp) | An invoice with tax, computed twice — in `double` and in `Fixed64<2>` — so the drift is visible | [Primary types](../docs/api_reference.md#primary-types) |
 | 08 | [`08_constexpr.cpp`](08_constexpr.cpp) | Typed string initializers, direct function arguments and comparisons, checked compile-time arithmetic | [Compile-time constants](../docs/api_reference.md#compile-time-constants) |
+| 09 | [`09_bounded_arithmetic.cpp`](09_bounded_arithmetic.cpp) | Checked input and domain bounds, followed by ordinary unchecked arithmetic on the same type | [Checked or unchecked](../docs/unchecked.md) |
 
 ## `consumer/`
 

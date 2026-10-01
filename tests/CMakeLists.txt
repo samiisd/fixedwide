@@ -4,6 +4,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         wide
         rounding
         core
+        unchecked
         midpoint
         mixed
         chars
@@ -64,6 +65,7 @@ if(FIXEDWIDE_BUILD_TESTS)
 
     set(AUDIT_TESTS
         audit_same_domain
+        audit_unchecked
         audit_midpoint
         audit_mixed
         audit_known
@@ -75,7 +77,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         audit_fastpath_rounding
     )
 
-    # The same-domain, mixed and midpoint audits use Boost.Multiprecision.
+    # The same-domain, mixed, midpoint and unchecked audits use Boost.Multiprecision.
     # Boost is header-only here and never a runtime dependency; when it is
     # absent (a cross build without a Boost sysroot, say) they are skipped
     # and the rest of the matrix still runs.
@@ -86,7 +88,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         find_package(Boost QUIET)
     endif()
     foreach(NAME ${AUDIT_TESTS})
-        if(NAME MATCHES "audit_(same_domain|mixed|midpoint)" AND NOT Boost_FOUND)
+        if(NAME MATCHES "audit_(same_domain|mixed|midpoint|unchecked)" AND NOT Boost_FOUND)
             message(STATUS "fixedwide: skipping ${NAME} (Boost headers not found)")
             continue()
         endif()

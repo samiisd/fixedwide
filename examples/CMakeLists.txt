@@ -10,6 +10,7 @@ set(EXAMPLE_NAMES
     06_binary_roundtrip
     07_money_ledger
     08_constexpr
+    09_bounded_arithmetic
 )
 
 foreach(NAME ${EXAMPLE_NAMES})

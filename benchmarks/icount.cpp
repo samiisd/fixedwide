@@ -20,6 +20,7 @@
 #include <fixedwide/binary.hpp>
 #include <fixedwide/chars.hpp>
 #include <fixedwide/mixed.hpp>
+#include <fixedwide/unchecked.hpp>
 
 #include <array>
 #include <cstdint>
@@ -158,6 +159,24 @@ using MixedFast = fw::Fixed128<6>;
 
 constexpr auto nearest = fw::Rounding::nearest_even;
 
+// Isolate the control loop from dispatcher inlining and register allocation.
+// Adding unrelated workloads must not add instructions to this empty loop.
+// The one call per run cancels in the N/2N subtraction, unlike a loop change.
+#if defined(_MSC_VER)
+__declspec(noinline)
+#elif defined(__clang__)
+[[gnu::noinline]]
+#elif defined(__GNUC__)
+[[gnu::noipa]]
+#endif
+void empty_workload(std::uint64_t n) noexcept {
+    std::uint64_t accumulator = 0;
+    for (std::uint64_t i = 0; i < n; ++i) {
+        accumulator ^= static_cast<std::uint64_t>(i) & fixture_mask;
+    }
+    sink = accumulator;
+}
+
 // ---------------------------------------------------------------------------
 // The workload table. Adding a row here and re-recording the baseline is the
 // whole procedure for putting a new operation under the regression gate.
@@ -267,7 +286,7 @@ bool dispatch(std::string_view name, std::uint64_t n) {
     // The widest tier: 256-bit operands across scales, which is what actually
     // needs the multi-limb path. Without these rows the 8- and 16-limb tiers of
     // the mixed kernel would not be gated at all, and the width dispatch could
-    // regress there unnoticed.
+    // regress there unnoticed and the cliff itself stay invisible.
     if (name == "mul_to.wide") {
         run(n, a256, b256, [](auto x, auto y) { return fw::mul_to<fw::Fixed256<50>>(x, y, nearest); });
         return true;
@@ -368,11 +387,7 @@ bool dispatch(std::string_view name, std::uint64_t n) {
     // sink -- the floor every other row sits on, recorded so a change in the
     // harness itself is visible instead of being blamed on the library.
     if (name == "baseline.empty") {
-        std::uint64_t accumulator = 0;
-        for (std::uint64_t i = 0; i < n; ++i) {
-            accumulator ^= static_cast<std::uint64_t>(i) & fixture_mask;
-        }
-        sink = accumulator;
+        empty_workload(n);
         return true;
     }
 
@@ -432,6 +447,62 @@ bool dispatch_midpoint(std::string_view name, std::uint64_t n) {
     return false;
 }
 
+enum class UncheckedOperation { add, sub, mul, div, mul_div, remainder };
+
+template<class Fixed, UncheckedOperation operation>
+void unchecked_workload(std::uint64_t n) {
+    constexpr unsigned raw_bits = Fixed::bits == 64 ? 26 : (Fixed::bits == 128 ? 56 : 60);
+    constexpr std::uint64_t seed = Fixed::bits == 64 ? 1 : (Fixed::bits == 128 ? 3 : 5);
+    static const auto a = make_fixture<Fixed>(seed, raw_bits);
+    static const auto b = make_fixture<Fixed>(seed + 1, raw_bits);
+    run(n, a, b, [](auto x, auto y) {
+        if constexpr (operation == UncheckedOperation::add)
+            return x + y;
+        else if constexpr (operation == UncheckedOperation::sub)
+            return x - y;
+        else if constexpr (operation == UncheckedOperation::mul)
+            return x * y;
+        else if constexpr (operation == UncheckedOperation::div)
+            return x / y;
+        else if constexpr (operation == UncheckedOperation::mul_div)
+            return fw::unchecked::mul_div(x, y, y);
+        else
+            return x % y;
+    });
+}
+
+struct UncheckedWorkload {
+    const char* name;
+    void (*run)(std::uint64_t);
+};
+
+// Identical input distributions to the checked rows. New rows are reported by
+// the existing gate; this addition does not reset any committed baseline.
+constexpr UncheckedWorkload unchecked_workloads[] = {
+    {"unchecked.add.Fixed64", unchecked_workload<Money64, UncheckedOperation::add>},
+    {"unchecked.sub.Fixed64", unchecked_workload<Money64, UncheckedOperation::sub>},
+    {"unchecked.mul.Fixed64", unchecked_workload<Money64, UncheckedOperation::mul>},
+    {"unchecked.div.Fixed64", unchecked_workload<Money64, UncheckedOperation::div>},
+    {"unchecked.mul_div.Fixed64", unchecked_workload<Money64, UncheckedOperation::mul_div>},
+    {"unchecked.remainder.Fixed64", unchecked_workload<Money64, UncheckedOperation::remainder>},
+    {"unchecked.add.Fixed128", unchecked_workload<Money128, UncheckedOperation::add>},
+    {"unchecked.mul.Fixed128", unchecked_workload<Money128, UncheckedOperation::mul>},
+    {"unchecked.div.Fixed128", unchecked_workload<Money128, UncheckedOperation::div>},
+    {"unchecked.mul_div.Fixed128", unchecked_workload<Money128, UncheckedOperation::mul_div>},
+    {"unchecked.mul.Fixed256", unchecked_workload<Money256, UncheckedOperation::mul>},
+    {"unchecked.div.Fixed256", unchecked_workload<Money256, UncheckedOperation::div>},
+};
+
+bool dispatch_unchecked(std::string_view name, std::uint64_t n) {
+    for (const auto& workload : unchecked_workloads) {
+        if (name == workload.name) {
+            workload.run(n);
+            return true;
+        }
+    }
+    return false;
+}
+
 constexpr const char* workloads[] = {
     "baseline.empty",     "add.Fixed64",
     "sub.Fixed64",        "mul.Fixed64",
@@ -443,8 +514,8 @@ constexpr const char* workloads[] = {
     "div.Fixed256",       "quantize.Fixed256",
     "mul_to.native",      "div_to.native",
     "add_to.native",      "mul_to.general",
-    "div_to.general",     "mul_to.wide",
-    "div_to.wide",        "add_to.wide",
+    "div_to.general",     "add_to.wide",
+    "div_to.wide",        "mul_to.wide",
     "compare.Price.Rate", "fixed_cast.Price.MixedFast",
     "parse.Fixed64",      "to_chars.Fixed64",
     "to_chars.Fixed128",  "add.int64_raw",
@@ -458,6 +529,7 @@ int main(int argc, char** argv) {
     if (argc == 2 && std::strcmp(argv[1], "--list") == 0) {
         for (const char* name : workloads) std::puts(name);
         for (const auto& workload : midpoint_workloads) std::puts(workload.name);
+        for (const auto& workload : unchecked_workloads) std::puts(workload.name);
         return 0;
     }
     if (argc != 3) {
@@ -465,7 +537,8 @@ int main(int argc, char** argv) {
         return 2;
     }
     const std::uint64_t iterations = std::strtoull(argv[2], nullptr, 10);
-    if (!dispatch_midpoint(argv[1], iterations) && !dispatch(argv[1], iterations)) {
+    if (!dispatch_midpoint(argv[1], iterations) && !dispatch(argv[1], iterations) &&
+        !dispatch_unchecked(argv[1], iterations)) {
         std::fprintf(stderr, "unknown workload: %s\n", argv[1]);
         return 2;
     }

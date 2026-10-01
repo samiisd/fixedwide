@@ -2,11 +2,15 @@
 
 ## Principles
 
-1. **Correctness first.** Numerical routines must match exact integer rational
-   arithmetic. No silent overflow, no dropped remainder, no wrong answer
-   returned in place of an error.
+1. **Correctness under an explicit contract.** Checked numerical routines must
+   match exact integer rational arithmetic or report an error, never silently
+   overflow or drop a remainder. Unchecked routines return the same numerical
+   results when their documented preconditions hold; the caller owns those
+   preconditions. Do not weaken the checked API to simplify bounded call sites.
+   See [checked or unchecked](docs/unchecked.md).
 2. **Minimalism.** No speculative abstractions. Prefer the standard library and
-   standard C++23 to anything written here.
+   standard C++23 to anything written here. Keep checked and unchecked arithmetic
+   on the same representation; avoid policy wrappers and runtime mode flags.
 3. **Nothing is claimed until it is executed.** A platform is described as
    supported only when a CI job builds it *and runs its tests*. Everything else
    is `not-configured` in `reports/EXECUTION_MATRIX.csv`. This applies to
@@ -107,3 +111,9 @@ this repository has learned the hard way:
   `long double` by 2^-60 assumed 61 significand bits and failed on Apple
   silicon, where `long double` is `double`. Ask `std::numeric_limits` what the
   platform has.
+
+For unchecked arithmetic, compare valid-domain results with both checked
+operations and an independent integer-rational oracle. Cover boundaries, signs,
+rounding and widened intermediates. Do not execute invalid unchecked calls in
+ordinary tests or assert a particular overflow result: those inputs violate the
+contract. Keep checked error-path tests intact.
