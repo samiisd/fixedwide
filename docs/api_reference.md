@@ -1,14 +1,16 @@
 # API reference
 
-Everything is in namespace `fixedwide`. Every public declaration also carries a
-`///` doc comment, so an editor with `clangd` shows this on hover; a top-level
-build writes `build/compile_commands.json`, which is where `clangd` looks.
+Everything is in namespace `fixedwide`, with caller-responsibility named functions
+in `fixedwide::unchecked`. Public headers carry `///` doc comments for editor
+hover help; a top-level build writes `build/compile_commands.json`, which is
+where `clangd` looks.
 
 | Header | What it gives you |
 |---|---|
 | `<fixedwide/fixed.hpp>` | `basic_fixed<Bits, Decimals>` and the `FixedN<D>` aliases |
-| `<fixedwide/arithmetic.hpp>` | Checked arithmetic on two operands of the same type |
+| `<fixedwide/arithmetic.hpp>` | Checked same-type arithmetic and the infallible midpoint overload |
 | `<fixedwide/mixed.hpp>` | Cross-width, cross-scale operations and comparison |
+| `<fixedwide/unchecked.hpp>` | Ordinary arithmetic operators and value-returning caller-responsibility functions |
 | `<fixedwide/chars.hpp>` | `parse`, `to_chars`, `from_chars`, `FormatOptions` |
 | `<fixedwide/literal.hpp>` | `literal<T>("...")` — exact decimal constants checked during compilation |
 | `<fixedwide/string.hpp>` | `to_string` — the one function here that allocates |
@@ -21,7 +23,8 @@ build writes `build/compile_commands.json`, which is where `clangd` looks.
 | `<fixedwide/all.hpp>` | Everything above **except** the three standard-library adapters |
 
 `all.hpp` deliberately omits `format.hpp`, `iostream.hpp` and `hash.hpp`.
-Historical measurements on clang 22 at `-O2`, before `literal.hpp` was added:
+Historical measurements on clang 22 at `-O2`, before `literal.hpp` and
+`unchecked.hpp` were added:
 
 | translation unit | |
 |---|---:|
@@ -79,6 +82,27 @@ Members:
 
 ---
 
+## Checked or unchecked
+
+The same types support two call-site policies. Existing `fixedwide::add`, `mul`,
+`fixed_cast` and related functions remain checked. Include `unchecked.hpp` or
+`all.hpp` for ordinary same-type `+`, `-`, `*`, `/`, `%`, unary signs and compound
+assignments, or use the corresponding `fixedwide::unchecked` named functions.
+These additions are on the development branch after v0.6.3.
+
+Unchecked calls return values, not `std::expected`. The caller guarantees a
+representable rounded result, nonzero divisors, valid precision/rounding and
+exactness when requesting `Rounding::exact`. Violating those preconditions is
+undefined behaviour, not saturation or wrapping. Debug assertions are diagnostic
+only. Operators `*` and `/` round nearest-even; named functions accept explicit
+rounding. Mixed-width/scale arithmetic still requires an explicit destination.
+
+The complete function table, domain-bound example and distinction between
+check-free paths and adapters that retain checked kernels are in
+[unchecked.md](unchecked.md). No storage wrapper or runtime policy flag is added.
+
+---
+
 ## Compile-time constants
 
 In `<fixedwide/literal.hpp>`, also included by `all.hpp`:
@@ -121,6 +145,7 @@ parsing fallback is provided.
 | `literal<Money>("125e-2")` | exactly 1.25 |
 | `literal<Money>("-0.00")` | zero |
 | `literal<Fixed8<2>>("-1.28")` | the signed minimum, accepted |
+| `literal<Money>("1.28")` | exactly 1.28 |
 | `literal<Money>("1.251")` | compile error: not exactly representable |
 | `literal<Fixed8<2>>("1.28")` | compile error: overflow |
 | `literal<Money>("1.25xyz")` | compile error: invalid text |
@@ -142,10 +167,10 @@ character. Diagnostics identify empty, invalid, inexact or overflowing input;
 the compiler controls their precise wording.
 
 Use `parse<T>(text, rounding)` for runtime text and its `std::expected<T,
-ParseError>` result. Literals are always exact; subsequent arithmetic remains
-checked and uses the existing explicit rounding policies. Use `T::from_raw`
-only when a value is already a scaled storage integer, not as an alternative
-spelling for a human-readable decimal.
+ParseError>` result. Literals are always exact; subsequent arithmetic can be
+checked or unchecked without changing its numerical rounding policy. Use
+`T::from_raw` only when a value is already a scaled storage integer, not as an
+alternative spelling for a human-readable decimal.
 
 > See [`examples/08_constexpr.cpp`](../examples/08_constexpr.cpp) for constants
 > composed with checked compile-time arithmetic.
@@ -154,16 +179,17 @@ spelling for a human-readable decimal.
 
 ## Rounding modes
 
-`Rounding` is taken by every operation that can lose information. There is no
-hidden default inside the library: arithmetic defaults to `nearest_even`,
-parsing and `fixed_cast` default to `exact`. Literals never round.
+Named operations that can lose information accept `Rounding`: arithmetic defaults
+to `nearest_even`, parsing and `fixed_cast` default to `exact`. Operators `*` and
+`/` use nearest-even. Literals never round. The error results below describe the
+checked APIs; exactness is a precondition in the unchecked API.
 
 | Mode | 0.5 → | −0.5 → | Use |
 |---|---|---|---|
 | `toward_zero` | 0 | 0 | Truncation; the machine's own division |
 | `floor` | 0 | −1 | Directed, toward −∞ |
 | `ceil` | 1 | 0 | Directed, toward +∞ |
-| `nearest_even` | 0 | 0 | Banker's rounding. Does not drift over a sum, so it is the arithmetic default |
+| `nearest_even` | 0 | 0 | Banker's rounding; reduces systematic tie-breaking bias |
 | `nearest_away` | 1 | −1 | Commercial rounding |
 | `exact` | error | error | Refuses to round: `ArithmeticError::inexact`, or `ParseError::too_precise` |
 
@@ -173,8 +199,10 @@ parsing and `fixed_cast` default to `exact`. Literals never round.
 
 ## Arithmetic functions
 
-All in `<fixedwide/arithmetic.hpp>`, all `constexpr`, all taking two operands of
-the **same** type and returning `std::expected<T, ArithmeticError>`.
+In `<fixedwide/arithmetic.hpp>`, `constexpr` functions on operands of the **same**
+type. They return `std::expected<T, ArithmeticError>`, except for the infallible
+compile-time-policy midpoint overload noted below. Unchecked counterparts are
+in `unchecked.hpp`, not a change to these functions' return types or errors.
 
 | Function | Notes |
 |---|---|
@@ -194,10 +222,10 @@ the **same** type and returning `std::expected<T, ArithmeticError>`.
 different types. Calling one is a compile error naming the deleted overload and
 pointing at `mul_to<Dest>` and friends — never a silent conversion.
 
-`midpoint` takes two values of the **same** width and scale, and returns
-`std::expected<T, ArithmeticError>`. It is symmetric in its operands, including
-half-unit ties. All six rounding modes apply at the raw integer's last decimal
-place; `exact` rejects an odd raw sum with `inexact`. It cannot overflow,
+`midpoint(a, b, rounding)` takes two values of the **same** width and scale, and
+returns `std::expected<T, ArithmeticError>`. It is symmetric in its operands,
+including half-unit ties. All six rounding modes apply at the raw integer's last
+decimal place; `exact` rejects an odd raw sum with `inexact`. It cannot overflow,
 including `midpoint(T::min(), T::min())` and `midpoint(T::max(), T::max())`.
 Unlike integer `std::midpoint`, tie-breaking does not depend on operand order.
 
@@ -240,19 +268,19 @@ never a rounding artefact. Both are `constexpr` for every width.
 ---
 
 ## Error types
- 
-Core arithmetic, runtime parsing, and serialization functions do not throw
-exceptions, do not set `errno`, and communicate failures exclusively through
+
+Checked core arithmetic, runtime parsing, and serialization functions do not
+throw exceptions, do not set `errno`, and communicate failures through
 `std::expected`. Source constants built by `literal<T>()` instead fail during
-compilation. No operation returns a wrong answer in place of an error.
- 
+compilation. Unchecked calls do not report errors: their preconditions must hold.
+
 `ArithmeticError`: `overflow`, `division_by_zero`, `inexact`,
 `invalid_precision`, `invalid_value`.
- 
+
 `ParseError`: `empty`, `invalid`, `too_precise`, `overflow`.
- 
+
 `FormatError`: `buffer_too_small`, `invalid_precision`, `inexact`.
- 
+
 `BinaryError`: `wrong_size` (returned when buffer size does not match representation size; `invalid_encoding` is reserved).
 
 **Precedence.** When more than one could apply, a result that does not fit the
