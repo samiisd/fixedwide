@@ -41,6 +41,23 @@ if(FIXEDWIDE_BUILD_TESTS)
     endif()
     add_test(NAME fixedwide.literal_header_only COMMAND test_literal_header_only)
 
+    # Prove the supported double conversions have no compiled-kernel dependency,
+    # even without exceptions and under aggressive consumer FP optimizations.
+    # Compile flags only: do not contaminate the generic differential oracle or
+    # introduce fast-math startup code that changes the process FP environment.
+    add_executable(test_floating_header_only test_floating_header_only.cpp)
+    target_compile_features(test_floating_header_only PRIVATE cxx_std_23)
+    target_include_directories(test_floating_header_only PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    if(FIXEDWIDE_FORCE_PORTABLE)
+        target_compile_definitions(test_floating_header_only PRIVATE FIXEDWIDE_FORCE_PORTABLE)
+    endif()
+    if(MSVC)
+        target_compile_options(test_floating_header_only PRIVATE /fp:fast)
+    else()
+        target_compile_options(test_floating_header_only PRIVATE -fno-exceptions -ffast-math -ffp-contract=fast)
+    endif()
+    add_test(NAME fixedwide.floating_header_only COMMAND test_floating_header_only)
+
     # test_format asserts that an impossible precision throws std::format_error,
     # which is what the standard requires formatter::parse to do. Throwing and
     # catching that exception aborts under AddressSanitizer with libc++, and it
