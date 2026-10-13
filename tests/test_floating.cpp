@@ -38,8 +38,8 @@ void test_floating_conversions() {
 }
 
 namespace {
-constexpr std::array rounding_modes{Rounding::toward_zero, Rounding::floor, Rounding::ceil,
-                                   Rounding::nearest_even, Rounding::nearest_away, Rounding::exact};
+constexpr std::array rounding_modes{Rounding::toward_zero,  Rounding::floor,        Rounding::ceil,
+                                    Rounding::nearest_even, Rounding::nearest_away, Rounding::exact};
 constexpr bool binary64 = sizeof(double) == sizeof(std::uint64_t) && std::numeric_limits<double>::is_iec559 &&
                           std::numeric_limits<double>::radix == 2 && std::numeric_limits<double>::digits == 53 &&
                           std::numeric_limits<double>::max_exponent == 1024;
@@ -110,10 +110,10 @@ template<typename Target>
 void differential_type(std::size_t samples) {
     // Includes both signed zeros, subnormals, the normal boundary, signaling
     // and quiet NaNs with multiple payloads, infinities and the largest finite.
-    for (std::uint64_t bits : {0ULL, 1ULL, 2ULL, 0x0008'0000'0000'0000ULL, 0x000f'ffff'ffff'ffffULL,
-                               0x0010'0000'0000'0000ULL, 0x0010'0000'0000'0001ULL, 0x7fefffffffffffffULL,
-                               0x7ff0'0000'0000'0000ULL, 0x7ff0'0000'0000'0001ULL, 0x7ff8'0000'0000'0000ULL,
-                               0x7fff'ffff'ffff'ffffULL}) {
+    for (std::uint64_t bits :
+         {0ULL, 1ULL, 2ULL, 0x0008'0000'0000'0000ULL, 0x000f'ffff'ffff'ffffULL, 0x0010'0000'0000'0000ULL,
+          0x0010'0000'0000'0001ULL, 0x7fefffffffffffffULL, 0x7ff0'0000'0000'0000ULL, 0x7ff0'0000'0000'0001ULL,
+          0x7ff8'0000'0000'0000ULL, 0x7fff'ffff'ffff'ffffULL}) {
         compare_bits<Target>(bits);
     }
     // Limb-sized shifts, the >=128 remainder path, and the last legal left

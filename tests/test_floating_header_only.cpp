@@ -10,8 +10,8 @@
 using namespace fixedwide;
 
 namespace {
-constexpr std::array modes{Rounding::toward_zero, Rounding::floor, Rounding::ceil,
-                          Rounding::nearest_even, Rounding::nearest_away, Rounding::exact};
+constexpr std::array modes{Rounding::toward_zero,  Rounding::floor,        Rounding::ceil,
+                           Rounding::nearest_even, Rounding::nearest_away, Rounding::exact};
 
 template<typename Target, typename Float>
 auto convert(std::uint64_t bits, Rounding rounding) noexcept {
@@ -31,12 +31,12 @@ void check_specials() {
             if (rounding == Rounding::exact) {
                 CHECK(!tiny && tiny.error() == ArithmeticError::inexact);
             } else {
-                const int raw = sign != 0 ? (rounding == Rounding::floor ? -1 : 0)
-                                          : (rounding == Rounding::ceil ? 1 : 0);
+                const int raw =
+                    sign != 0 ? (rounding == Rounding::floor ? -1 : 0) : (rounding == Rounding::ceil ? 1 : 0);
                 CHECK(tiny && tiny->raw() == typename Target::raw_type{raw});
             }
-            for (std::uint64_t special : {0x7ff0'0000'0000'0000ULL, 0x7ff0'0000'0000'0001ULL,
-                                          0x7ff8'0000'0000'0000ULL, 0x7fff'ffff'ffff'ffffULL}) {
+            for (std::uint64_t special : {0x7ff0'0000'0000'0000ULL, 0x7ff0'0000'0000'0001ULL, 0x7ff8'0000'0000'0000ULL,
+                                          0x7fff'ffff'ffff'ffffULL}) {
                 const auto invalid = convert<Target, Float>(sign | special, rounding);
                 CHECK(!invalid && invalid.error() == ArithmeticError::invalid_value);
             }

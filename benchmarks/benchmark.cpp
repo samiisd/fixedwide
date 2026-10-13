@@ -77,7 +77,8 @@ template<class F>
 void benchmark(const char* name, F function, unsigned iteration_divisor = 1, std::size_t streaming_count = 0) {
     if (!filter.empty() && std::string_view(name).find(filter) == std::string_view::npos) return;
     // Streaming fixtures visit every input once, rather than cycling the 4096-row cache.
-    const auto count = streaming_count != 0 ? streaming_count : std::max<std::size_t>(4096, iterations / iteration_divisor);
+    const auto count =
+        streaming_count != 0 ? streaming_count : std::max<std::size_t>(4096, iterations / iteration_divisor);
     for (std::size_t i = 0; i < dataset_size; ++i) escape(function(i));
     std::vector<double> samples;
     samples.reserve(repetitions);
@@ -117,7 +118,8 @@ void benchmark_from_double(const std::vector<double>& values) {
     for (double value : values) {
         if (fw::from_double<Target>(value, Rounding::nearest_even) != generic(value)) std::abort();
     }
-    benchmark(name.c_str(), [&](std::size_t i) { return checked(fw::from_double<Target>(values[i])); }, 1, values.size());
+    benchmark(
+        name.c_str(), [&](std::size_t i) { return checked(fw::from_double<Target>(values[i])); }, 1, values.size());
     benchmark(generic_name.c_str(), [&](std::size_t i) { return checked(generic(values[i])); }, 1, values.size());
 }
 

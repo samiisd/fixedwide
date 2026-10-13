@@ -15,10 +15,9 @@ namespace fixedwide::detail {
 // instantiated on platforms where double is not IEEE binary64.
 template<typename Target, typename Float>
 inline constexpr bool use_fast_from_float_v =
-    std::is_same_v<Float, double> && sizeof(Float) == sizeof(std::uint64_t) &&
-    std::numeric_limits<Float>::is_iec559 && std::numeric_limits<Float>::radix == 2 &&
-    std::numeric_limits<Float>::digits == 53 && std::numeric_limits<Float>::max_exponent == 1024 &&
-    Target::bits <= 128 && Target::fractional_digits <= 32;
+    std::is_same_v<Float, double> && sizeof(Float) == sizeof(std::uint64_t) && std::numeric_limits<Float>::is_iec559 &&
+    std::numeric_limits<Float>::radix == 2 && std::numeric_limits<Float>::digits == 53 &&
+    std::numeric_limits<Float>::max_exponent == 1024 && Target::bits <= 128 && Target::fractional_digits <= 32;
 
 #if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
 using float_magnitude128 = unsigned __int128;
@@ -52,8 +51,8 @@ template<typename Target, typename Float>
         significand |= std::uint64_t{1} << 52;
     }
 
-    const int power = static_cast<int>(exponent == 0 ? 1 : exponent) - 1075 +
-                      static_cast<int>(Target::fractional_digits);
+    const int power =
+        static_cast<int>(exponent == 0 ? 1 : exponent) - 1075 + static_cast<int>(Target::fractional_digits);
     const UInt product = UInt{significand} * float_pow5_v<Target::fractional_digits>;
     // Magnitudes are asymmetric: the negative limit includes the signed minimum.
     const UInt limit = (UInt{1} << (Target::bits - 1)) - UInt{!negative};
