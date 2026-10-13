@@ -74,15 +74,20 @@ std::uint64_t legacy(bool ok, const baseline::old_i128& result) {
 }
 
 template<class F>
-void benchmark(const char* name, F function, unsigned iteration_divisor = 1) {
+void benchmark(const char* name, F function, unsigned iteration_divisor = 1, std::size_t streaming_count = 0) {
     if (!filter.empty() && std::string_view(name).find(filter) == std::string_view::npos) return;
-    const auto count = std::max<std::size_t>(4096, iterations / iteration_divisor);
+    // Streaming fixtures visit every input once, rather than cycling the 4096-row cache.
+    const auto count = streaming_count != 0 ? streaming_count : std::max<std::size_t>(4096, iterations / iteration_divisor);
     for (std::size_t i = 0; i < dataset_size; ++i) escape(function(i));
     std::vector<double> samples;
     samples.reserve(repetitions);
     for (unsigned repeat = 0; repeat < repetitions; ++repeat) {
         const auto start = std::chrono::steady_clock::now();
-        for (std::size_t i = 0; i < count; ++i) escape(function(i & mask));
+        if (streaming_count != 0) {
+            for (std::size_t i = 0; i < count; ++i) escape(function(i));
+        } else {
+            for (std::size_t i = 0; i < count; ++i) escape(function(i & mask));
+        }
         const auto end = std::chrono::steady_clock::now();
         samples.push_back(std::chrono::duration<double, std::nano>(end - start).count() / static_cast<double>(count));
     }
@@ -95,6 +100,37 @@ void benchmark(const char* name, F function, unsigned iteration_divisor = 1) {
     std::printf("\"\n");
     std::fflush(stdout);
 }
+// Same input, result consumption and CSV schema for the public API and the
+// retained pre-0.6.5 kernel. Generation and differential validation are untimed.
+template<unsigned D>
+void benchmark_from_double(const std::vector<double>& values) {
+    using Target = fw::Fixed64<D>;
+    const std::string name = "fp64.d" + std::to_string(D) + ".from_double.uniform600k";
+    const std::string generic_name = name + ".generic";
+    auto generic = [](double value) -> std::expected<Target, fw::ArithmeticError> {
+        const auto raw = fw::detail::from_float_kernel(value, D, Rounding::nearest_even, Target::bits);
+        if (!raw) return std::unexpected(raw.error());
+        return fw::detail::from_int256_raw<Target>(*raw);
+    };
+    if (!filter.empty() && name.find(filter) == std::string::npos && generic_name.find(filter) == std::string::npos)
+        return;
+    for (double value : values) {
+        if (fw::from_double<Target>(value, Rounding::nearest_even) != generic(value)) std::abort();
+    }
+    benchmark(name.c_str(), [&](std::size_t i) { return checked(fw::from_double<Target>(values[i])); }, 1, values.size());
+    benchmark(generic_name.c_str(), [&](std::size_t i) { return checked(generic(values[i])); }, 1, values.size());
+}
+
+void benchmark_double_conversions() {
+    std::mt19937_64 rng(0x6f7261636c65ULL);
+    std::uniform_real_distribution<double> dist(-5'000.0, 5'000.0);
+    std::vector<double> values(600'000);
+    for (double& value : values) value = dist(rng);
+    benchmark_from_double<8>(values);
+    benchmark_from_double<10>(values);
+    benchmark_from_double<12>(values);
+}
+
 void setup() {
     std::mt19937_64 rng(0x4b209cd5);
     for (std::size_t i = 0; i < dataset_size; ++i) {
@@ -320,6 +356,7 @@ int main(int argc, char** argv) {
         auto v = fw::parse_u256(bigtexts[i]);
         return v ? digest(*v) : UINT64_MAX;
     });
+    benchmark_double_conversions();
     benchmark("fp64.from_double",
               [](std::size_t i) { return checked(fw::from_double64(rows[i].floating, Rounding::nearest_even)); });
     benchmark("fp128.from_double",

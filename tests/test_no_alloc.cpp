@@ -78,6 +78,14 @@ int main() {
     auto bin_res = *from_bytes<Fixed64<12>>(bytes);
     (void)bin_res;
 
+    // 6. The inline floating conversion, including a 128-bit destination.
+    volatile double input = 1.25;
+    const auto f8 = from_float<Fixed64<8>>(input);
+    const auto f10 = from_float<Fixed64<10>>(input);
+    const auto f12 = from_float<Fixed64<12>>(input);
+    const auto f128 = from_float<Fixed128<32>>(input);
+    if (!f8 || !f10 || !f12 || !f128) return 1;
+
     // Assert that NO allocations occurred
     int total_allocations = g_alloc_count.load();
     std::cout << "Total heap allocations during fixedwide operations: " << total_allocations << "\n";

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.5] - 2026-10-13
+
+### Changed
+- Convert IEEE binary64 `double` inputs to fixed-point targets of up to 128 bits
+  inline, using exact integer multiplication and shifts instead of the 1024-bit
+  division kernel. Factoring `10^D` into `5^D * 2^D` extends the path through
+  32 fractional digits without a 256-bit product. Native and portable backends
+  retain every rounding mode, signed minimum and error-code precedence.
+- Keep wider targets, scales above 32 digits, `float` and `long double` on the
+  existing generic kernel. No public API, layout or rounding-semantic changes.
+
+### Added
+- Differential tests against the unchanged generic kernel, exact ties, signed
+  limits, subnormals, nonfinite values, exponent/limb boundaries and FP modes.
+  Internal dispatch assertions prevent silent loss of the hot path.
+- A header-only, exceptions-disabled fast-math consumer test, including x86
+  FTZ/DAZ and signaling-NaN checks, plus floating-conversion allocation coverage.
+- Paired 600,000-input conversion benchmarks for `Fixed64<8>`, `<10>` and `<12>`,
+  using the existing timing CSV schema. See `reports/FROM_DOUBLE_0_6_5.md` for
+  measured before/after results and reproduction commands.
+
 ## [0.6.4] - 2026-10-01
 
 ### Added
