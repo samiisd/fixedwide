@@ -47,10 +47,9 @@ static_assert(detail::use_fast_from_float_v<Fixed64<8>, double> == binary64);
 static_assert(detail::use_fast_from_float_v<Fixed64<10>, double> == binary64);
 static_assert(detail::use_fast_from_float_v<Fixed64<12>, double> == binary64);
 static_assert(detail::use_fast_from_float_v<Fixed128<32>, double> == binary64);
-static_assert(!detail::use_fast_from_float_v<Fixed128<33>, double>);
+static_assert(detail::use_fast_from_float_v<Fixed128<38>, double> == binary64);
 static_assert(!detail::use_fast_from_float_v<Fixed256<8>, double>);
-static_assert(!detail::use_fast_from_float_v<Fixed64<8>, float>);
-static_assert(!detail::use_fast_from_float_v<Fixed64<8>, long double>);
+
 static_assert(noexcept(from_float<Fixed64<8>>(0.0)));
 static_assert(noexcept(from_double<Fixed128<22>>(0.0)));
 std::uint64_t differential_cases = 0;
@@ -175,7 +174,7 @@ void check_limits_and_rounding() {
     // D=32, right shift=128: the product can be above half, unlike D<=22.
     CHECK(from_float<Fixed128<32>>(0x1.fffffffffffffp-108)->raw() == wide::int128{1});
     CHECK(from_float<Fixed128<32>>(0x1p-108)->raw() == wide::int128{0});
-    // Public fallback paths remain available beyond the fast-path width/scale.
+    // Newly accelerated high scales and the wider-destination fallback.
     compare_kernel<Fixed128<33>>(0.125);
     compare_kernel<Fixed128<38>>(-0.5);
     compare_kernel<Fixed256<76>>(0.125);
@@ -221,6 +220,8 @@ void test_fast_double() {
     differential_type<Fixed128<27>>(samples);
     differential_type<Fixed128<28>>(samples);
     differential_type<Fixed128<32>>(samples);
+    differential_type<Fixed128<33>>(samples);
+    differential_type<Fixed128<38>>(samples);
     check_limits_and_rounding();
     check_floating_environment();
     std::printf("double/kernel differential comparisons: %llu\n", static_cast<unsigned long long>(differential_cases));

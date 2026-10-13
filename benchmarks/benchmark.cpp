@@ -102,35 +102,36 @@ void benchmark(const char* name, F function, unsigned iteration_divisor = 1, std
     std::fflush(stdout);
 }
 // Same input, result consumption and CSV schema for the public API and the
-// retained pre-0.6.5 kernel. Generation and differential validation are untimed.
-template<unsigned D>
-void benchmark_from_double(const std::vector<double>& values) {
+// retained generic kernel. Generation and differential validation are untimed.
+template<unsigned D, typename Float>
+void benchmark_from_float(const std::vector<Float>& values, const char* source) {
     using Target = fw::Fixed64<D>;
-    const std::string name = "fp64.d" + std::to_string(D) + ".from_double.uniform600k";
+    const std::string name = "fp64.d" + std::to_string(D) + ".from_" + source + ".uniform600k";
     const std::string generic_name = name + ".generic";
-    auto generic = [](double value) -> std::expected<Target, fw::ArithmeticError> {
+    auto generic = [](Float value) -> std::expected<Target, fw::ArithmeticError> {
         const auto raw = fw::detail::from_float_kernel(value, D, Rounding::nearest_even, Target::bits);
         if (!raw) return std::unexpected(raw.error());
         return fw::detail::from_int256_raw<Target>(*raw);
     };
     if (!filter.empty() && name.find(filter) == std::string::npos && generic_name.find(filter) == std::string::npos)
         return;
-    for (double value : values) {
-        if (fw::from_double<Target>(value, Rounding::nearest_even) != generic(value)) std::abort();
+    for (Float value : values) {
+        if (fw::from_float<Target>(value, Rounding::nearest_even) != generic(value)) std::abort();
     }
     benchmark(
-        name.c_str(), [&](std::size_t i) { return checked(fw::from_double<Target>(values[i])); }, 1, values.size());
+        name.c_str(), [&](std::size_t i) { return checked(fw::from_float<Target>(values[i])); }, 1, values.size());
     benchmark(generic_name.c_str(), [&](std::size_t i) { return checked(generic(values[i])); }, 1, values.size());
 }
 
-void benchmark_double_conversions() {
+template<typename Float>
+void benchmark_float_conversions(const char* source) {
     std::mt19937_64 rng(0x6f7261636c65ULL);
-    std::uniform_real_distribution<double> dist(-5'000.0, 5'000.0);
-    std::vector<double> values(600'000);
-    for (double& value : values) value = dist(rng);
-    benchmark_from_double<8>(values);
-    benchmark_from_double<10>(values);
-    benchmark_from_double<12>(values);
+    std::uniform_real_distribution<Float> dist(Float{-5000}, Float{5000});
+    std::vector<Float> values(600'000);
+    for (Float& value : values) value = dist(rng);
+    benchmark_from_float<8>(values, source);
+    benchmark_from_float<10>(values, source);
+    benchmark_from_float<12>(values, source);
 }
 
 void setup() {
@@ -358,7 +359,9 @@ int main(int argc, char** argv) {
         auto v = fw::parse_u256(bigtexts[i]);
         return v ? digest(*v) : UINT64_MAX;
     });
-    benchmark_double_conversions();
+    benchmark_float_conversions<float>("float");
+    benchmark_float_conversions<double>("double");
+    benchmark_float_conversions<long double>("long_double");
     benchmark("fp64.from_double",
               [](std::size_t i) { return checked(fw::from_double64(rows[i].floating, Rounding::nearest_even)); });
     benchmark("fp128.from_double",

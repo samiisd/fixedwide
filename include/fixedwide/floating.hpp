@@ -8,7 +8,7 @@
 #include <fixedwide/fixed.hpp>
 #include <fixedwide/error.hpp>
 #include <fixedwide/rounding.hpp>
-#include <fixedwide/detail/from_double.hpp>
+#include <fixedwide/detail/from_float.hpp>
 #include <concepts>
 #include <expected>
 #include <cmath>
@@ -45,7 +45,7 @@ template<typename Target, std::floating_point Float>
 [[nodiscard]] inline std::expected<Target, ArithmeticError>
 from_float(Float value, Rounding rounding = Rounding::nearest_even) noexcept {
     if constexpr (detail::use_fast_from_float_v<Target, Float>) {
-        return detail::from_double_fast<Target>(value, rounding);
+        return detail::from_float_fast<Target>(value, rounding);
     } else {
         if (std::isnan(value) || std::isinf(value)) return std::unexpected(ArithmeticError::invalid_value);
         auto res = detail::from_float_kernel(value, Target::fractional_digits, rounding, Target::bits);
