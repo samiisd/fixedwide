@@ -86,6 +86,12 @@ int main() {
     const auto f128 = from_float<Fixed128<32>>(input);
     if (!f8 || !f10 || !f12 || !f128) return 1;
 
+    volatile float input_float = 1.25f;
+    volatile long double input_long_double = 1.25L;
+    if (!from_float<Fixed64<12>>(input_float) || !from_float<Fixed128<38>>(input_float) ||
+        !from_float<Fixed64<12>>(input_long_double) || !from_float<Fixed128<38>>(input_long_double))
+        return 1;
+
     // Assert that NO allocations occurred
     int total_allocations = g_alloc_count.load();
     std::cout << "Total heap allocations during fixedwide operations: " << total_allocations << "\n";

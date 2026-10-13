@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.6] - 2026-10-13
+
+### Changed
+- Share the exact inline conversion engine across IEEE binary32 `float`,
+  binary64, x86 x87 extended precision, and IEEE binary128 `long double`.
+  Decode each supported format without narrowing through another FP type;
+  ignore x87 ABI padding and retain the generic kernel for unknown layouts.
+- Select 64-, 128-, or 256-bit integer intermediates at compile time. Binary32
+  conversions to <=64-bit targets through 17 fractional digits use 64-bit
+  arithmetic. All supported input formats now accelerate every valid scale of
+  destinations up to 128 bits, including binary128 at the common D=8/10/12.
+- Keep public APIs, rounding modes, error precedence, storage and `to_float`
+  unchanged. `Fixed256` destinations still use the original generic kernel.
+
+### Added
+- Independent Boost integer-rational and generic-kernel differential tests for
+  all supported formats, representative scales and all rounding modes, including
+  full-significand inputs, exact ties, signed limits, padding and width boundaries.
+- Header-only fast-math, FP-environment and no-allocation checks for all three
+  source types. GCC x86 tests also execute binary64/binary128 `long double`
+  variants without calling ABI-incompatible long-double libc functions.
+- Paired 600,000-input float, double and long-double benchmarks in the existing
+  CSV format; input generation and reference validation remain outside timing.
+
 ## [0.6.5] - 2026-10-13
 
 ### Changed

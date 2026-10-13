@@ -41,7 +41,7 @@ if(FIXEDWIDE_BUILD_TESTS)
     endif()
     add_test(NAME fixedwide.literal_header_only COMMAND test_literal_header_only)
 
-    # Prove the supported double conversions have no compiled-kernel dependency,
+    # Prove the supported floating conversions have no compiled-kernel dependency,
     # even without exceptions and under aggressive consumer FP optimizations.
     # Compile flags only: do not contaminate the generic differential oracle or
     # introduce fast-math startup code that changes the process FP environment.
@@ -55,6 +55,10 @@ if(FIXEDWIDE_BUILD_TESTS)
         target_compile_options(test_floating_header_only PRIVATE /fp:fast)
     else()
         target_compile_options(test_floating_header_only PRIVATE -fno-exceptions -ffast-math -ffp-contract=fast)
+    endif()
+    if(FIXEDWIDE_SANITIZE AND NOT MSVC)
+        target_compile_options(test_floating_header_only PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all)
+        target_link_options(test_floating_header_only PRIVATE -fsanitize=address,undefined)
     endif()
     add_test(NAME fixedwide.floating_header_only COMMAND test_floating_header_only)
 
@@ -210,4 +214,47 @@ if(Boost_FOUND AND (FIXEDWIDE_BUILD_TESTS OR FIXEDWIDE_BUILD_ORACLE_TESTS))
     # arithmetic, floating and other coverage suites fully checked by ASan.
     set_tests_properties(fixedwide.coverage_format_adapters PROPERTIES
         ENVIRONMENT "ASAN_OPTIONS=alloc_dealloc_mismatch=0")
+endif()
+
+if(Boost_FOUND AND FIXEDWIDE_BUILD_TESTS)
+    add_executable(test_floating_formats test_floating_formats.cpp)
+    target_link_libraries(test_floating_formats PRIVATE fixedwide::fixedwide)
+    target_include_directories(test_floating_formats PRIVATE ${Boost_INCLUDE_DIRS})
+    add_test(NAME fixedwide.floating_formats COMMAND test_floating_formats)
+endif()
+
+# GCC can exercise the other two long-double formats on an x86 host. These
+# targets intentionally do NOT link fixedwide or call long-double libc routines:
+# those have the host ABI, which the compiler option would make incompatible.
+# The rational oracle takes its input from test-generated integer fields.
+if(FIXEDWIDE_BUILD_TESTS AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
+   CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$" AND NOT CMAKE_CROSSCOMPILING)
+    foreach(WIDTH 64 128)
+        set(SOURCES floating_header_only)
+        if(Boost_FOUND)
+            list(APPEND SOURCES floating_formats)
+        endif()
+        foreach(SOURCE ${SOURCES})
+            set(NAME test_${SOURCE}_ld${WIDTH})
+            add_executable(${NAME} test_${SOURCE}.cpp)
+            target_compile_features(${NAME} PRIVATE cxx_std_23)
+            target_include_directories(${NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include)
+            if(Boost_FOUND)
+                target_include_directories(${NAME} PRIVATE ${Boost_INCLUDE_DIRS})
+            endif()
+            target_compile_definitions(${NAME} PRIVATE FIXEDWIDE_TEST_ALTERNATE_LDBL)
+            target_compile_options(${NAME} PRIVATE -mlong-double-${WIDTH})
+            if(FIXEDWIDE_FORCE_PORTABLE)
+                target_compile_definitions(${NAME} PRIVATE FIXEDWIDE_FORCE_PORTABLE)
+            endif()
+            if(SOURCE STREQUAL "floating_header_only")
+                target_compile_options(${NAME} PRIVATE -fno-exceptions -ffast-math -ffp-contract=fast)
+            endif()
+            if(FIXEDWIDE_SANITIZE)
+                target_compile_options(${NAME} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all)
+                target_link_options(${NAME} PRIVATE -fsanitize=address,undefined)
+            endif()
+            add_test(NAME fixedwide.${SOURCE}_ld${WIDTH} COMMAND ${NAME})
+        endforeach()
+    endforeach()
 endif()
