@@ -340,11 +340,30 @@ jobs:
           cat current.csv
       - name: Compare against the committed baseline
         run: python3 scripts/compare_icount.py benchmarks/baseline/x86_64-gcc-14.csv current.csv
+      # Clang too: Checked's record() path holds a Clang-only codegen fence, and
+      # checked.add8.Fixed128 grows if a Clang release undoes its benefit.
+      - name: Install clang 20
+        run: |
+          wget -qO llvm.sh https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
+          sudo ./llvm.sh 20
+      - name: Measure (clang 20)
+        env: { CXX: clang++-20 }
+        run: |
+          cmake -B build_icount_clang -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=clang++-20 -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
+            -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF
+          cmake --build build_icount_clang --target fixedwide_icount
+          ./scripts/icount.sh --binary build_icount_clang/benchmarks/fixedwide_icount > current-clang.csv
+          cat current-clang.csv
+      - name: Compare clang against its committed baseline
+        run: python3 scripts/compare_icount.py benchmarks/baseline/x86_64-clang-20.csv current-clang.csv
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: instruction-counts
-          path: current.csv
+          path: |
+            current.csv
+            current-clang.csv
 
   fuzz:
     name: fuzz smoke

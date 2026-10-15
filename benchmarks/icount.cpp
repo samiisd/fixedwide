@@ -22,6 +22,8 @@
 #include <fixedwide/mixed.hpp>
 #include <fixedwide/unchecked.hpp>
 
+#include "checked_chain_cases.hpp"
+
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -503,6 +505,29 @@ bool dispatch_unchecked(std::string_view name, std::uint64_t n) {
     return false;
 }
 
+// The eight-step Fixed128 add/sub chain through Checked, as in the evidence
+// benchmark. Checked's record() holds a Clang-only codegen fence tuned on Clang
+// 20; a compiler that undoes its benefit makes this row grow.
+void checked_add8_workload(std::uint64_t n) {
+    static const auto inputs = [] {
+        std::array<checked_chain_bench::AddInput, fixture_size> out{};
+        for (std::size_t k = 0; k < out[0].v.size(); ++k) {
+            const auto values = make_fixture<checked_chain_bench::F128>(31 + k, 56);
+            for (std::size_t i = 0; i < fixture_size; ++i) out[i].v[k] = values[i];
+        }
+        return out;
+    }();
+    run_unary(n, inputs, [](const auto& in) { return checked_chain_bench::add8_accumulated(in); });
+}
+
+constexpr const char* checked_add8_name = "checked.add8.Fixed128";
+
+bool dispatch_checked(std::string_view name, std::uint64_t n) {
+    if (name != checked_add8_name) return false;
+    checked_add8_workload(n);
+    return true;
+}
+
 constexpr const char* workloads[] = {
     "baseline.empty",     "add.Fixed64",
     "sub.Fixed64",        "mul.Fixed64",
@@ -530,6 +555,7 @@ int main(int argc, char** argv) {
         for (const char* name : workloads) std::puts(name);
         for (const auto& workload : midpoint_workloads) std::puts(workload.name);
         for (const auto& workload : unchecked_workloads) std::puts(workload.name);
+        std::puts(checked_add8_name);
         return 0;
     }
     if (argc != 3) {
@@ -538,7 +564,7 @@ int main(int argc, char** argv) {
     }
     const std::uint64_t iterations = std::strtoull(argv[2], nullptr, 10);
     if (!dispatch_midpoint(argv[1], iterations) && !dispatch(argv[1], iterations) &&
-        !dispatch_unchecked(argv[1], iterations)) {
+        !dispatch_unchecked(argv[1], iterations) && !dispatch_checked(argv[1], iterations)) {
         std::fprintf(stderr, "unknown workload: %s\n", argv[1]);
         return 2;
     }

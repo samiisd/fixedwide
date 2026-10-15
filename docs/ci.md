@@ -20,7 +20,7 @@ claimed anywhere, including in the README.
 | `shared library` | A missing export or an ODR problem |
 | `install + find_package consumer` | A broken exported CMake package |
 | `conan create` | A recipe that packages something not usable |
-| `instruction-count regression gate` | A change that makes the library do measurably more work |
+| `instruction-count regression gate` | A change that makes the library do measurably more work, under GCC 14 or Clang 20 |
 | `fuzz smoke` | A crash reachable from arbitrary text input |
 | `coverage` | Native and portable each require 99% distinct source lines, 95% LLVM lines and 90% LLVM branches; profiles/maps must agree. |
 
