@@ -1,4 +1,5 @@
 #include "coverage_support.hpp"
+#include "to_floating_oracle.hpp"
 #include <fixedwide/floating.hpp>
 #include <fixedwide/format.hpp>
 #include <fixedwide/iostream.hpp>
@@ -87,6 +88,88 @@ void floating() {
     CHECK(to_float<F>(negative) == -actual);
 }
 
+// Coverage profiles deliberately come from test_coverage alone. Keep focused
+// reverse-conversion cases here as well as the standalone exhaustive suite;
+// otherwise its passing tests contribute no counters to the coverage gate.
+namespace coverage_floating {
+template<class T, class F>
+void reverse() {
+    if constexpr (detail::use_fast_to_float_v<F, T::bits> && floating_test::supported<F>) {
+        const cpp_int limit = cpp_int{1} << (T::bits - 1);
+        auto both = [&](const cpp_int& magnitude) {
+            for (bool negative : {false, true}) {
+                const cpp_int raw = negative ? cpp_int{-magnitude} : magnitude;
+                if (raw < -limit || raw >= limit) continue;
+                const T value = T::from_raw(from_integer<typename T::raw_type>(raw));
+                // This reference divides arbitrary-precision integers at final
+                // output spacing; it does not use the production reciprocal,
+                // normalization or encoder, nor the inaccurate legacy kernel.
+                CHECK(
+                    to_floating_test::same(to_float<F>(value), to_floating_test::oracle<F>(raw, T::fractional_digits)));
+            }
+        };
+        both(0);
+        both(limit); // Signed minimum: the positive counterpart is out of range.
+        // Each normalization boundary with/without discarded nonzero bits.
+        // raw=1 at D=38 also exercises binary32 subnormal output spacing.
+        for (unsigned bit = 0; bit < T::bits; ++bit)
+            for (int delta : {-1, 0, 1}) both((cpp_int{1} << bit) + delta);
+
+        // Exactly halfway, both parities, and a carry into the next exponent.
+        // Multiply by 5^D so these are exact rational ties, not FP estimates.
+        constexpr int precision = std::numeric_limits<F>::digits;
+        const cpp_int five = power10(T::fractional_digits) >> T::fractional_digits;
+        for (const cpp_int& significand : std::array<cpp_int, 3>{
+                 cpp_int{1} << (precision - 1), (cpp_int{1} << (precision - 1)) + 1, (cpp_int{1} << precision) - 1}) {
+            const cpp_int tie = (2 * significand + 1) * five;
+            for (int delta : {-1, 0, 1}) both(tie + delta);
+        }
+        std::mt19937_64 rng(0x746f666c6f6174ULL + T::bits * 100 + T::fractional_digits);
+        for (unsigned i = 0; i < 128; ++i) both(random_bits(rng, T::bits - 1));
+    }
+}
+
+template<class F>
+void reverse_format() {
+    // Representative scales cover constant 64-bit division, the native divide,
+    // both reciprocal sizes, and wide-precision encoders on their native ABI.
+    reverse<Fixed64<0>, F>();
+    reverse<Fixed64<8>, F>();
+    reverse<Fixed64<12>, F>();
+    reverse<Fixed64<18>, F>();
+    reverse<Fixed128<0>, F>();
+    reverse<Fixed128<8>, F>();
+    reverse<Fixed128<12>, F>();
+    reverse<Fixed128<27>, F>();
+    reverse<Fixed128<28>, F>();
+    reverse<Fixed128<38>, F>();
+
+    // <=128-bit inputs no longer visit these compiled wrappers. Fixed256
+    // remains a public fallback; use exactly representable values so its
+    // known extra rounding is not used as the correctness oracle above.
+    CHECK(to_float<F>(Fixed256<0>{}) == F{0});
+    for (int raw : {-125, 125})
+        CHECK(to_float<F>(Fixed256<2>::from_raw(wide::int256{raw})) == static_cast<F>(raw) / F{100});
+    for (unsigned bit : {0u, 64u, 128u, 192u}) {
+        const auto raw = from_integer<wide::int256>(cpp_int{1} << bit);
+        const F expected = std::ldexp(F{1}, static_cast<int>(bit));
+        CHECK(to_float<F>(Fixed256<0>::from_raw(raw)) == expected);
+        CHECK(to_float<F>(Fixed256<0>::from_raw(-raw)) == -expected);
+    }
+}
+
+void shift_width_input() {
+    // In the 64-bit binary64/D=0 intermediate these inputs need a right
+    // shift of exactly 64. Retain a nonzero remainder even with quotient=0.
+    if constexpr (detail::use_fast_from_float_v<Fixed64<0>, double>) {
+        for (double value : {0x1p-12, -0x1p-12}) {
+            const auto [n, d] = rational(value);
+            for (auto mode : modes) agrees(from_float<Fixed64<0>>(value, mode), rounded(n, d, mode, 64));
+        }
+    }
+}
+} // namespace coverage_floating
+
 void formats_and_streams() {
     using T = Fixed64<4>;
     const T v = T::from_raw(123456);
@@ -152,6 +235,10 @@ void run_coverage_adapters() {
     floating<Fixed64<12>, float>();
     floating<Fixed128<38>, double>();
     floating<Fixed256<76>, long double>();
+    coverage_floating::reverse_format<float>();
+    coverage_floating::reverse_format<double>();
+    coverage_floating::reverse_format<long double>();
+    coverage_floating::shift_width_input();
 }
 
 void run_coverage_format_adapters() {
