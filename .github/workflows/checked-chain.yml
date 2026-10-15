@@ -52,6 +52,56 @@ jobs:
           cpu=$(python3 -c 'import os; print(min(os.sched_getaffinity(0)))')
           python3 scripts/checked_chain_evidence.py --compiler '${{ matrix.compiler }}' \
             --output evidence --cpu "$cpu" --iterations 1048576 --repetitions 15 --trials 3
+      - name: Diagnose failure-path code generation
+        env:
+          CXX: ${{ matrix.compiler }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, subprocess, tarfile
+          out = Path('evidence').resolve()
+          base = Path('include/fixedwide/checked.hpp').read_text()
+          signature = 'constexpr void record(ArithmeticError error) noexcept {'
+          variants = {
+              'current': base,
+              'value-access': base.replace('return std::move(*value);', 'return std::move(value).value();').replace('return *value;', 'return value.value();'),
+              'signal-fence': base.replace('#include <optional>', '#include <optional>\n#include <atomic>').replace(signature, signature + '\n        if (!std::is_constant_evaluated()) std::atomic_signal_fence(std::memory_order_acq_rel);'),
+              'empty-asm': base.replace(signature, signature + '\n        if (!std::is_constant_evaluated()) __asm__ __volatile__("");'),
+              'cold-record': base.replace(signature, '[[gnu::cold, gnu::noinline]] ' + signature),
+          }
+          cc = os.environ['CXX']
+          if 'clang' in cc:
+              variants['preserve-most'] = base.replace(signature, '[[gnu::cold, gnu::noinline, clang::preserve_most]] ' + signature)
+          flags = ['-std=c++23', '-O3', '-DNDEBUG', '-ffp-contract=off']
+          flags += ['-fno-vectorize', '-fno-slp-vectorize'] if 'clang' in cc else ['-fno-tree-vectorize', '-fno-tree-slp-vectorize']
+          cpu = str(min(os.sched_getaffinity(0)))
+          for name, source in variants.items():
+              directory = out / 'variants' / name
+              (directory / 'fixedwide').mkdir(parents=True, exist_ok=True)
+              (directory / 'fixedwide' / 'checked.hpp').write_text(source)
+              prefix = [cc, *flags, '-I' + str(directory), '-Iinclude', '-Ibenchmarks', '-Itests']
+              commands = [
+                  [*prefix, '-fno-exceptions', 'tests/test_checked.cpp', str(out / 'build/libfixedwide.a'), '-o', str(directory / 'test')],
+                  [str(directory / 'test')],
+                  [*prefix, 'benchmarks/checked_chain_bench.cpp', str(out / 'build/libfixedwide.a'), '-o', str(directory / 'bench')],
+                  [*prefix, '-c', 'benchmarks/checked_chain_asm.cpp', '-o', str(directory / 'probe.o')],
+              ]
+              log = []
+              for command in commands:
+                  proc = subprocess.run(command, capture_output=True, text=True)
+                  log.append(repr(command) + '\n' + proc.stdout + proc.stderr)
+                  (out / ('variant-' + name + '.log')).write_text('\n'.join(log))
+                  if proc.returncode:
+                      raise SystemExit(proc.returncode)
+              asm = subprocess.check_output(['objdump', '-drC', str(directory / 'probe.o')], text=True)
+              (out / ('variant-' + name + '.asm')).write_text(asm)
+              for trial in range(1, 4):
+                  result = subprocess.run(['taskset', '-c', cpu, str(directory / 'bench'), '--iterations', '262144', '--repetitions', '11', '--order', str(trial)], capture_output=True, text=True, check=True)
+                  (out / ('variant-' + name + '-' + str(trial) + '.csv')).write_text(result.stdout)
+          with tarfile.open(out / 'codegen-variants.tar.gz', 'w:gz') as archive:
+              for source in (out / 'variants').glob('*/fixedwide/checked.hpp'):
+                  archive.add(source, arcname=str(source.relative_to(out)))
+          PY
       - name: Publish measurements, not an automatic performance verdict
         if: always()
         run: |
