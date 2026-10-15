@@ -106,11 +106,14 @@ operations are rejected by constraints, not hidden behind `noexcept` termination
 The context itself never allocates; a caller-defined type/function may still
 allocate despite being nonthrowing. Numeric library operations do not.
 
-The implementation uses a `uint16_t` state: success is 256, while every one of the
-256 possible `uint8_t` representations of `ArithmeticError` remains available.
-This is an enum-plus-success-bit encoding, not a reserved enumerator. It is two
-bytes, trivially copyable, and initialized explicitly. Tests also round-trip
-`static_cast<ArithmeticError>(255)` to prevent a future sentinel collision.
+The implementation stores `std::optional<ArithmeticError>` and consumes/returns
+`std::expected` at the operation and publication boundaries. It is two bytes and
+trivially copyable on the supported CI configurations; no custom sentinel or
+result representation is needed. The first error is constructed with `emplace`.
+Tests also round-trip `static_cast<ArithmeticError>(255)`. A stored
+`std::expected<void, ArithmeticError>` was tested and rejected because it does
+not preserve the required trivial-copyability trait on the tested libstdc++.
+See [the follow-up](CHECKED_0_6_8_FOLLOWUP.md) for the measured compiler workaround.
 
 ## Tests and adoption
 
@@ -178,12 +181,15 @@ No noisy hosted timing threshold is installed as a substitute for that review.
 
 ## Measurements and code-generation review
 
-Measurements and final CI outcomes are recorded here after the exact candidate
-has run. Preliminary local trials on a shared AMD EPYC 9V74 VM with GCC 14.2.0
-show substantial between-trial variation; those exploratory runs do not prove
-zero overhead. The first optional-based implementation generated repeated flag
-materialization in GCC. The two-byte scalar state removed that per-step work.
-The representative GCC eight-add success trace has eight arithmetic branches
-plus a final accumulated-status test and no context stack spill. A final extra
-status test and retained state still exist; they must not be described as
-identical assembly. Wider/mixed traces and Clang need separate inspection.
+The original scalar-state implementation had substantial Clang overhead. The
+follow-up replaces that custom state with standard optional storage and keeps
+all arithmetic/results on the existing `std::expected` boundary. Targeted
+inlining and a Clang-only compiler barrier on the failure path remove the short
+chain's conditional-zero moves and context spills on the measured Clang 20
+configuration. Numerical kernels and eager post-error semantics are unchanged.
+
+The full benchmark still measures about 6% overhead for Clang's eight-operation
+chain and about 5% for GCC's wide chain. These differences are not asserted to be
+noise; universal parity and no-extra-spill acceptance remain open. Complete
+measurements, rejected alternatives, coverage diagnosis and reproduction:
+[CHECKED_0_6_8_FOLLOWUP.md](CHECKED_0_6_8_FOLLOWUP.md).
