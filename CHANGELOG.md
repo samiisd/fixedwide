@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.7] - 2026-10-15
+
+### Changed
+- Inline fixed-to-floating conversion for every scale of 8/16/32/64/128-bit
+  fixed-point sources and recognized binary32, binary64, x87 and binary128
+  outputs. Use integer normalization, bounded division and one final rounding
+  instead of floating limb accumulation and runtime `pow`.
+- Correctly round the exact rational `raw / 10^D` to nearest, ties to even,
+  independently of the FP environment. This fixes previous double-rounding
+  errors: some output bit patterns intentionally differ from 0.6.6. Preserve
+  the full output precision, signed minima and binary32 subnormal results.
+- Keep public APIs and storage unchanged. Fixed256 and unknown FP layouts
+  retain the legacy kernel, including its rounding limitations; document this
+  boundary explicitly. The input conversion paths are unchanged.
+
+### Added
+- Independent arbitrary-precision rational tests at every valid source scale,
+  exact ties and neighbours, raw bit/limb boundaries, signed extremes and
+  randomized full-width magnitudes. Keep concrete legacy-rounding regressions.
+- Header-only, fast-math, no-exceptions and no-allocation tests, including FP
+  rounding modes, FTZ/DAZ and alternate binary64/binary128 long-double ABIs.
+- Paired 600,000-input reverse-conversion benchmarks against the unchanged
+  legacy kernel, with untimed independent oracle validation and raw CSV results.
+  See `reports/TO_FLOAT_0_6_7.md` for the derivation, scope and measurements.
+
 ## [0.6.6] - 2026-10-13
 
 ### Changed
