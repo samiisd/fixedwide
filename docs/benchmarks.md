@@ -210,3 +210,37 @@ Full table and the honest reading of it:
 | `fixedwide_numeric_bench` | Edge values and large powers |
 | `fixedwide_memory_bench` | Allocation-free verification (Linux only) |
 | `fixedwide_mixed_bench` | Cross-scale wall-clock |
+
+## Accumulated checked chains
+
+`fixedwide_checked_chain_bench` compares explicit `std::expected` early-return
+chains, `Checked` accumulation and caller-proved unchecked arithmetic on the
+same validated runtime inputs. It reuses `measurement.hpp`, checks all outputs
+before timing, rotates policy order across trials and retains raw repetitions.
+There are Fixed128 eight-add/sub, Fixed256 mixed-product/divisor, and floating
+input plus mixed equity/margin workloads. Unchecked floating ingress has no
+separate API, so that row retains the checked conversion with prevalidated
+success rather than benchmarking a different numeric conversion.
+
+```sh
+python3 scripts/checked_chain_evidence.py --compiler g++-14 \
+  --output /tmp/checked-gcc --cpu 2
+python3 scripts/checked_chain_evidence.py --compiler clang++-20 \
+  --output /tmp/checked-clang --cpu 2
+```
+
+The script retains machine/compiler/flags, compile commands, exact git state,
+CSV samples and pooled medians, and ordinary callable formula disassembly.
+Its static branch/call/stack-reference counts include cold paths and are not
+executed instruction counts. The [0.6.8 evidence report](../reports/CHECKED_0_6_8.md)
+records numerical coverage separately from performance acceptance. Eager
+post-failure execution is intentionally different from early return. Existing
+arithmetic kernels remain unchanged.
+
+The residual happy-path overhead is accepted. On Clang 20 the eight-operation
+Fixed128 add/sub chain measures 3.586 ns through `Checked` against 3.381 ns for
+explicit `expected` checks, about +0.2 ns per chain. On GCC 14 the Fixed256
+multiply chain measures +5.3%, below this setup's run-to-run variation: in the
+same table unchecked (247 ns) measured slower than explicit (224 ns). The
+instruction-count gate tracks the Clang 20 add/sub chain as
+`checked.add8.Fixed128`, so a compiler that undoes the `record()` fence fails CI.

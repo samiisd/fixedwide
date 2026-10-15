@@ -23,9 +23,11 @@ int main() {
     //   auto bad = mul(price, rate);
     // The error names the deleted overload and tells you to use mul_to<Dest>.
 
-    const auto gross = mul_to<Money>(price, rate).value();    // 21.49
-    const auto net = div_to<Money>(gross, Rate{"1"}).value(); // / 1.0
-    const auto sum = add_to<Money>(price, gross).value();     // 19.99 + 21.49
+    Checked c;
+    const auto gross = c.mul_to<Money>(price, rate);    // 21.49
+    const auto net = c.div_to<Money>(gross, Rate{"1"}); // / 1.0
+    const auto sum = c.add_to<Money>(price, gross);     // 19.99 + 21.49
+    if (!c) return 1;                                   // Check before publishing any intermediate result.
     std::printf("gross  %s\n", to_string(gross).value().c_str());
     std::printf("sum    %s\n", to_string(sum).value().c_str());
 

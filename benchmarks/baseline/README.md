@@ -1,7 +1,7 @@
 # Instruction-count baselines
 
 One CSV per toolchain, recorded on the machine the gate runs on. `.github/workflows/ci.yml`
-re-measures on every pull request and fails if any workload grows by more than 1%.
+re-measures GCC 14 and Clang 20 on every pull request and fails if any workload grows by more than 1%.
 
 Instruction counts are compiler specific, so a baseline names its toolchain and
 is only ever compared against itself. They are not timings: they say how much

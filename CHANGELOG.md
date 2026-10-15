@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.8] - 2026-10-15
+
+### Added
+- `fixedwide::Checked`, a two-byte, trivially copyable, local first-error
+  accumulator. Every operation delegates to the existing checked function;
+  failure returns a zero placeholder, later operations remain checked, and
+  `result(value)` refuses publication after any error. Existing APIs and
+  numerical kernels are unchanged.
+- Members for all public `ArithmeticError`-returning operations, including
+  mixed destinations, floating ingress, legacy aliases and raw wide-integer
+  division. `take(expected)` also accepts caller-defined computations, with
+  nonthrowing value construction/transfer requirements and a void overload.
+- Constexpr, boundary/parity, error-order, post-failure, no-exceptions and
+  no-allocation tests, wired into native/portable comprehensive coverage.
+- An executable equity/margin formula and accumulated checks in the mixed-scale
+  and ledger examples. Explicit early-return/monadic examples remain available.
+- Three-policy benchmark and GCC/Clang assembly drivers. The residual
+  happy-path overhead is accepted and the Clang add/sub chain is under the
+  instruction-count gate; see `reports/CHECKED_0_6_8.md` for the inventory
+  and evidence.
+
 ## [0.6.7] - 2026-10-15
 
 ### Changed

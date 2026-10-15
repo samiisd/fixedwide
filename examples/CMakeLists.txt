@@ -11,6 +11,7 @@ set(EXAMPLE_NAMES
     07_money_ledger
     08_constexpr
     09_bounded_arithmetic
+    10_checked_chain
 )
 
 foreach(NAME ${EXAMPLE_NAMES})

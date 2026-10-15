@@ -1,0 +1,67 @@
+name: Checked chain evidence
+
+# Evidence only, not a gate: run it by hand when the checked path changes.
+# The instruction-count gate in ci.yml guards the Clang add/sub chain.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checked-chain-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    name: checked chains ${{ matrix.compiler }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [ g++-14, clang++-20 ]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 cmake ninja-build binutils
+      - name: Install Clang 20
+        if: matrix.compiler == 'clang++-20'
+        run: |
+          wget -qO llvm.sh https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 20
+          rm llvm.sh
+      - name: Retain exact source
+        run: |
+          mkdir -p evidence
+          git archive --format=tar.gz HEAD > evidence/source.tar.gz
+      - name: Validate, measure and disassemble all three policies
+        run: |
+          cpu=$(python3 -c 'import os; print(min(os.sched_getaffinity(0)))')
+          python3 scripts/checked_chain_evidence.py --compiler '${{ matrix.compiler }}' \
+            --output evidence --cpu "$cpu" --iterations 1048576 --repetitions 15 --trials 3
+      - name: Publish measurements, not an automatic performance verdict
+        if: always()
+        run: |
+          if [ -f evidence/summary.csv ]; then
+            printf '### %s\n\n```csv\n' '${{ matrix.compiler }}' >> "$GITHUB_STEP_SUMMARY"
+            cat evidence/summary.csv >> "$GITHUB_STEP_SUMMARY"
+            printf '```\n\nStatic assembly counts include cold paths. Review success traces before performance acceptance.\n' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: checked-chain-${{ matrix.compiler }}
+          path: |
+            evidence/*.csv
+            evidence/*.json
+            evidence/*.txt
+            evidence/*.log
+            evidence/*.stderr
+            evidence/*.asm
+            evidence/*.tar.gz
+            evidence/build/compile_commands.json
+          if-no-files-found: error

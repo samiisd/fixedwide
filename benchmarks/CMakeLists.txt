@@ -11,6 +11,17 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_compile_options(fixedwide_icount PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize)
 endif()
 
+# Sticky-error chain benchmarks use the shared timing harness and no Boost.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
+    add_executable(fixedwide_checked_chain_bench checked_chain_bench.cpp)
+    target_link_libraries(fixedwide_checked_chain_bench PRIVATE fixedwide::fixedwide)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(fixedwide_checked_chain_bench PRIVATE -fno-vectorize -fno-slp-vectorize -ffp-contract=off)
+    else()
+        target_compile_options(fixedwide_checked_chain_bench PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off)
+    endif()
+endif()
+
 find_package(Boost)
 if(NOT Boost_FOUND)
     message(STATUS "fixedwide: Boost headers not found; building fixedwide_icount only")

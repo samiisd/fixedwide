@@ -10,6 +10,8 @@ where `clangd` looks.
 | `<fixedwide/fixed.hpp>` | `basic_fixed<Bits, Decimals>` and the `FixedN<D>` aliases |
 | `<fixedwide/arithmetic.hpp>` | Checked same-type arithmetic and the infallible midpoint overload |
 | `<fixedwide/mixed.hpp>` | Cross-width, cross-scale operations and comparison |
+| `<fixedwide/checked.hpp>` | `Checked`: accumulated checked arithmetic with a sticky first error |
+| `<fixedwide/bigint.hpp>` | Checked unscaled wide-integer division and multiply/divide |
 | `<fixedwide/unchecked.hpp>` | Ordinary arithmetic operators and value-returning caller-responsibility functions |
 | `<fixedwide/chars.hpp>` | `parse`, `to_chars`, `from_chars`, `FormatOptions` |
 | `<fixedwide/literal.hpp>` | `literal<T>("...")` — exact decimal constants checked during compilation |
@@ -82,26 +84,125 @@ Members:
 
 ---
 
-## Checked or unchecked
+<a id="checked-or-unchecked"></a>
+## Checked, accumulated checked, or unchecked
 
-The same types support two call-site policies. Existing `fixedwide::add`, `mul`,
-`fixed_cast` and related functions remain checked. Include `unchecked.hpp` or
-`all.hpp` for ordinary same-type `+`, `-`, `*`, `/`, `%`, unary signs and compound
-assignments, or use the corresponding `fixedwide::unchecked` named functions.
-These additions are available since v0.6.4.
+All three policies use the same fixed-point storage and numerical rounding rules.
+Choose error handling at the call site, not in the stored value's type.
 
-Unchecked calls return values, not `std::expected`. The caller guarantees a
-representable rounded result, nonzero divisors, valid precision/rounding and
-exactness when requesting `Rounding::exact`. Violating those preconditions is
-undefined behaviour, not saturation or wrapping. Debug assertions are diagnostic
-only. Operators `*` and `/` round nearest-even; named functions accept explicit
-rounding. Mixed-width/scale arithmetic still requires an explicit destination.
+| Policy | Spelling | Failure handling |
+|---|---|---|
+| Checked | `fixedwide::add(a, b)` | `std::expected` per call; the caller may stop immediately. |
+| Accumulated checked (0.6.8) | `c.add(a, b)` with a local `Checked c` | Every call is checked; the first error sticks; validate once before publication. |
+| Unchecked (0.6.4) | `a + b` or `unchecked::add(a, b)` | Caller-proved bounds and preconditions; violations are undefined behaviour. |
 
-The complete function table, domain-bound example and distinction between
-check-free paths and adapters that retain checked kernels are in
-[unchecked.md](unchecked.md). No storage wrapper or runtime policy flag is added.
+No per-value storage wrapper or global runtime policy flag is added. `Checked`
+is an explicit local computation context with its own error status, not a
+storage wrapper. It does not change the behaviour of operators or free functions.
+See [unchecked.md](unchecked.md) for the unchecked contract.
 
----
+## Accumulated checks
+
+Include `<fixedwide/checked.hpp>` or `<fixedwide/all.hpp>`:
+
+```cpp
+using Money = fixedwide::Fixed128<10>;
+using Percent = fixedwide::Fixed64<6>;
+using Integer = fixedwide::Fixed64<0>;
+
+// Inside a function returning std::expected<Percent, ArithmeticError>:
+fixedwide::Checked c;
+const auto base = c.add(balance, credit);
+const auto equity = c.add(base, pnl);
+const auto available = c.sub(equity, blocked);
+const auto ratio = c.mul_div_to<Percent>(available, Integer::from_raw(100), used_margin);
+return c.result(ratio);
+```
+
+All members below have the same operands, template destination, defaults and
+rounding as their checked free functions. They return the successful value
+rather than an expected. There is no new arithmetic kernel.
+
+| Members | Default rounding | Constexpr |
+|---|---|---|
+| `add(a,b)`, `sub(a,b)`, `negate(a)`, `abs(a)`, `remainder(a,b)` | None | Yes |
+| `mul(a,b,r)`, `div(a,b,r)`, `mul_div(a,b,c,r)` (fixed point) | `nearest_even` | Yes |
+| `quantize(a,decimals,r)` | `nearest_even` | Yes |
+| `midpoint(a,b,r)`, `midpoint(a,b,decimals,r)` | `nearest_even` | Yes |
+| `from_integer<Target>(integer)`, `narrow(FP128)` | None | Yes |
+| `add_to<Dest>`, `sub_to<Dest>`, `mul_to<Dest>`, `div_to<Dest>`, `mul_div_to<Dest>` | `nearest_even` | No, like the free functions |
+| `fixed_cast<Dest>(a,r)` | `exact` | No |
+| `from_float<Target>(x,r)`, `from_double<Target>(x,r)` | `nearest_even` | No |
+| `from_double64(x,r)`, `from_double128(x,r)`, `mul_wide(FP64,FP64,r)` | `nearest_even` | No |
+| `divmod(u256,u128)`, `divmod(i256,i128)` | None | No |
+| `divide_to_i128(i256,i128,r)`, `mul_div(i128,i128,i128,r)` | Required, no default | No |
+
+The current API has one checked `quantize` overload and two checked `midpoint`
+overloads. Its infallible `midpoint<Rounding>(a,b)` spelling stays a free
+function. All six public storage widths (8/16/32/64/128/256) and every valid
+scale remain supported; internal 512/1024-bit mixed intermediates are unchanged.
+There is no public fixed-point storage type wider than 256 bits in this release.
+The [complete operation/error inventory](../reports/CHECKED_0_6_8.md#operation-inventory)
+includes the boundaries deliberately outside this context.
+
+### Status and generic composition
+
+| Member | Meaning |
+|---|---|
+| `Checked{}` | Initially successful; two bytes in this implementation, trivially copyable. |
+| `explicit operator bool()` | True until the first failed operation. |
+| `error()` | `std::optional<ArithmeticError>`: empty on success, first error otherwise. |
+| `take(std::expected<T,ArithmeticError>)` | Unwrap a successful value, or record the error and return `T{}`. |
+| `take(std::expected<void,ArithmeticError>)` | Absorb status without a value. |
+| `result(value)` | Return `std::expected<remove_cvref_t<T>,ArithmeticError>`; never return a value after failure. |
+| `result()` | Return the accumulated `std::expected<void,ArithmeticError>`. |
+
+All these functions are `noexcept`, and constexpr when their value operations
+permit constant evaluation. `take` copies const/mutable lvalue expecteds and
+moves rvalues when that transfer is nonthrowing. Its value type must support
+nonthrowing default construction and the chosen copy/move. This explicitly
+rejects throwing value operations rather than silently terminating inside a
+blanket `noexcept`. Move-only nonthrowing types are supported. `result` needs a
+nonthrowing selected copy/move, but not default construction. Ordinary custom
+functions returning `expected<T,ArithmeticError>` join through `take`; constructing
+or evaluating their arguments remains the caller's responsibility.
+
+### Failure, evaluation order, and publication
+
+The first failed operation wins. A failed step returns `T{}` (zero for numeric
+values, zero quotient/remainder for division records). Later successful calls
+still return their own computed values; later failed calls return zero and
+cannot replace the first error. There is no sticky-state short circuit. In
+particular, a zero placeholder used as the next divisor reaches the existing
+checked divide, never an unchecked divide.
+
+**Intermediate values after any failure are unusable calculation results.**
+They are ordinary values, not tagged poison. The library cannot stop the caller
+from reading them, using an unchecked operator, storing them, or performing an
+external side effect. Check `if (!c)` before such use, or publish through
+`c.result(...)`. `result` refuses even a value computed *before* the failure and
+does not move from its argument when returning an error. It does not roll back
+side effects already performed by caller-defined functions.
+
+Write fallible steps in separate statements. In `c.add(c.div(...),c.mul(...))`,
+C++ does not specify which sibling argument runs first; the sticky error follows
+the actual evaluation order, not left-to-right spelling. A context is local to
+one chain/thread; it is not synchronized. Copies are independent snapshots.
+Queries and `result` do not reset it; construct a new context for a new chain.
+
+Parsing (`ParseError`), formatting (`FormatError`) and binary decoding
+(`BinaryError`) stay separate boundary operations. Infallible outputs and
+comparisons have no error to accumulate. Operators on a wrapped value type are
+not introduced: destination types for `mul_to`/`mul_div_to` and explicit rounding
+belong to each operation, not to an operand wrapper. Plain operators remain
+unchecked; writing `c.result(a + b)` does **not** make that addition checked.
+
+The context itself adds no allocation, exceptions, thread-local/global state or
+runtime policy selection. Caller-defined value constructors/functions can still
+allocate or perform side effects; `noexcept` alone does not forbid allocation. Eager continuation may do more work than an early-return chain
+on failure. Happy-path cost is measured, not promised identical for every
+compiler or expression; see the [benchmark evidence](benchmarks.md#accumulated-checked-chains).
+
 
 ## Compile-time constants
 
