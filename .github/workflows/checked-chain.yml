@@ -1,16 +1,8 @@
 name: Checked chain evidence
 
+# Evidence only, not a gate: run it by hand when the checked path changes.
+# The instruction-count gate in ci.yml guards the Clang add/sub chain.
 on:
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'include/fixedwide/**'
-      - 'src/**'
-      - 'benchmarks/checked_chain*'
-      - 'benchmarks/measurement.hpp'
-      - 'benchmarks/CMakeLists.txt'
-      - 'scripts/checked_chain_evidence.py'
-      - '.github/workflows/checked-chain.yml'
   workflow_dispatch:
 
 permissions:
@@ -32,7 +24,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Install build tools
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 cmake ninja-build binutils
