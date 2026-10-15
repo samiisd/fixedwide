@@ -92,6 +92,11 @@ int main() {
         !from_float<Fixed64<12>>(input_long_double) || !from_float<Fixed128<38>>(input_long_double))
         return 1;
 
+    volatile float out_float = to_float<float>(*f128);
+    volatile double out_double = to_double(*f128);
+    volatile long double out_long_double = to_float<long double>(*f128);
+    if (out_float != 1.25f || out_double != 1.25 || out_long_double != 1.25L) return 1;
+
     // Assert that NO allocations occurred
     int total_allocations = g_alloc_count.load();
     std::cout << "Total heap allocations during fixedwide operations: " << total_allocations << "\n";

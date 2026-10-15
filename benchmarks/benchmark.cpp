@@ -1,4 +1,5 @@
 #include "baselines.hpp"
+#include "../tests/to_floating_oracle.hpp"
 #include <fixedwide/arithmetic.hpp>
 #include <fixedwide/chars.hpp>
 #include <fixedwide/floating.hpp>
@@ -132,6 +133,84 @@ void benchmark_float_conversions(const char* source) {
     benchmark_from_float<8>(values, source);
     benchmark_from_float<10>(values, source);
     benchmark_from_float<12>(values, source);
+}
+
+// Reverse conversions are validated against an independent integer-rational
+// oracle, NOT the legacy converter (which is not always correctly rounded).
+template<typename Float>
+std::uint64_t floating_digest(Float value) {
+    if constexpr (sizeof(Float) == 4)
+        return std::bit_cast<std::uint32_t>(value);
+    else if constexpr (sizeof(Float) == 8)
+        return std::bit_cast<std::uint64_t>(value);
+    else if constexpr (std::numeric_limits<Float>::digits == 64) {
+        std::uint64_t mantissa;
+        std::uint16_t exponent;
+        std::memcpy(&mantissa, &value, 8);
+        std::memcpy(&exponent, reinterpret_cast<const unsigned char*>(&value) + 8, 2);
+        return mantissa ^ exponent;
+    } else {
+        const auto words = std::bit_cast<std::array<std::uint64_t, 2>>(value);
+        return words[0] ^ words[1];
+    }
+}
+
+template<typename Float, typename Target>
+void benchmark_to_floating(const char* destination, bool full_width) {
+    const std::string name = "fp" + std::to_string(Target::bits) + ".d" + std::to_string(Target::fractional_digits) +
+                             ".to_" + destination + (full_width ? ".full128.600k" : ".pnl600k");
+    const std::string legacy_name = name + ".legacy";
+    if (!filter.empty() && name.find(filter) == std::string::npos && legacy_name.find(filter) == std::string::npos)
+        return;
+    std::mt19937_64 rng(0x746f666c6f6174ULL);
+    std::vector<Target> values;
+    values.reserve(600'000);
+    std::uint64_t legacy_differences = 0;
+    const auto legacy = [](Target value) {
+        return fw::detail::to_float_kernel(fw::detail::to_int256_raw(value.raw()), Target::fractional_digits, Float{});
+    };
+    for (unsigned i = 0; i < 600'000; ++i) {
+        boost::multiprecision::cpp_int raw;
+        if constexpr (Target::bits == 128) {
+            if (full_width) {
+                const auto high = rng();
+                raw = (boost::multiprecision::cpp_int{high} << 64) | rng();
+                if (high >> 63) raw -= boost::multiprecision::cpp_int{1} << 128;
+            }
+        }
+        if constexpr (Target::fractional_digits <= 12) {
+            if (!full_width) {
+                constexpr auto bound = 5'000ULL * fw::compute_pow10<std::uint64_t>(Target::fractional_digits);
+                raw = static_cast<std::int64_t>(rng() % (2 * bound + 1)) - static_cast<std::int64_t>(bound);
+            }
+        }
+        const auto value = to_floating_test::from_integer<Target>(raw);
+        const Float expected = to_floating_test::oracle<Float>(raw, Target::fractional_digits);
+        if (!to_floating_test::same(fw::to_float<Float>(value), expected)) std::abort();
+        legacy_differences += !to_floating_test::same(legacy(value), expected);
+        values.push_back(value);
+    }
+    std::fprintf(stderr, "%s: 600000 oracle matches; legacy differs on %llu inputs\n", name.c_str(),
+                 static_cast<unsigned long long>(legacy_differences));
+    benchmark(
+        name.c_str(), [&](std::size_t i) { return floating_digest(fw::to_float<Float>(values[i])); }, 1, values.size());
+    benchmark(legacy_name.c_str(), [&](std::size_t i) { return floating_digest(legacy(values[i])); }, 1, values.size());
+}
+
+template<typename Float>
+void benchmark_to_floating_formats(const char* destination) {
+    if constexpr (floating_test::supported<Float>) {
+        benchmark_to_floating<Float, fw::Fixed64<8>>(destination, false);
+        benchmark_to_floating<Float, fw::Fixed64<10>>(destination, false);
+        benchmark_to_floating<Float, fw::Fixed64<12>>(destination, false);
+        benchmark_to_floating<Float, fw::Fixed128<8>>(destination, false);
+        benchmark_to_floating<Float, fw::Fixed128<10>>(destination, false);
+        benchmark_to_floating<Float, fw::Fixed128<12>>(destination, false);
+        benchmark_to_floating<Float, fw::Fixed128<8>>(destination, true);
+        benchmark_to_floating<Float, fw::Fixed128<10>>(destination, true);
+        benchmark_to_floating<Float, fw::Fixed128<12>>(destination, true);
+        benchmark_to_floating<Float, fw::Fixed128<38>>(destination, true);
+    }
 }
 
 void setup() {
@@ -366,6 +445,9 @@ int main(int argc, char** argv) {
               [](std::size_t i) { return checked(fw::from_double64(rows[i].floating, Rounding::nearest_even)); });
     benchmark("fp128.from_double",
               [](std::size_t i) { return checked(fw::from_double128(rows[i].floating, Rounding::nearest_even)); });
+    benchmark_to_floating_formats<float>("float");
+    benchmark_to_floating_formats<double>("double");
+    benchmark_to_floating_formats<long double>("long_double");
     benchmark("fp64.to_double", [](std::size_t i) { return fw::to_double(FP64::from_raw(rows[i].a)); });
     benchmark("fp128.to_double", [](std::size_t i) { return fw::to_double(FP128::from_raw(rows[i].wide_a)); });
 #ifdef FIXEDWIDE_BENCH_BOOST

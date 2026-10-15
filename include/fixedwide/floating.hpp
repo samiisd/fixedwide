@@ -9,6 +9,7 @@
 #include <fixedwide/error.hpp>
 #include <fixedwide/rounding.hpp>
 #include <fixedwide/detail/from_float.hpp>
+#include <fixedwide/detail/to_float.hpp>
 #include <concepts>
 #include <expected>
 #include <cmath>
@@ -56,12 +57,20 @@ from_float(Float value, Rounding rounding = Rounding::nearest_even) noexcept {
 
 /// Convert fixed point to binary floating point.
 ///
-/// Cannot fail, and is not exact: the result is the nearest `Float` to the
-/// value. Explicit for the same reason as `from_float`.
+/// For recognized binary formats and Bits <= 128, correctly rounds the exact
+/// rational raw/10^D to nearest, ties to even, independently of the FP rounding
+/// mode and without raising FP exceptions. The result need not be exact.
+/// Fixed256 and unknown FP layouts retain the legacy FP-arithmetic kernel,
+/// which can introduce additional rounding error and depend on the FP environment.
+/// No allocation or error return. Explicit for the same reason as `from_float`.
 /// \tparam Float `float`, `double` or `long double`.
 template<std::floating_point Float, std::size_t Bits, unsigned D>
 [[nodiscard]] inline Float to_float(basic_fixed<Bits, D> value) noexcept {
-    return detail::to_float_kernel(detail::to_int256_raw(value.raw()), D, Float{});
+    if constexpr (detail::use_fast_to_float_v<Float, Bits>) {
+        return detail::to_float_fast<Float>(value);
+    } else {
+        return detail::to_float_kernel(detail::to_int256_raw(value.raw()), D, Float{});
+    }
 }
 
 // 0.4 compatibility surface: fixed at 12 digits. Generic replacement:
@@ -88,8 +97,7 @@ from_double(double value, Rounding rounding = Rounding::nearest_even) noexcept {
     return from_float<Target>(value, rounding);
 }
 
-/// `to_float<double>`. Cannot fail, and is not exact: the result is the
-/// nearest `double` to the value.
+/// `to_float<double>`. See its rounding guarantee and legacy-fallback scope.
 template<std::size_t Bits, unsigned D>
 [[nodiscard]] inline double to_double(basic_fixed<Bits, D> value) noexcept {
     return to_float<double>(value);

@@ -62,6 +62,23 @@ if(FIXEDWIDE_BUILD_TESTS)
     endif()
     add_test(NAME fixedwide.floating_header_only COMMAND test_floating_header_only)
 
+    add_executable(test_to_floating_header_only test_to_floating_header_only.cpp)
+    target_compile_features(test_to_floating_header_only PRIVATE cxx_std_23)
+    target_include_directories(test_to_floating_header_only PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    if(FIXEDWIDE_FORCE_PORTABLE)
+        target_compile_definitions(test_to_floating_header_only PRIVATE FIXEDWIDE_FORCE_PORTABLE)
+    endif()
+    if(MSVC)
+        target_compile_options(test_to_floating_header_only PRIVATE /fp:fast)
+    else()
+        target_compile_options(test_to_floating_header_only PRIVATE -fno-exceptions -ffast-math -ffp-contract=fast)
+    endif()
+    if(FIXEDWIDE_SANITIZE AND NOT MSVC)
+        target_compile_options(test_to_floating_header_only PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all)
+        target_link_options(test_to_floating_header_only PRIVATE -fsanitize=address,undefined)
+    endif()
+    add_test(NAME fixedwide.to_floating_header_only COMMAND test_to_floating_header_only)
+
     # test_format asserts that an impossible precision throws std::format_error,
     # which is what the standard requires formatter::parse to do. Throwing and
     # catching that exception aborts under AddressSanitizer with libc++, and it
@@ -223,6 +240,13 @@ if(Boost_FOUND AND FIXEDWIDE_BUILD_TESTS)
     add_test(NAME fixedwide.floating_formats COMMAND test_floating_formats)
 endif()
 
+if(Boost_FOUND AND FIXEDWIDE_BUILD_TESTS)
+    add_executable(test_to_floating test_to_floating.cpp)
+    target_link_libraries(test_to_floating PRIVATE fixedwide::fixedwide)
+    target_include_directories(test_to_floating PRIVATE ${Boost_INCLUDE_DIRS})
+    add_test(NAME fixedwide.to_floating COMMAND test_to_floating)
+endif()
+
 # GCC can exercise the other two long-double formats on an x86 host. These
 # targets intentionally do NOT link fixedwide or call long-double libc routines:
 # those have the host ABI, which the compiler option would make incompatible.
@@ -230,9 +254,9 @@ endif()
 if(FIXEDWIDE_BUILD_TESTS AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
    CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$" AND NOT CMAKE_CROSSCOMPILING)
     foreach(WIDTH 64 128)
-        set(SOURCES floating_header_only)
+        set(SOURCES floating_header_only to_floating_header_only)
         if(Boost_FOUND)
-            list(APPEND SOURCES floating_formats)
+            list(APPEND SOURCES floating_formats to_floating)
         endif()
         foreach(SOURCE ${SOURCES})
             set(NAME test_${SOURCE}_ld${WIDTH})
@@ -247,7 +271,7 @@ if(FIXEDWIDE_BUILD_TESTS AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
             if(FIXEDWIDE_FORCE_PORTABLE)
                 target_compile_definitions(${NAME} PRIVATE FIXEDWIDE_FORCE_PORTABLE)
             endif()
-            if(SOURCE STREQUAL "floating_header_only")
+            if(SOURCE MATCHES "header_only$")
                 target_compile_options(${NAME} PRIVATE -fno-exceptions -ffast-math -ffp-contract=fast)
             endif()
             if(FIXEDWIDE_SANITIZE)
