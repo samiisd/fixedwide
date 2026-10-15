@@ -10,9 +10,19 @@
 #include <fixedwide/mixed.hpp>
 #include <fixedwide/floating.hpp>
 #include <fixedwide/bigint.hpp>
+#include <expected>
 #include <optional>
 #include <type_traits>
 #include <utility>
+
+// Keep the expected producer/consumer boundary visible to the optimizer.
+// Without this, Clang can if-convert each failed add/sub into conditional-zero
+// moves and keep every overflow flag live throughout an otherwise cheap chain.
+#if defined(__GNUC__) || defined(__clang__)
+#define FIXEDWIDE_CHECKED_INLINE [[gnu::always_inline]]
+#else
+#define FIXEDWIDE_CHECKED_INLINE
+#endif
 
 namespace fixedwide {
 
@@ -25,19 +35,17 @@ public:
     constexpr Checked() noexcept = default;
 
     /// True until the first failure. Querying never resets the context.
-    [[nodiscard]] constexpr explicit operator bool() const noexcept { return error_code_ == no_error; }
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return !error_; }
 
     /// Empty on success; otherwise the first ArithmeticError encountered.
-    [[nodiscard]] constexpr std::optional<ArithmeticError> error() const noexcept {
-        return error_code_ == no_error ? std::optional<ArithmeticError>{} : static_cast<ArithmeticError>(error_code_);
-    }
+    [[nodiscard]] constexpr std::optional<ArithmeticError> error() const noexcept { return error_; }
 
     /// Absorb a checked result. Success returns its value even after an earlier
     /// failure; failure returns T{} and records the error only if it is first.
     /// T must support nonthrowing default construction and the selected transfer.
     template<class T>
         requires(std::is_nothrow_default_constructible_v<T> && std::is_nothrow_move_constructible_v<T>)
-    [[nodiscard]] constexpr T take(std::expected<T, ArithmeticError>&& value) noexcept {
+    [[nodiscard]] FIXEDWIDE_CHECKED_INLINE constexpr T take(std::expected<T, ArithmeticError>&& value) noexcept {
         if (!value) [[unlikely]] {
             record(value.error());
             return T{};
@@ -48,7 +56,7 @@ public:
     /// Copy an lvalue result without consuming it.
     template<class T>
         requires(std::is_nothrow_default_constructible_v<T> && std::is_nothrow_copy_constructible_v<T>)
-    [[nodiscard]] constexpr T take(const std::expected<T, ArithmeticError>& value) noexcept {
+    [[nodiscard]] FIXEDWIDE_CHECKED_INLINE constexpr T take(const std::expected<T, ArithmeticError>& value) noexcept {
         if (!value) [[unlikely]] {
             record(value.error());
             return T{};
@@ -65,29 +73,31 @@ public:
     /// Publish a value only if every accumulated operation succeeded.
     /// The selected copy/move construction must be nonthrowing. Does not reset.
     template<class T>
-        requires(std::is_nothrow_constructible_v<std::remove_cvref_t<T>, T &&>)
+        requires(std::is_nothrow_constructible_v<std::remove_cvref_t<T>, T&&>)
     [[nodiscard]] constexpr std::expected<std::remove_cvref_t<T>, ArithmeticError> result(T&& value) const noexcept {
-        if (error_code_ != no_error) [[unlikely]]
-            return std::unexpected(static_cast<ArithmeticError>(error_code_));
+        if (error_.has_value()) [[unlikely]]
+            return std::unexpected(*error_);
         return std::expected<std::remove_cvref_t<T>, ArithmeticError>(std::in_place, std::forward<T>(value));
     }
 
     /// Publish the accumulated status without a value.
     [[nodiscard]] constexpr std::expected<void, ArithmeticError> result() const noexcept {
-        if (error_code_ != no_error) [[unlikely]]
-            return std::unexpected(static_cast<ArithmeticError>(error_code_));
+        if (error_.has_value()) [[unlikely]]
+            return std::unexpected(*error_);
         return {};
     }
 
     /// Accumulated `fixedwide::add` with the same operands and rounding.
     template<std::size_t Bits, unsigned D>
-    [[nodiscard]] constexpr basic_fixed<Bits, D> add(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
+    [[nodiscard]] FIXEDWIDE_CHECKED_INLINE constexpr basic_fixed<Bits, D> add(basic_fixed<Bits, D> a,
+                                                                              basic_fixed<Bits, D> b) noexcept {
         return take(fixedwide::add(a, b));
     }
 
     /// Accumulated `fixedwide::sub` with the same operands and rounding.
     template<std::size_t Bits, unsigned D>
-    [[nodiscard]] constexpr basic_fixed<Bits, D> sub(basic_fixed<Bits, D> a, basic_fixed<Bits, D> b) noexcept {
+    [[nodiscard]] FIXEDWIDE_CHECKED_INLINE constexpr basic_fixed<Bits, D> sub(basic_fixed<Bits, D> a,
+                                                                              basic_fixed<Bits, D> b) noexcept {
         return take(fixedwide::sub(a, b));
     }
 
@@ -251,14 +261,17 @@ private:
     constexpr void record(ArithmeticError error) noexcept {
         // This is reached only on a failed operation: no context-state test is
         // added to a successful arithmetic step.
-        if (error_code_ == no_error) error_code_ = static_cast<std::uint8_t>(error);
+        // Construct the first error directly, rather than invoking optional's
+        // value-assignment path (which also has to handle an engaged object).
+        if (!error_) error_.emplace(error);
     }
 
-    // All 256 possible uint8_t error representations remain available. The
-    // ninth bit encodes success, so no ArithmeticError value is reserved.
-    // A single scalar avoids per-step optional-flag materialization in GCC.
-    static constexpr std::uint16_t no_error = 256;
-    std::uint16_t error_code_ = no_error;
+    // Standard optional storage preserves trivial copyability. std::expected
+    // remains the operation/result boundary; expected<void, E> itself is not
+    // required to be trivially copyable. No error code is reserved for success.
+    std::optional<ArithmeticError> error_{};
 };
 
 } // namespace fixedwide
+
+#undef FIXEDWIDE_CHECKED_INLINE
