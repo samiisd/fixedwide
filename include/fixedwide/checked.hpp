@@ -11,6 +11,9 @@
 #include <fixedwide/floating.hpp>
 #include <fixedwide/bigint.hpp>
 #include <expected>
+#if defined(__clang__)
+#include <atomic>
+#endif
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -73,7 +76,7 @@ public:
     /// Publish a value only if every accumulated operation succeeded.
     /// The selected copy/move construction must be nonthrowing. Does not reset.
     template<class T>
-        requires(std::is_nothrow_constructible_v<std::remove_cvref_t<T>, T&&>)
+        requires(std::is_nothrow_constructible_v<std::remove_cvref_t<T>, T &&>)
     [[nodiscard]] constexpr std::expected<std::remove_cvref_t<T>, ArithmeticError> result(T&& value) const noexcept {
         if (error_.has_value()) [[unlikely]]
             return std::unexpected(*error_);
@@ -259,6 +262,13 @@ public:
 
 private:
     constexpr void record(ArithmeticError error) noexcept {
+#if defined(__clang__)
+        // Clang 20 otherwise if-converts the zero fallback and keeps overflow
+        // flags live through the success path. An error-only compiler fence
+        // prevents that without inline assembly or a runtime instruction on
+        // the measured targets. This is not inter-thread synchronization.
+        if (!std::is_constant_evaluated()) std::atomic_signal_fence(std::memory_order_acq_rel);
+#endif
         // This is reached only on a failed operation: no context-state test is
         // added to a successful arithmetic step.
         // Construct the first error directly, rather than invoking optional's

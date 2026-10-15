@@ -7,9 +7,8 @@ void runtime_checked_chain() {
     // constexpr-only instantiations have no counters in this coverage binary.
     CHECK(checked_tests::constant_chain<T>());
     for (int value : {-32768, -2, -1, 0, 1, 2, 32767}) {
-        checked_tests::parity(fixedwide::from_integer<T>(value), [&](auto& c) {
-            return c.template from_integer<T>(value);
-        });
+        checked_tests::parity(fixedwide::from_integer<T>(value),
+                              [&](auto& c) { return c.template from_integer<T>(value); });
     }
 }
 } // namespace
