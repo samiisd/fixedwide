@@ -97,6 +97,16 @@ int main() {
     volatile long double out_long_double = to_float<long double>(*f128);
     if (out_float != 1.25f || out_double != 1.25 || out_long_double != 1.25L) return 1;
 
+    // 7. Accumulated success and sticky-error paths, including zero placeholders.
+    Checked checked;
+    const auto rate = checked.from_float<Fixed64<8>>(input);
+    const auto product = checked.mul_to<Fixed128<12>>(a, rate);
+    const auto sum = checked.add(product, Fixed128<12>{b});
+    if (!checked.result(sum)) return 1;
+    const auto failed = checked.add(Fixed64<12>::max(), Fixed64<12>::from_raw(1));
+    const auto later = checked.div(a, failed);
+    if (later != Fixed64<12>{} || checked.result(later).error() != ArithmeticError::overflow) return 1;
+
     // Assert that NO allocations occurred
     int total_allocations = g_alloc_count.load();
     std::cout << "Total heap allocations during fixedwide operations: " << total_allocations << "\n";

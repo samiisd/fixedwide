@@ -22,9 +22,9 @@ claimed anywhere, including in the README.
 | `conan create` | A recipe that packages something not usable |
 | `instruction-count regression gate` | A change that makes the library do measurably more work |
 | `fuzz smoke` | A crash reachable from arbitrary text input |
-| `coverage` | Nothing; it reports |
+| `coverage` | Native and portable each require 99% distinct source lines, 95% LLVM lines and 90% LLVM branches; profiles/maps must agree. |
 
-Examples are `ctest` tests, so every platform job also proves that all eight
+Examples are `ctest` tests, so every platform job also proves that all ten
 examples compile, run, and still print the right answers.
 
 The long-running checks — a 30-minute fuzz run and the competitor benchmark —

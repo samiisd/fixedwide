@@ -32,11 +32,12 @@ int main() {
 
     for (const auto& l : lines) {
         const auto unit = parse<Money>(l.unit_price).value();
-        const auto qty = from_integer<Money>(l.qty).value();
-
-        // Checked, and the overflow would be reported rather than wrapped.
-        const auto line_total = mul(unit, qty).value();
-        fw_subtotal = add(fw_subtotal, line_total).value();
+        Checked line;
+        const auto qty = line.from_integer<Money>(l.qty);
+        const auto line_total = line.mul(unit, qty);
+        const auto next_subtotal = line.add(fw_subtotal, line_total);
+        if (!line) return 1; // Do not publish a subtotal or line after failure.
+        fw_subtotal = next_subtotal;
 
         dbl_subtotal += std::atof(l.unit_price) * l.qty;
         std::printf("  %-10s %6s x %d = %8s\n", l.what, l.unit_price, l.qty, to_string(line_total).value().c_str());
@@ -44,8 +45,10 @@ int main() {
 
     // 8.25% tax, applied with a single rounding for the whole expression.
     constexpr Rate rate = "0.082500";
-    const auto tax = mul_to<Money>(fw_subtotal, rate, Rounding::nearest_away).value();
-    const auto total = add(fw_subtotal, tax).value();
+    Checked invoice;
+    const auto tax = invoice.mul_to<Money>(fw_subtotal, rate, Rounding::nearest_away);
+    const auto total = invoice.add(fw_subtotal, tax);
+    if (!invoice) return 1;
 
     const double dbl_tax = dbl_subtotal * 0.0825;
     const double dbl_total = dbl_subtotal + dbl_tax;

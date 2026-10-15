@@ -5,6 +5,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         rounding
         core
         unchecked
+        checked
         midpoint
         mixed
         chars
@@ -27,6 +28,10 @@ if(FIXEDWIDE_BUILD_TESTS)
         target_include_directories(test_${NAME} PRIVATE ${CMAKE_SOURCE_DIR})
         add_test(NAME fixedwide.${NAME} COMMAND test_${NAME})
     endforeach()
+
+    if(NOT MSVC)
+        target_compile_options(test_checked PRIVATE -fno-exceptions)
+    endif()
 
     # Literal-only consumers need neither the compiled library nor exceptions.
     # Do not link fixedwide here: that would hide accidental runtime references.
@@ -217,13 +222,14 @@ if(Boost_FOUND AND (FIXEDWIDE_BUILD_TESTS OR FIXEDWIDE_BUILD_ORACLE_TESTS))
         test_coverage_text.cpp
         test_coverage_arithmetic.cpp
         test_coverage_adapters.cpp
-        test_coverage_mixed.cpp)
+        test_coverage_mixed.cpp
+        test_coverage_checked.cpp)
     target_link_libraries(test_coverage PRIVATE fixedwide::fixedwide)
     target_include_directories(test_coverage PRIVATE ${CMAKE_SOURCE_DIR} ${Boost_INCLUDE_DIRS})
     # These tests share a source-coverage map. A single unity translation unit
     # avoids competing unused/instantiated mappings for the same header code.
     set_target_properties(test_coverage PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 0)
-    foreach(SUITE wide text arithmetic adapters format_adapters mixed)
+    foreach(SUITE wide text arithmetic adapters format_adapters mixed checked)
         add_test(NAME fixedwide.coverage_${SUITE} COMMAND test_coverage ${SUITE})
     endforeach()
     # The existing fixedwide.format test documents the libc++abi format_error

@@ -3,9 +3,16 @@
 fixedwide separates decimal representation from error-handling policy. The same
 `Fixed64<8>` can be used with checked functions at an input boundary and ordinary
 arithmetic inside a domain whose bounds are already established. There is no
-second storage type, wrapper, runtime policy flag or conversion between modes.
+second storage type, per-value wrapper, global policy flag or conversion between modes.
 
-This API is available since v0.6.4; earlier releases retain the checked API only.
+The unchecked API is available since v0.6.4. Since v0.6.8,
+[accumulated checks](api_reference.md#accumulated-checks) offer a third choice:
+`Checked c; auto sum = c.add(a, b); ...; return c.result(sum);`.
+When bounds are not proven, accumulated checked arithmetic is the readable
+alternative to unchecked arithmetic. Every member still calls a checked kernel.
+The context has local error status; it does not change plain operators. Never
+use unchecked operators on failed-chain placeholders or publish an intermediate
+before validating the context.
 
 ```cpp
 #include <fixedwide/all.hpp>

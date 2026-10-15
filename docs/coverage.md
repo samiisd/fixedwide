@@ -22,7 +22,7 @@ Repeat in a different build/output directory with
 Boost headers are test-only dependencies; they do not enter installed headers.
 
 The driver first runs **all CTest tests**. It then runs the comprehensive
-`test_coverage all` executable to collect a coherent coverage map. Its five
+`test_coverage all` executable to collect a coherent coverage map. Its constituent
 suites also run as separate CTest cases. A unity translation unit avoids
 incompatible duplicate template maps across independently linked tests. The
 implementation library remains separately compiled as usual.
@@ -62,6 +62,20 @@ standard-library, test, example, fuzz and benchmark code does not. Compile-time
 only helpers are also exercised at runtime against independent oracles where
 that is meaningful. Uninstantiated template combinations, other platforms and
 uncompiled preprocessor branches are not magically covered by a percentage.
+
+## Accumulated checked coverage
+
+`test_checked` exercises the standalone public header and runs with exceptions
+disabled on GCC/Clang. `test_coverage_checked.cpp` contributes the same cases to
+the comprehensive unity target and `fixedwide.coverage.checked`; standalone
+passing assertions are not substituted for coverage of that target.
+`test_no_alloc` also executes a successful mixed chain and a failing chain.
+Native and portable CI retain the same line/branch gates, with no new exclusions.
+The tests compare every member with its existing checked free function, including
+all error classes, all six rounding modes, signed extrema, mixed scales, legacy
+aliases, raw division, safe post-failure continuation and generic value/status
+hooks. Static assertions exercise success and failure in constexpr chains at
+all public widths. Kernel-level independent oracle tests remain unchanged.
 
 ## What the comprehensive suite checks
 

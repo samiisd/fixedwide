@@ -68,7 +68,30 @@ The string initializer is checked during compilation and constructs a `Money` di
 
 Different widths/scales are distinct types. Two aliases with identical width and scale are the **same** type: this is scale safety, not dimensional analysis.
 
-## Checked or unchecked
+<a id="checked-or-unchecked"></a>
+## Checked, accumulated checked, or unchecked
+
+Since v0.6.8, a local `Checked` context lets a formula remain checked without an
+`expected` test after each operation. Include `<fixedwide/checked.hpp>` or
+`<fixedwide/all.hpp>`:
+
+```cpp
+using Money = fixedwide::Fixed128<10>;
+fixedwide::Checked c;
+const auto base = c.add(Money{"10000"}, Money{"250"});
+const auto equity = c.add(base, Money{"-120.25"});
+const auto available = c.sub(equity, Money{"300"});
+auto result = c.result(available); // expected<Money, ArithmeticError>; 9829.75
+```
+
+Every step delegates to its existing checked function. A failed step returns
+zero; later steps remain checked, and the **first error wins**. Do not publish
+intermediate values before testing the context: `result` never hands out a value
+after failure. `take(expected)` integrates caller-defined operations. The
+[complete contract](docs/api_reference.md#accumulated-checks) and
+[executable equity/margin example](examples/10_checked_chain.cpp) cover explicit
+destinations, rounding and the single publication boundary.
+
 
 The unchecked API is available since v0.6.4. Include `<fixedwide/unchecked.hpp>` or `<fixedwide/all.hpp>` for same-type `+`, `-`, `*`, `/`, `%`, unary signs and compound assignments. Existing checked calls do not change.
 

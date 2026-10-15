@@ -32,6 +32,17 @@ void test_readme_opening_snippet() {
     CHECK(overflow_result.error() == fixedwide::ArithmeticError::overflow);
 }
 
+void test_readme_accumulated_snippet() {
+    using Money = fixedwide::Fixed128<10>;
+    fixedwide::Checked c;
+    const auto base = c.add(Money{"10000"}, Money{"250"});
+    const auto equity = c.add(base, Money{"-120.25"});
+    const auto available = c.sub(equity, Money{"300"});
+    auto result = c.result(available);
+    CHECK(result && *result == Money{"9829.75"});
+    CHECK(c.error() == std::nullopt);
+}
+
 void test_readme_constants_snippet() {
     using Money = fixedwide::Fixed64<2>;
     constexpr Money price = "19.99";
@@ -93,6 +104,7 @@ void test_readme_bankers_rounding_snippet() {
 
 int main() {
     test_readme_opening_snippet();
+    test_readme_accumulated_snippet();
     test_readme_constants_snippet();
     test_readme_scale12_snippet();
     test_readme_types_snippet();
