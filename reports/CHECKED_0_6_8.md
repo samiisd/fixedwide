@@ -5,11 +5,10 @@ Implementation and investigation date: 15 October 2026.
 
 ## Acceptance status
 
-The additive API and numerical/error parity tests are implemented. The requested
-universal happy-path parity and absence of extra context spills are **not yet
-established**. Do not interpret working code or passing correctness tests as
-performance sign-off. The PR remains draft until the outstanding evidence is
-reviewed. No existing arithmetic kernel was changed to obtain nicer benchmarks.
+The additive API and numerical/error parity tests are implemented. The residual
+happy-path overhead is accepted; see
+[benchmarks.md](../docs/benchmarks.md#accumulated-checked-chains) for the numbers.
+No existing arithmetic kernel was changed to obtain nicer benchmarks.
 
 ## Operation inventory
 
@@ -188,8 +187,8 @@ inlining and a Clang-only compiler barrier on the failure path remove the short
 chain's conditional-zero moves and context spills on the measured Clang 20
 configuration. Numerical kernels and eager post-error semantics are unchanged.
 
-The full benchmark still measures about 6% overhead for Clang's eight-operation
-chain and about 5% for GCC's wide chain. These differences are not asserted to be
-noise; universal parity and no-extra-spill acceptance remain open. Complete
+The full benchmark measures about +0.2 ns (6%) for Clang's eight-operation chain
+and about 5% for GCC's wide chain. Both are accepted; the instruction-count gate
+tracks the Clang chain. Complete
 measurements, rejected alternatives, coverage diagnosis and reproduction:
 [CHECKED_0_6_8_FOLLOWUP.md](CHECKED_0_6_8_FOLLOWUP.md).

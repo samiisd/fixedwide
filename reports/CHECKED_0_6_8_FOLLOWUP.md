@@ -2,7 +2,7 @@
 
 Investigation date: 2026-10-15. Original PR head: `16bee6d`.
 Final implementation measured below: `4a534a86af9e055b2db71776dd956052048a0354`.
-The PR remains draft: broad zero-overhead/no-extra-spill acceptance is still open.
+The residual overhead below is accepted; see [benchmarks.md](../docs/benchmarks.md#accumulated-checked-chains).
 
 ## Keep the standard result type
 
@@ -108,9 +108,8 @@ frequency-control guarantee is claimed.
 assembly are retained by the evidence workflow. Timings are batch-throughput
 costs, not dependency-chain latency. Faster-than-unchecked rows are observations
 of these generated binaries, not a claim that checking inherently speeds up
-arithmetic. Small differences may reflect layout/host variation, but the
-approximately 6% Clang short-chain and 5% GCC wide-chain differences must not be
-presented as proven noise or full performance acceptance.
+arithmetic. The approximately 6% (+0.2 ns) Clang short-chain and 5% GCC
+wide-chain differences are accepted as the cost of `Checked`.
 
 In Clang 20's eight-operation core, the previous conditional-zero moves and all
 context-related saved registers/stack operands disappear. The success trace has

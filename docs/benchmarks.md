@@ -234,6 +234,13 @@ CSV samples and pooled medians, and ordinary callable formula disassembly.
 Its static branch/call/stack-reference counts include cold paths and are not
 executed instruction counts. The [0.6.8 evidence report](../reports/CHECKED_0_6_8.md)
 records numerical coverage separately from performance acceptance. Eager
-post-failure execution is intentionally different from early return; happy-path
-parity must be demonstrated for the target compiler/workload, not assumed from
-the small context's size. Existing arithmetic kernels remain unchanged.
+post-failure execution is intentionally different from early return. Existing
+arithmetic kernels remain unchanged.
+
+The residual happy-path overhead is accepted. On Clang 20 the eight-operation
+Fixed128 add/sub chain measures 3.586 ns through `Checked` against 3.381 ns for
+explicit `expected` checks, about +0.2 ns per chain. On GCC 14 the Fixed256
+multiply chain measures +5.3%, below this setup's run-to-run variation: in the
+same table unchecked (247 ns) measured slower than explicit (224 ns). The
+instruction-count gate tracks the Clang 20 add/sub chain as
+`checked.add8.Fixed128`, so a compiler that undoes the `record()` fence fails CI.

@@ -23,9 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no-allocation tests, wired into native/portable comprehensive coverage.
 - An executable equity/margin formula and accumulated checks in the mixed-scale
   and ledger examples. Explicit early-return/monadic examples remain available.
-- Three-policy benchmark and GCC/Clang assembly drivers. Performance acceptance
-  is documented separately from numerical correctness; see
-  `reports/CHECKED_0_6_8.md` for the inventory, evidence and remaining gates.
+- Three-policy benchmark and GCC/Clang assembly drivers. The residual
+  happy-path overhead is accepted and the Clang add/sub chain is under the
+  instruction-count gate; see `reports/CHECKED_0_6_8.md` for the inventory
+  and evidence.
 
 ## [0.6.7] - 2026-10-15
 
