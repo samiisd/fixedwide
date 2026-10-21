@@ -1,0 +1,16 @@
+# Identical native and forced-portable results; sizeof(long double)=16, digits=64, radix=2
+# Source: run 39653814479, artifact 12369999488, log10-report/accuracy-{native,portable}.csv
+# Fixedwide was separately validated against the integer oracle with zero mismatches in all rows.
+type,distribution,values,double_floor_mismatches,long_double_floor_mismatches
+Fixed32_4,uniform,1024,0,0
+Fixed64_8,uniform,1024,0,0
+Fixed128_12,uniform,1024,0,0
+Fixed256_18,uniform,1024,0,0
+Fixed32_4,log_uniform,1024,0,3
+Fixed64_8,log_uniform,1024,0,3
+Fixed128_12,log_uniform,1024,0,16
+Fixed256_18,log_uniform,1024,0,0
+Fixed32_4,boundaries,1024,0,36
+Fixed64_8,boundaries,1024,72,75
+Fixed128_12,boundaries,1024,201,228
+Fixed256_18,boundaries,1024,263,288

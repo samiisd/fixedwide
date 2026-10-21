@@ -108,18 +108,15 @@ void run(const char* type, const char* distribution) {
         });
     };
     measure("fixedwide", [&](std::size_t i) { return fw::log10_floor(fixed[i]).value_or(-1000); });
-    measure("double_e2e", [&](std::size_t i) {
-        return static_cast<int>(std::floor(std::log10(fw::to_float<double>(fixed[i]))));
-    });
+    measure("double_e2e",
+            [&](std::size_t i) { return static_cast<int>(std::floor(std::log10(fw::to_float<double>(fixed[i])))); });
     measure("long_double_e2e", [&](std::size_t i) {
         return static_cast<int>(std::floor(std::log10(fw::to_float<long double>(fixed[i]))));
     });
-    measure("double_floor_preconverted", [&](std::size_t i) {
-        return static_cast<int>(std::floor(std::log10(doubles[i])));
-    });
-    measure("long_double_floor_preconverted", [&](std::size_t i) {
-        return static_cast<int>(std::floor(std::log10(long_doubles[i])));
-    });
+    measure("double_floor_preconverted",
+            [&](std::size_t i) { return static_cast<int>(std::floor(std::log10(doubles[i]))); });
+    measure("long_double_floor_preconverted",
+            [&](std::size_t i) { return static_cast<int>(std::floor(std::log10(long_doubles[i]))); });
     // Full fractional logarithms on already converted inputs. These do MORE
     // mathematical work and are separately labelled, not equivalent APIs.
     measure("double_log_only", [&](std::size_t i) { return std::log10(doubles[i]); });

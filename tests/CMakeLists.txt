@@ -269,7 +269,7 @@ if(FIXEDWIDE_BUILD_TESTS AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
             set(NAME test_${SOURCE}_ld${WIDTH})
             add_executable(${NAME} test_${SOURCE}.cpp)
             target_compile_features(${NAME} PRIVATE cxx_std_23)
-            target_include_directories(test_${SOURCE}_ld${WIDTH} PRIVATE ${PROJECT_SOURCE_DIR}/include)
+            target_include_directories(${NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include)
             if(Boost_FOUND)
                 target_include_directories(${NAME} PRIVATE ${Boost_INCLUDE_DIRS})
             endif()

@@ -49,8 +49,7 @@ inline constexpr auto log10_powers = [] {
     unsigned bits = 0;
     for (std::size_t i = 4; i != 0; --i) {
         if (raw.limbs[i - 1] != 0) {
-            bits = static_cast<unsigned>((i - 1) * 64) +
-                   static_cast<unsigned>(std::bit_width(raw.limbs[i - 1]));
+            bits = static_cast<unsigned>((i - 1) * 64) + static_cast<unsigned>(std::bit_width(raw.limbs[i - 1]));
             break;
         }
     }
