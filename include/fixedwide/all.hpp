@@ -10,6 +10,7 @@
 #include <fixedwide/error.hpp>
 #include <fixedwide/wide.hpp>
 #include <fixedwide/arithmetic.hpp>
+#include <fixedwide/log10.hpp>
 #include <fixedwide/mixed.hpp>
 #include <fixedwide/unchecked.hpp>
 #include <fixedwide/checked.hpp>

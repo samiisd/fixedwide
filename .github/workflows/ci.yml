@@ -357,6 +357,9 @@ jobs:
           cat current-clang.csv
       - name: Compare clang against its committed baseline
         run: python3 scripts/compare_icount.py benchmarks/baseline/x86_64-clang-20.csv current-clang.csv
+      - name: Decimal exponent versus libm (native and portable)
+        env: { CXX: g++-14 }
+        run: bash scripts/bench_log10.sh log10-report
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -364,6 +367,7 @@ jobs:
           path: |
             current.csv
             current-clang.csv
+            log10-report/
 
   fuzz:
     name: fuzz smoke
@@ -382,8 +386,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends cmake ninja-build
       - run: |
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_COMPILER=clang++-20 \
-            -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_FUZZER=ON \
+            -DCMAKE_CXX_COMPILER=clang++-20 -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_FUZZER=ON \
             -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF
           cmake --build build --target fixedwide_fuzz
       # Short on a pull request; the nightly workflow runs it for much longer.
