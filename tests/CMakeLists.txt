@@ -7,6 +7,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         unchecked
         checked
         midpoint
+        log10
         mixed
         chars
         literal
