@@ -185,6 +185,8 @@ if(FIXEDWIDE_BUILD_TESTS)
         constructor_embedded_nul "literal_error_invalid"
         constructor_unterminated "literal_error_invalid"
         constructor_runtime     "constant expression|constant-expression|did not evaluate to a constant"
+        constructor_template_inexact "literal_error_too_precise"
+        constructor_template_runtime "constant expression|constant-expression|did not evaluate to a constant"
         operator_runtime        "constant expression|constant-expression|did not evaluate to a constant"
         operator_inexact        "literal_error_too_precise"
     )

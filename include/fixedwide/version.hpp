@@ -6,9 +6,9 @@
 
 #define FIXEDWIDE_VERSION_MAJOR 0
 #define FIXEDWIDE_VERSION_MINOR 6
-#define FIXEDWIDE_VERSION_PATCH 8
+#define FIXEDWIDE_VERSION_PATCH 9
 #define FIXEDWIDE_VERSION_PRERELEASE ""
-#define FIXEDWIDE_VERSION_STRING "0.6.8"
+#define FIXEDWIDE_VERSION_STRING "0.6.9"
 
 namespace fixedwide {
 /// Major version. 0 while the API is still allowed to change.
@@ -16,9 +16,9 @@ inline constexpr unsigned version_major = 0;
 /// Minor version.
 inline constexpr unsigned version_minor = 6;
 /// Patch version.
-inline constexpr unsigned version_patch = 8;
+inline constexpr unsigned version_patch = 9;
 /// Pre-release tag, empty for a final release.
 inline constexpr const char* version_prerelease = "";
-/// The full version, as in "0.6.8".
-inline constexpr const char* version_string = "0.6.8";
+/// The full version, as in "0.6.9".
+inline constexpr const char* version_string = "0.6.9";
 } // namespace fixedwide

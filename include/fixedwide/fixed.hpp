@@ -28,6 +28,10 @@ constexpr T compute_pow10(unsigned exp) noexcept {
 
 namespace detail {
 
+// The defaulted constructor argument avoids LLVM#219272: Clang can otherwise
+// drop a consteval temporary's immediate invocation during template reuse.
+struct LiteralConstructorTag {};
+
 template<std::size_t Bits>
 [[nodiscard]] constexpr wide::uint256 limit_magnitude_u256(bool negative) noexcept {
     static_assert(Bits == 8 || Bits == 16 || Bits == 32 || Bits == 64 || Bits == 128 || Bits == 256,
@@ -180,7 +184,7 @@ struct basic_fixed {
     /// <fixedwide/literal.hpp> (or all.hpp) for the definition. Invalid,
     /// overflowing or inexact text fails to compile; runtime text needs parse.
     template<std::size_t N>
-    consteval basic_fixed(const char (&text)[N]) noexcept;
+    consteval basic_fixed(const char (&text)[N], detail::LiteralConstructorTag = {}) noexcept;
 
     /// Widening conversion at the same scale: every value of the narrower type
     /// is representable, so this cannot fail. Explicit, because widening is a

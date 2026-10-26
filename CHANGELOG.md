@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.9] - 2026-10-26
+
+### Fixed
+- Preserve compile-time construction of braced string literals inside function
+  templates and generic lambdas on affected Clang versions (LLVM#219272).
+  An internal defaulted constructor argument avoids the compiler's temporary
+  reuse path. Literal validation, numeric results and storage layout are unchanged.
+  User-defined `consteval` wrappers need the matching constructor workaround on
+  affected Clang versions; fixing the inner fixedwide type cannot repair an outer
+  constructor's immediate invocation.
+- Add header-only regression coverage for ordinary template expressions,
+  aggregate initializers and tagged wrappers, without requiring caller-side
+  `constexpr` variables or alternate literal syntax.
+
+### Added
+- Exact `log10_floor` with integer-oracle and boundary tests, already merged
+  since 0.6.8.
+
 ## [0.6.8] - 2026-10-15
 
 ### Added
