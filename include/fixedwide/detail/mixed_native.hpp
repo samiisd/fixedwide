@@ -4,12 +4,13 @@
 #include <fixedwide/rounding.hpp>
 #include <compare>
 #include <expected>
+#include <optional>
 
 // Narrow fast paths for the mixed-width, mixed-scale operations.
 //
-// The general kernels build an exact rational in 1024-bit limbs and divide with
-// Knuth's algorithm. That is the right answer for Fixed256 operands, and absurd
-// for a Fixed64<8> against a Fixed64<12>. Measured before this header existed:
+// The general kernels build an exact rational in 128- to 1024-bit limb tiers
+// and divide with Knuth's algorithm. Native arithmetic avoids that setup when
+// the values fit. Measured before this header existed:
 //
 //     same-type Fixed128<12> add     0.54 ns
 //     add_to across scales         418    ns
@@ -19,10 +20,11 @@
 // against a spec that asks the abstraction to cost "essentially nothing beyond
 // the arithmetic actually required".
 //
-// Every bound below is a compile-time constant built from the widths and scales
-// in the types, so a given call either takes the native path unconditionally or
-// never mentions it. When the bound does not hold, the general kernel runs
-// unchanged: this adds a fast path, it does not narrow the contract.
+// Compile-time bounds keep the original narrow paths unconditional. When a
+// type's bound does not hold, checked runtime attempts can still use native
+// arithmetic for its actual values. An intermediate overflow declines the
+// attempt; it is not a public overflow, since rescaling or cancellation may
+// produce a representable result in the unchanged general kernel.
 
 #if defined(__SIZEOF_INT128__) && !defined(FIXEDWIDE_FORCE_PORTABLE)
 #define FIXEDWIDE_HAS_MIXED_NATIVE 1
@@ -80,8 +82,8 @@ struct Divided {
     u128 remainder;
 };
 
-// Every divisor that reaches here is a power of ten, and the ones a mixed
-// operation actually uses fit 64 bits. A generic 128-by-128 divide is a
+// Rescale divisors are powers of ten; div and mul_div also pass scaled raw
+// divisors. A generic 128-by-128 divide is a
 // __udivti3 call out to libgcc, and it was the whole cost of a mixed rescale:
 // one or two hardware divisions do the same work. The generic form stays for a
 // divisor past 2^64 and for constant evaluation, where no instruction runs.
@@ -143,7 +145,9 @@ struct Divided {
         if (increment && quotient == limit) return std::unexpected(ArithmeticError::overflow);
         quotient += static_cast<u128>(increment);
     }
-    return negative ? -static_cast<i128>(quotient) : static_cast<i128>(quotient);
+    // Restore the sign before converting to signed: a magnitude of 2^127 is
+    // valid for a negative result, but negating signed INT128_MIN would be UB.
+    return static_cast<i128>(negative ? u128{0} - quotient : quotient);
 }
 
 // The destination's representable range, as signed 128-bit bounds.
@@ -165,6 +169,56 @@ template<std::size_t Bits>
         return std::unexpected(ArithmeticError::overflow);
     }
     return value;
+}
+
+// No attempt is distinct from a checked error. In particular, overflow of an
+// intermediate must still let the general kernel evaluate the whole expression.
+using Attempt = std::optional<std::expected<i128, ArithmeticError>>;
+
+template<typename Raw>
+[[nodiscard]] constexpr bool try_narrow(Raw value, i128& result) noexcept {
+    result = static_cast<i128>(value);
+    return true;
+}
+
+[[nodiscard]] constexpr bool try_narrow(wide::int256 value, i128& result) noexcept {
+    // The extension must match bit 127, not merely the original sign bit.
+    const std::uint64_t extension = static_cast<std::int64_t>(value.limbs[1]) < 0 ? ~std::uint64_t{0} : 0;
+    if (value.limbs[2] != extension || value.limbs[3] != extension) return false;
+    result = static_cast<i128>((static_cast<u128>(value.limbs[1]) << 64) | value.limbs[0]);
+    return true;
+}
+
+template<unsigned K>
+[[nodiscard]] constexpr bool try_scale(i128 value, i128& result) noexcept {
+    static_assert(K <= 38);
+    constexpr i128 factor = pow10_v<K>;
+    // The factor is positive; truncation toward zero gives the exact lower
+    // input bound too. Reject before multiplying, without a 256-bit product.
+    if (value < dest_min<128>() / factor || value > dest_max<128>() / factor) return false;
+    result = value * factor;
+    return true;
+}
+
+template<std::size_t BitsDest, unsigned Ds, unsigned Dd>
+[[nodiscard]] constexpr Attempt try_rescale(i128 value, Rounding rounding) noexcept {
+    // 10^38 fits signed int128, 10^39 does not. Guard the instantiation itself:
+    // Fixed128 products and Fixed256 scales can have exponents up to 76.
+    constexpr unsigned gap = Dd >= Ds ? Dd - Ds : Ds - Dd;
+    if constexpr (gap > 38) {
+        return std::nullopt;
+    } else {
+        if !consteval {
+            if constexpr (Dd >= Ds) {
+                i128 scaled;
+                if (!try_scale<gap>(value, scaled)) return std::nullopt;
+                return check_range<BitsDest>(scaled);
+            } else {
+                return divide_rounded(value, pow10_v<gap>, rounding, limit_magnitude_u128<BitsDest>(value < 0));
+            }
+        }
+        return std::nullopt;
+    }
 }
 
 // The magnitude of a signed BitsA x BitsB product needs BitsA + BitsB - 2 bits,
@@ -194,6 +248,17 @@ template<std::size_t BitsSrc, unsigned Ds, std::size_t BitsDest, unsigned Dd, ty
         return divide_rounded(static_cast<i128>(a), pow10_v<Ds - Dd>, rounding,
                               limit_magnitude_u128<BitsDest>(a < RawSrc{0}));
     }
+}
+
+template<unsigned Ds, std::size_t BitsDest, unsigned Dd, typename RawSrc>
+[[nodiscard]] constexpr Attempt try_cast(RawSrc a, Rounding rounding) noexcept {
+    i128 value;
+    if (!try_narrow(a, value)) {
+        // With no scale change a non-narrow raw value cannot become smaller.
+        if constexpr (Ds == Dd && BitsDest <= 128) return std::unexpected(ArithmeticError::overflow);
+        return std::nullopt;
+    }
+    return try_rescale<BitsDest, Ds, Dd>(value, rounding);
 }
 
 // --- add_to / sub_to -----------------------------------------------------
@@ -227,6 +292,57 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::si
     }
 }
 
+template<unsigned Da, unsigned Db, std::size_t BitsDest, unsigned Dd, typename RawA, typename RawB>
+[[nodiscard]] constexpr Attempt try_add_sub(RawA a, RawB b, bool subtract, Rounding rounding) noexcept {
+    constexpr unsigned sum_scale = Da < Db ? Db : Da;
+    static_assert(Da <= 38 && Db <= 38);
+    if !consteval {
+        i128 lhs, rhs, sum;
+        if (!try_scale<sum_scale - Da>(static_cast<i128>(a), lhs) ||
+            !try_scale<sum_scale - Db>(static_cast<i128>(b), rhs))
+            return std::nullopt;
+        const bool overflow =
+            subtract ? __builtin_sub_overflow(lhs, rhs, &sum) : __builtin_add_overflow(lhs, rhs, &sum);
+        if (overflow) return std::nullopt;
+        return try_rescale<BitsDest, sum_scale, Dd>(sum, rounding);
+    }
+    return std::nullopt;
+}
+
+// Equal scales need only signed integer arithmetic, even when the destination
+// or an operand is 256 bits. Try two limbs first, then use the existing wrapping
+// limb operations and their signed-overflow rule. No rational kernel is needed.
+template<typename Dest, typename RawA, typename RawB>
+[[nodiscard]] constexpr std::expected<Dest, ArithmeticError> add_sub_same_scale(RawA a, RawB b,
+                                                                                bool subtract) noexcept {
+    if !consteval {
+        i128 lhs, rhs, sum;
+        if (try_narrow(a, lhs) && try_narrow(b, rhs)) {
+            const bool overflow =
+                subtract ? __builtin_sub_overflow(lhs, rhs, &sum) : __builtin_add_overflow(lhs, rhs, &sum);
+            if (!overflow) {
+                const auto checked = check_range<Dest::bits>(sum);
+                if (!checked) return std::unexpected(checked.error());
+                return Dest::from_raw(static_cast<typename Dest::raw_type>(*checked));
+            }
+        }
+    }
+    const auto lhs = detail::to_int256_raw(a);
+    const auto rhs = detail::to_int256_raw(b);
+    const auto sum = subtract ? lhs - rhs : lhs + rhs;
+    const bool sign_changed = lhs.is_negative() != sum.is_negative();
+    const bool overflow = subtract ? (lhs.is_negative() != rhs.is_negative() && sign_changed)
+                                   : (lhs.is_negative() == rhs.is_negative() && sign_changed);
+    if (overflow) return std::unexpected(ArithmeticError::overflow);
+    if constexpr (Dest::bits < 256) {
+        i128 narrow;
+        if (!try_narrow(sum, narrow)) return std::unexpected(ArithmeticError::overflow);
+        const auto checked = check_range<Dest::bits>(narrow);
+        if (!checked) return std::unexpected(checked.error());
+    }
+    return detail::from_int256_raw<Dest>(sum);
+}
+
 // --- mul_to --------------------------------------------------------------
 // A signed 64x64 product always fits signed 128 bits, and it carries scale
 // Da + Db. Only the conversion to the destination scale rounds.
@@ -249,6 +365,75 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::si
     } else {
         return divide_rounded(product, pow10_v<Da + Db - Dd>, rounding, limit_magnitude_u128<BitsDest>(product < 0));
     }
+}
+
+#if defined(__clang__)
+// Keep narrow magnitudes narrow so Clang can eliminate their high limbs.
+template<typename Raw>
+[[nodiscard]] constexpr auto product_magnitude(Raw raw) noexcept {
+    const i128 value = static_cast<i128>(raw);
+    if constexpr (sizeof(Raw) <= sizeof(std::uint64_t)) {
+        const auto bits = static_cast<std::uint64_t>(value);
+        return value < 0 ? std::uint64_t{0} - bits : bits;
+    } else {
+        const auto bits = static_cast<u128>(value);
+        return value < 0 ? u128{0} - bits : bits;
+    }
+}
+#endif
+
+template<typename RawA, typename RawB>
+[[nodiscard]] constexpr bool try_product(RawA a, RawB b, i128& result) noexcept {
+#if defined(__clang__)
+    // Clang's signed overflow builtin computes a full 256-bit product. Use
+    // unsigned limbs, preserving the raw widths to simplify a 128x64 product.
+    const u128 lhs = product_magnitude(a);
+    const u128 rhs = product_magnitude(b);
+    const auto lhs_high = static_cast<std::uint64_t>(lhs >> 64);
+    const auto rhs_high = static_cast<std::uint64_t>(rhs >> 64);
+    const auto lhs_low = static_cast<std::uint64_t>(lhs);
+    const auto rhs_low = static_cast<std::uint64_t>(rhs);
+    if (lhs_high != 0 && rhs_high != 0) return false;
+    constexpr bool has_narrow_operand = sizeof(RawA) <= sizeof(std::uint64_t) || sizeof(RawB) <= sizeof(std::uint64_t);
+    u128 cross = 0;
+    if (has_narrow_operand || (lhs_high | rhs_high) != 0) {
+        if constexpr (has_narrow_operand) {
+            // One high limb is known zero. Its product disappears, avoiding
+            // a runtime size branch for the remaining cross product.
+            cross = static_cast<u128>(lhs_high) * rhs_low + static_cast<u128>(rhs_high) * lhs_low;
+        } else {
+            cross = lhs_high != 0 ? static_cast<u128>(lhs_high) * rhs_low : static_cast<u128>(rhs_high) * lhs_low;
+        }
+        // Reject before the low multiply: its carry can only increase this.
+        if ((cross >> 64) != 0) return false;
+    }
+    const u128 low = static_cast<u128>(lhs_low) * rhs_low;
+    const u128 upper = cross + (low >> 64);
+    if ((upper >> 64) != 0) return false;
+    const u128 product = (upper << 64) | static_cast<std::uint64_t>(low);
+    const bool negative = (static_cast<i128>(a) < 0) != (static_cast<i128>(b) < 0);
+    if (product > limit_magnitude_u128<128>(negative)) return false;
+    result = static_cast<i128>(negative ? u128{0} - product : product);
+    return true;
+#else
+    // GCC already specializes the builtin efficiently for narrow operands.
+    return !__builtin_mul_overflow(static_cast<i128>(a), static_cast<i128>(b), &result);
+#endif
+}
+
+// Keep Clang's optional/expected producer visible to its immediate consumer;
+// outlining it would materialize both states and retain dynamic rounding.
+template<unsigned Da, unsigned Db, std::size_t BitsDest, unsigned Dd, typename RawA, typename RawB>
+#if defined(__clang__)
+[[gnu::always_inline]]
+#endif
+[[nodiscard]] constexpr Attempt try_mul(RawA a, RawB b, Rounding rounding) noexcept {
+    if !consteval {
+        i128 product;
+        if (!try_product(a, b, product)) return std::nullopt;
+        return try_rescale<BitsDest, Da + Db, Dd>(product, rounding);
+    }
+    return std::nullopt;
 }
 
 // --- div_to --------------------------------------------------------------

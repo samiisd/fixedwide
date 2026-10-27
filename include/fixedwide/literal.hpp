@@ -116,7 +116,7 @@ template<class T, std::size_t N>
 
 template<std::size_t Bits, unsigned Decimals>
 template<std::size_t N>
-consteval basic_fixed<Bits, Decimals>::basic_fixed(const char (&text)[N]) noexcept
+consteval basic_fixed<Bits, Decimals>::basic_fixed(const char (&text)[N], detail::LiteralConstructorTag) noexcept
     : m_raw(literal<basic_fixed>(text).raw()) {}
 
 } // namespace fixedwide

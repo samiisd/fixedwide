@@ -1,0 +1,185 @@
+Task date: 2026-10-27. Process timezone: UTC.
+Google Benchmark v1.9.4, pinned commit eddb0241389718a23a42db6af5f0164b6e0139af.
+Nine repetitions; adaptive minimum CPU time 0.1s, warmup 0.02s; random interleaving enabled.
+CPU affinity 0; shared virtual host, no frequency lock or exclusive CPU reservation.
+Both sides use noinline wrappers and DoNotOptimize(expected), with the same immutable samples.
+Summary uses native Google Benchmark CPU-time median aggregates in nanoseconds.
+Exact source hashes, compile/link commands, binary/library hashes follow.
+Repository HEAD: 544c4ab09735cc809f83850e9a380211bfa4a1bc
+Worktree status:
+M  .github/workflows/ci.yml
+M  CHANGELOG.md
+M  benchmarks/CMakeLists.txt
+M  benchmarks/runtime_narrow_bench.cpp
+M  docs/benchmarks.md
+M  fuzz/fuzz.cpp
+M  include/fixedwide/detail/mixed_native.hpp
+M  reports/runtime-narrow/README.md
+A  reports/runtime-narrow/exploratory-custom/README.md
+A  reports/runtime-narrow/exploratory-custom/samples-clang19-native.csv
+A  reports/runtime-narrow/exploratory-custom/samples-clang19-portable.csv
+A  reports/runtime-narrow/exploratory-custom/samples-gcc14-native.csv
+A  reports/runtime-narrow/exploratory-custom/samples-gcc14-portable.csv
+A  reports/runtime-narrow/exploratory-custom/supported-environment.txt
+A  reports/runtime-narrow/exploratory-custom/validation-clang19-native.csv
+A  reports/runtime-narrow/exploratory-custom/validation-clang19-portable.csv
+A  reports/runtime-narrow/exploratory-custom/validation-gcc14-native.csv
+A  reports/runtime-narrow/exploratory-custom/validation-gcc14-portable.csv
+A  reports/runtime-narrow/guard-experiment/README.md
+A  reports/runtime-narrow/guard-experiment/SHA256SUMS
+A  reports/runtime-narrow/guard-experiment/benchmark.cpp
+A  reports/runtime-narrow/guard-experiment/candidates.cpp
+A  reports/runtime-narrow/guard-experiment/clang19.json
+A  reports/runtime-narrow/guard-experiment/gcc14.json
+A  reports/runtime-narrow/reciprocal-clang19.txt
+R  reports/runtime-narrow/reciprocal-experiment-gcc13-environment.txt -> reports/runtime-narrow/reciprocal-environment.txt
+D  reports/runtime-narrow/reciprocal-experiment-gcc13.txt
+R  reports/runtime-narrow/reciprocal-experiment-gcc13.cpp -> reports/runtime-narrow/reciprocal-experiment.cpp
+A  reports/runtime-narrow/reciprocal-gcc14.txt
+A  reports/runtime-narrow/validation/clang19-coverage-native.txt
+A  reports/runtime-narrow/validation/clang19-coverage-portable.txt
+A  reports/runtime-narrow/validation/clang19-fuzz-native.txt
+A  reports/runtime-narrow/validation/clang19-fuzz-portable.txt
+A  reports/runtime-narrow/validation/clang19-sanitize.txt
+A  reports/runtime-narrow/validation/gcc14-icount-comparison.txt
+A  reports/runtime-narrow/validation/gcc14-icount-environment.txt
+A  reports/runtime-narrow/validation/gcc14-icount.csv
+A  reports/runtime-narrow/validation/gcc14-native-ctest.txt
+A  reports/runtime-narrow/validation/gcc14-portable-ctest.txt
+M  scripts/bench_runtime_narrow.sh
+M  tests/test_mixed_runtime.cpp
+?? reports/runtime-narrow/google-benchmark/
+8099c949162231e22f65180d862cada4c7fe83ecfb73380507324d1b40da0810  benchmarks/runtime_narrow_bench.cpp
+ba996e96cdb38d258b9809e70899795239a93efa7b8814010c6d3b493c3a74b8  benchmarks/CMakeLists.txt
+9ce414c2454400468688b8d736bff54601704a4f45234980708afacbfc04c3ef  include/fixedwide/detail/mixed_native.hpp
+78a512be1f4b3c423aa886d59533c210ffa48572b800969847ef0035418cadcd  include/fixedwide/mixed.hpp
+927ff5e7882305a42cc6880bc2acade10d3afa2fedc1ae0b2a29ea0294a92ca3  include/fixedwide/version.hpp
+f798c69c58ed881406192fb58352a4fbedf457b324c4dae7e66b4cb66b29db5b  src/mixed.cpp
+Architecture:                            x86_64
+CPU op-mode(s):                          32-bit, 64-bit
+Address sizes:                           46 bits physical, 57 bits virtual
+Byte Order:                              Little Endian
+CPU(s):                                  9
+On-line CPU(s) list:                     0-8
+Vendor ID:                               GenuineIntel
+Model name:                              INTEL(R) XEON(R) PLATINUM 8573C
+BIOS Model name:                           CPU @ 0.0GHz
+BIOS CPU family:                         0
+CPU family:                              6
+Model:                                   207
+Thread(s) per core:                      1
+Core(s) per socket:                      9
+Socket(s):                               1
+Stepping:                                2
+BogoMIPS:                                4600.00
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities
+Hypervisor vendor:                       KVM
+Virtualization type:                     full
+L1d cache:                               240 KiB (5 instances)
+L1i cache:                               160 KiB (5 instances)
+L2 cache:                                10 MiB (5 instances)
+L3 cache:                                260 MiB (1 instance)
+NUMA node(s):                            1
+NUMA node0 CPU(s):                       0-8
+Vulnerability Gather data sampling:      Not affected
+Vulnerability Ghostwrite:                Not affected
+Vulnerability Indirect target selection: Vulnerable
+Vulnerability Itlb multihit:             Not affected
+Vulnerability L1tf:                      Not affected
+Vulnerability Mds:                       Not affected
+Vulnerability Meltdown:                  Not affected
+Vulnerability Mmio stale data:           Not affected
+Vulnerability Old microcode:             Not affected
+Vulnerability Reg file data sampling:    Not affected
+Vulnerability Retbleed:                  Vulnerable
+Vulnerability Spec rstack overflow:      Not affected
+Vulnerability Spec store bypass:         Vulnerable
+Vulnerability Spectre v1:                Vulnerable: __user pointer sanitization and usercopy barriers only; no swapgs barriers
+Vulnerability Spectre v2:                Vulnerable; STIBP: disabled; PBRSB-eIBRS: Not affected; BHI: Vulnerable
+Vulnerability Srbds:                     Not affected
+Vulnerability Tsa:                       Not affected
+Vulnerability Tsx async abort:           Not affected
+Vulnerability Vmscape:                   Not affected
+Google Benchmark source HEAD: eddb0241389718a23a42db6af5f0164b6e0139af
+cbd1f97fe375f90be1b95928bc4fdeb633fad562c50ac6bc6b71f8499b158f6a  /tmp/fixedwide-google-benchmark-build/src/libbenchmark.a
+Shared Google Benchmark framework was built in Release with GCC14; hot benchmark/library code uses each compiler below.
+
+Configuration: gcc14-native
+g++-14 (Ubuntu 14.2.0-4ubuntu2~24.04.1) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+/usr/bin/g++-14 -DBENCHMARK_STATIC_DEFINE -DFIXEDWIDE_GOOGLE_BENCHMARK_VERSION=\"1.9.4\" -I/workspace/scratch/77ced77b7ec2/fixedwide/include -isystem /tmp/fixedwide-google-benchmark/include -Werror -O3 -DNDEBUG -std=c++23 -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off -fno-fast-math -MD -MT benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -MF benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o.d -o benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/benchmarks/runtime_narrow_bench.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -MF CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o.d -o CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/arithmetic.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/mixed.cpp.o -MF CMakeFiles/fixedwide.dir/src/mixed.cpp.o.d -o CMakeFiles/fixedwide.dir/src/mixed.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/mixed.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/chars.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/integer_chars.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/floating.cpp.o -MF CMakeFiles/fixedwide.dir/src/floating.cpp.o.d -o CMakeFiles/fixedwide.dir/src/floating.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/floating.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/bigint.cpp.o -MF CMakeFiles/fixedwide.dir/src/bigint.cpp.o.d -o CMakeFiles/fixedwide.dir/src/bigint.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/bigint.cpp
+: && /usr/bin/cmake -E rm -f libfixedwide.a && /usr/bin/ar qc libfixedwide.a  CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o CMakeFiles/fixedwide.dir/src/mixed.cpp.o CMakeFiles/fixedwide.dir/src/chars.cpp.o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o CMakeFiles/fixedwide.dir/src/floating.cpp.o CMakeFiles/fixedwide.dir/src/bigint.cpp.o && /usr/bin/ranlib libfixedwide.a && :
+: && /usr/bin/g++-14 -Werror -O3 -DNDEBUG  benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -o benchmarks/fixedwide_runtime_narrow_bench  libfixedwide.a  /tmp/fixedwide-google-benchmark-build/src/libbenchmark.a  -lrt && :
+5ee1660c2947a8d2d21e07804e2ec452a47d6c3f67378dd00f16200bc82f6b19  build/gb-gcc14-native/benchmarks/fixedwide_runtime_narrow_bench
+ed07a3a4001a4b355100ff5f5e97012d08636e341efc5173800fc6412c02f165  build/gb-gcc14-native/libfixedwide.a
+Run: TZ=UTC taskset -c 0 build/gb-gcc14-native/benchmarks/fixedwide_runtime_narrow_bench --benchmark_min_time=0.1s --benchmark_repetitions=9 --benchmark_min_warmup_time=0.02 --benchmark_enable_random_interleaving=true --benchmark_report_aggregates_only=false --benchmark_display_aggregates_only=true --benchmark_out_format=json --benchmark_out=reports/runtime-narrow/google-benchmark/gcc14-native.json
+
+Configuration: gcc14-portable
+g++-14 (Ubuntu 14.2.0-4ubuntu2~24.04.1) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+/usr/bin/g++-14 -DBENCHMARK_STATIC_DEFINE -DFIXEDWIDE_FORCE_PORTABLE -DFIXEDWIDE_GOOGLE_BENCHMARK_VERSION=\"1.9.4\" -I/workspace/scratch/77ced77b7ec2/fixedwide/include -isystem /tmp/fixedwide-google-benchmark/include -Werror -O3 -DNDEBUG -std=c++23 -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off -fno-fast-math -MD -MT benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -MF benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o.d -o benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/benchmarks/runtime_narrow_bench.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -MF CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o.d -o CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/arithmetic.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/mixed.cpp.o -MF CMakeFiles/fixedwide.dir/src/mixed.cpp.o.d -o CMakeFiles/fixedwide.dir/src/mixed.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/mixed.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/chars.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/integer_chars.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/floating.cpp.o -MF CMakeFiles/fixedwide.dir/src/floating.cpp.o.d -o CMakeFiles/fixedwide.dir/src/floating.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/floating.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/bigint.cpp.o -MF CMakeFiles/fixedwide.dir/src/bigint.cpp.o.d -o CMakeFiles/fixedwide.dir/src/bigint.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/bigint.cpp
+: && /usr/bin/cmake -E rm -f libfixedwide.a && /usr/bin/ar qc libfixedwide.a  CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o CMakeFiles/fixedwide.dir/src/mixed.cpp.o CMakeFiles/fixedwide.dir/src/chars.cpp.o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o CMakeFiles/fixedwide.dir/src/floating.cpp.o CMakeFiles/fixedwide.dir/src/bigint.cpp.o && /usr/bin/ranlib libfixedwide.a && :
+: && /usr/bin/g++-14 -Werror -O3 -DNDEBUG  benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -o benchmarks/fixedwide_runtime_narrow_bench  libfixedwide.a  /tmp/fixedwide-google-benchmark-build/src/libbenchmark.a  -lrt && :
+654327e86f076c1e90407c7e1a04e40c1ae017487364a348e883531c7a9697c3  build/gb-gcc14-portable/benchmarks/fixedwide_runtime_narrow_bench
+7e891392aa6b95d5c015b17fe890a1b856f58b2b53fd3b5b66b5939f91ffdaef  build/gb-gcc14-portable/libfixedwide.a
+Run: TZ=UTC taskset -c 0 build/gb-gcc14-portable/benchmarks/fixedwide_runtime_narrow_bench --benchmark_min_time=0.1s --benchmark_repetitions=9 --benchmark_min_warmup_time=0.02 --benchmark_enable_random_interleaving=true --benchmark_report_aggregates_only=false --benchmark_display_aggregates_only=true --benchmark_out_format=json --benchmark_out=reports/runtime-narrow/google-benchmark/gcc14-portable.json
+
+Configuration: clang19-native
+Ubuntu clang version 19.1.1 (1ubuntu1~24.04.2)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-19/bin
+/usr/bin/clang++-19 -DBENCHMARK_STATIC_DEFINE -DFIXEDWIDE_GOOGLE_BENCHMARK_VERSION=\"1.9.4\" -I/workspace/scratch/77ced77b7ec2/fixedwide/include -isystem /tmp/fixedwide-google-benchmark/include -Werror -O3 -DNDEBUG -std=c++23 -fno-vectorize -fno-slp-vectorize -ffp-contract=off -fno-fast-math -MD -MT benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -MF benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o.d -o benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/benchmarks/runtime_narrow_bench.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -MF CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o.d -o CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/arithmetic.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/mixed.cpp.o -MF CMakeFiles/fixedwide.dir/src/mixed.cpp.o.d -o CMakeFiles/fixedwide.dir/src/mixed.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/mixed.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/chars.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/integer_chars.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/floating.cpp.o -MF CMakeFiles/fixedwide.dir/src/floating.cpp.o.d -o CMakeFiles/fixedwide.dir/src/floating.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/floating.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/bigint.cpp.o -MF CMakeFiles/fixedwide.dir/src/bigint.cpp.o.d -o CMakeFiles/fixedwide.dir/src/bigint.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/bigint.cpp
+: && /usr/bin/cmake -E rm -f libfixedwide.a && /usr/bin/llvm-ar-19 qc libfixedwide.a  CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o CMakeFiles/fixedwide.dir/src/mixed.cpp.o CMakeFiles/fixedwide.dir/src/chars.cpp.o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o CMakeFiles/fixedwide.dir/src/floating.cpp.o CMakeFiles/fixedwide.dir/src/bigint.cpp.o && /usr/bin/llvm-ranlib-19 libfixedwide.a && :
+: && /usr/bin/clang++-19 -Werror -O3 -DNDEBUG  benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -o benchmarks/fixedwide_runtime_narrow_bench  libfixedwide.a  /tmp/fixedwide-google-benchmark-build/src/libbenchmark.a  -lrt && :
+5fc49bbbbc541788f6b27c6bf15b5100b0b97bb06abf4e6eb58155d78fe518ac  build/gb-clang19-native/benchmarks/fixedwide_runtime_narrow_bench
+9df60d00b96135f7fe81a4b68953586ab0036db911e1cde7e0421e8595919287  build/gb-clang19-native/libfixedwide.a
+Run: TZ=UTC taskset -c 0 build/gb-clang19-native/benchmarks/fixedwide_runtime_narrow_bench --benchmark_min_time=0.1s --benchmark_repetitions=9 --benchmark_min_warmup_time=0.02 --benchmark_enable_random_interleaving=true --benchmark_report_aggregates_only=false --benchmark_display_aggregates_only=true --benchmark_out_format=json --benchmark_out=reports/runtime-narrow/google-benchmark/clang19-native.json
+
+Configuration: clang19-portable
+Ubuntu clang version 19.1.1 (1ubuntu1~24.04.2)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-19/bin
+/usr/bin/clang++-19 -DBENCHMARK_STATIC_DEFINE -DFIXEDWIDE_FORCE_PORTABLE -DFIXEDWIDE_GOOGLE_BENCHMARK_VERSION=\"1.9.4\" -I/workspace/scratch/77ced77b7ec2/fixedwide/include -isystem /tmp/fixedwide-google-benchmark/include -Werror -O3 -DNDEBUG -std=c++23 -fno-vectorize -fno-slp-vectorize -ffp-contract=off -fno-fast-math -MD -MT benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -MF benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o.d -o benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/benchmarks/runtime_narrow_bench.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -MF CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o.d -o CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/arithmetic.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/mixed.cpp.o -MF CMakeFiles/fixedwide.dir/src/mixed.cpp.o.d -o CMakeFiles/fixedwide.dir/src/mixed.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/mixed.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/chars.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/integer_chars.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/floating.cpp.o -MF CMakeFiles/fixedwide.dir/src/floating.cpp.o.d -o CMakeFiles/fixedwide.dir/src/floating.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/floating.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/bigint.cpp.o -MF CMakeFiles/fixedwide.dir/src/bigint.cpp.o.d -o CMakeFiles/fixedwide.dir/src/bigint.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/bigint.cpp
+: && /usr/bin/cmake -E rm -f libfixedwide.a && /usr/bin/llvm-ar-19 qc libfixedwide.a  CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o CMakeFiles/fixedwide.dir/src/mixed.cpp.o CMakeFiles/fixedwide.dir/src/chars.cpp.o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o CMakeFiles/fixedwide.dir/src/floating.cpp.o CMakeFiles/fixedwide.dir/src/bigint.cpp.o && /usr/bin/llvm-ranlib-19 libfixedwide.a && :
+: && /usr/bin/clang++-19 -Werror -O3 -DNDEBUG  benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -o benchmarks/fixedwide_runtime_narrow_bench  libfixedwide.a  /tmp/fixedwide-google-benchmark-build/src/libbenchmark.a  -lrt && :
+a440fc71e94886a8b169aa4df789c34a70b30409e9f254cc319d6d6f96d3863b  build/gb-clang19-portable/benchmarks/fixedwide_runtime_narrow_bench
+e5ce6f10a8faabc9e555c02d8495adab79e4ec1971d7758e678df97898b0b3aa  build/gb-clang19-portable/libfixedwide.a
+Run: TZ=UTC taskset -c 0 build/gb-clang19-portable/benchmarks/fixedwide_runtime_narrow_bench --benchmark_min_time=0.1s --benchmark_repetitions=9 --benchmark_min_warmup_time=0.02 --benchmark_enable_random_interleaving=true --benchmark_report_aggregates_only=false --benchmark_display_aggregates_only=true --benchmark_out_format=json --benchmark_out=reports/runtime-narrow/google-benchmark/clang19-portable.json
+Post-run 8099c949162231e22f65180d862cada4c7fe83ecfb73380507324d1b40da0810  benchmarks/runtime_narrow_bench.cpp
+Post-run ba996e96cdb38d258b9809e70899795239a93efa7b8814010c6d3b493c3a74b8  benchmarks/CMakeLists.txt
+Post-run 9ce414c2454400468688b8d736bff54601704a4f45234980708afacbfc04c3ef  include/fixedwide/detail/mixed_native.hpp
+Post-run 78a512be1f4b3c423aa886d59533c210ffa48572b800969847ef0035418cadcd  include/fixedwide/mixed.hpp
+Post-run 927ff5e7882305a42cc6880bc2acade10d3afa2fedc1ae0b2a29ea0294a92ca3  include/fixedwide/version.hpp
+Post-run f798c69c58ed881406192fb58352a4fbedf457b324c4dae7e66b4cb66b29db5b  src/mixed.cpp

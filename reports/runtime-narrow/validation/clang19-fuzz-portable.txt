@@ -1,0 +1,68 @@
+Clang 19.1.1 / RelWithDebInfo / forced portable / ASan + UBSan / -Werror
+Configure: cmake -S . -B build/clang19-fuzz-portable -G Ninja -DCMAKE_CXX_COMPILER=clang++-19 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFIXEDWIDE_FORCE_PORTABLE=ON -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF -DFIXEDWIDE_BUILD_ORACLE_TESTS=OFF -DFIXEDWIDE_BUILD_FUZZER=ON -DCMAKE_CXX_FLAGS=-Werror
+Build: cmake --build build/clang19-fuzz-portable -j2
+Run: ASAN_OPTIONS=detect_leaks=0 build/clang19-fuzz-portable/fuzz/fixedwide_fuzz -seed=610128 -runs=100000 -max_len=128 -dict=fuzz/decimal.dict -timeout=10 -rss_limit_mb=2048 -artifact_prefix=/tmp/fixedwide-fuzz-portable- /tmp/fixedwide-fuzz-corpus-portable
+Corpus: existing fuzz/corpus plus signed 128/256-bit limits, powers of two, decimal scales, repeated bytes, and seeded random 32/64/128-byte inputs; 470 initial files.
+LeakSanitizer disabled because this sandbox cannot inspect /proc process threads; AddressSanitizer and UndefinedBehaviorSanitizer remained enabled.
+Build exit code: 0
+Fuzzer exit code: 0
+No sanitizer findings or value/error mismatches.
+
+Dictionary: 12 entries
+INFO: Seed: 610128
+INFO: seed corpus: files: 470 min: 1b max: 1007b total: 21870b rss: 32Mb
+#100000	DONE   cov: 1252 ft: 3261 corp: 639/25Kb lim: 128 exec/s: 2127 rss: 163Mb
+Done 100000 runs in 47 second(s)
+
+
+EARLIER HELPER VALIDATION AFTER INITIAL FALLBACK TUNING AND BOUNDARY-TEST EXPANSION
+The earlier results above are preserved as an earlier implementation record. This section records execution against the intermediate helper/test/fuzzer bytes identified below.
+Working-tree source SHA256 (verified unchanged across the campaign):
+9ce414c2454400468688b8d736bff54601704a4f45234980708afacbfc04c3ef  include/fixedwide/detail/mixed_native.hpp
+78a512be1f4b3c423aa886d59533c210ffa48572b800969847ef0035418cadcd  include/fixedwide/mixed.hpp
+f798c69c58ed881406192fb58352a4fbedf457b324c4dae7e66b4cb66b29db5b  src/mixed.cpp
+07f6f642d613d4b0efc743e52fd2f6f6229469f5f5f38348f6cf088361350e21  tests/test_mixed_runtime.cpp
+700098fabbaa3aaafa15d257b302b7f574520bbb994b582af3eceb6da98742c6  fuzz/fuzz.cpp
+Binary SHA256 for this earlier campaign:
+0bfd853630a2756d2c7d6b0062504b5b07230c378c5396d4d7c37b3e21de0447  build/clang19-fuzz-portable/fuzz/fixedwide_fuzz
+Build: cmake --build build/clang19-fuzz-portable --target fixedwide_fuzz -j2
+Run: ASAN_OPTIONS=detect_leaks=0 build/clang19-fuzz-portable/fuzz/fixedwide_fuzz -seed=610128 -runs=100000 -max_len=128 -dict=fuzz/decimal.dict -timeout=10 -rss_limit_mb=2048 -print_final_stats=1 -artifact_prefix=/tmp/fixedwide-fuzz-final-portable- /tmp/fixedwide-fuzz-corpus-final-portable
+Fresh copy of the original 470-file seed corpus; no earlier campaign discoveries were added.
+Build exit code: 0; fuzzer exit code: 0.
+No sanitizer findings or value/error mismatches.
+INFO: Seed: 610128
+INFO: seed corpus: files: 470 min: 1b max: 1007b total: 21870b rss: 32Mb
+#100000	DONE   cov: 1330 ft: 3364 corp: 641/24Kb lim: 128 exec/s: 3333 rss: 154Mb
+Done 100000 runs in 30 second(s)
+stat::number_of_executed_units: 100000
+stat::average_exec_per_sec:     3333
+stat::new_units_added:          812
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              154
+
+
+FINAL VALIDATION AFTER TYPE-AWARE PRODUCT/FALLBACK LAYOUT AND CARRY REGRESSIONS
+Earlier stages above remain historical records. This final stage uses the frozen production headers, expanded carry tests, and unchanged expanded fuzzer.
+Working-tree source SHA256 (verified unchanged throughout this stage):
+6b2d2f5cd8a3107526196951d60077fafef13be918b26065a18bf1de89edb15b  include/fixedwide/detail/mixed_native.hpp
+e1d128b352cff9c406aaf9815f0d209f55eb5d77287551118ddb1ca7343aaeaf  include/fixedwide/mixed.hpp
+f798c69c58ed881406192fb58352a4fbedf457b324c4dae7e66b4cb66b29db5b  src/mixed.cpp
+4a934c9761bc672c0fa34914d2bcaee9c27ec8fedd196243803c6bee653e7d0a  tests/test_mixed_runtime.cpp
+5e040f348c075604f00794a4d6736d77a27a8ca4b890814e8fafc68646816bb5  tests/test_coverage_mixed.cpp
+700098fabbaa3aaafa15d257b302b7f574520bbb994b582af3eceb6da98742c6  fuzz/fuzz.cpp
+Final binary SHA256:
+2fbab6cd4335574ae918b603f5fc4eb55584824878c45282a82838da9151054a  build/clang19-fuzz-portable/fuzz/fixedwide_fuzz
+Build: cmake --build build/clang19-fuzz-portable --target fixedwide_fuzz -j2
+Run: ASAN_OPTIONS=detect_leaks=0 build/clang19-fuzz-portable/fuzz/fixedwide_fuzz -seed=610128 -runs=100000 -max_len=128 -dict=fuzz/decimal.dict -timeout=10 -rss_limit_mb=2048 -print_final_stats=1 -artifact_prefix=/tmp/fixedwide-fuzz-carry-portable- /tmp/fixedwide-fuzz-corpus-carry-portable
+Fresh copy of the original 470-file corpus; no previous fuzz discoveries included.
+Build and fuzzer exit codes: 0.
+No sanitizer findings or numerical/error mismatches.
+INFO: Seed: 610128
+INFO: seed corpus: files: 470 min: 1b max: 1007b total: 21870b rss: 32Mb
+#100000	DONE   cov: 1323 ft: 3355 corp: 618/23Kb lim: 128 exec/s: 3225 rss: 153Mb
+Done 100000 runs in 31 second(s)
+stat::number_of_executed_units: 100000
+stat::average_exec_per_sec:     3225
+stat::new_units_added:          802
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              153

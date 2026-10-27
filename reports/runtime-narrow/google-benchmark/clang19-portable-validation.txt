@@ -1,0 +1,17 @@
+# compiler=Ubuntu Clang 19.1.1 (1ubuntu1~24.04.2) backend=portable seed=42 samples=65536
+workload,samples,successes,overflows,mismatches
+mul_price.realistic,65536,65536,0,0
+mul_fx.realistic,65536,65536,0,0
+replace.realistic,65536,65536,0,0
+add_mixed.realistic,65536,65536,0,0
+sub_mixed.realistic,65536,65536,0,0
+cast.sign_extension,65536,65536,0,0
+mul_price.fallback_success,65536,65536,0,0
+mul_fx.fallback_success,65536,65536,0,0
+mul_price.fallback_overflow,65536,0,65536,0
+mul_fx.fallback_overflow,65536,0,65536,0
+replace.wide_cancellation,65536,65536,0,0
+cast.outside_int128,65536,0,65536,0
+add_mixed.fallback_success,65536,65536,0,0
+sub_mixed.fallback_success,65536,65536,0,0
+replace.full_range,65536,43664,21872,0

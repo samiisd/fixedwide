@@ -1,0 +1,148 @@
+Clang 19.1.1 / RelWithDebInfo / native / ASan + UBSan / -Werror
+Earlier full-suite result: all 77 tests executed and passed. No source changes were needed to resolve execution-environment issues.
+Configure: cmake -S . -B build/clang19-sanitize -G Ninja -DCMAKE_CXX_COMPILER=clang++-19 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON -DFIXEDWIDE_BUILD_FUZZER=ON -DCMAKE_CXX_FLAGS=-Werror
+Build: cmake --build build/clang19-sanitize -j2
+CTest: ASAN_OPTIONS=detect_leaks=0 LSAN_OPTIONS=detect_leaks=0 ctest --test-dir build/clang19-sanitize --output-on-failure
+Build exit code: 0; all 107 build steps completed.
+LeakSanitizer disabled because this sandbox cannot inspect /proc process threads; AddressSanitizer and UndefinedBehaviorSanitizer remained enabled. LSAN_OPTIONS also covers tests with their own ASAN_OPTIONS property.
+
+Initial full CTest: 74 passed; overflow, constexpr, and format executables were not started because the generated files had mode 0644.
+After restoring executable bits: overflow and format passed; constexpr was discovered to have a zeroed executable header.
+Moved that generated executable aside, rebuilt test_constexpr, and reran the one remaining test: passed.
+Retry command: same environment and ctest --test-dir build/clang19-sanitize --rerun-failed --output-on-failure
+Rebuild command: cmake --build build/clang19-sanitize --target test_constexpr -j2
+No assertion failures, numerical mismatches, or sanitizer findings occurred.
+
+Initial complete suite:
+ 1/77 Test  #1: fixedwide.storage .................................   Passed    0.00 sec
+ 2/77 Test  #2: fixedwide.wide ....................................   Passed    0.00 sec
+ 3/77 Test  #3: fixedwide.rounding ................................   Passed    0.00 sec
+ 4/77 Test  #4: fixedwide.core ....................................   Passed    0.00 sec
+ 5/77 Test  #5: fixedwide.unchecked ...............................   Passed    0.01 sec
+ 6/77 Test  #6: fixedwide.checked .................................   Passed    0.11 sec
+ 7/77 Test  #7: fixedwide.midpoint ................................   Passed    0.03 sec
+ 8/77 Test  #8: fixedwide.log10 ...................................   Passed    0.05 sec
+ 9/77 Test  #9: fixedwide.mixed ...................................   Passed    0.02 sec
+10/77 Test #10: fixedwide.chars ...................................   Passed    0.00 sec
+11/77 Test #11: fixedwide.literal .................................   Passed    0.01 sec
+12/77 Test #12: fixedwide.binary ..................................   Passed    0.00 sec
+13/77 Test #13: fixedwide.floating ................................   Passed    6.32 sec
+14/77 Test #14: fixedwide.no_alloc ................................   Passed    0.01 sec
+15/77 Test #15: fixedwide.signed_min ..............................   Passed    0.01 sec
+16/77 Test #16: fixedwide.overflow ................................***Not Run   0.00 sec
+17/77 Test #17: fixedwide.constexpr ...............................***Not Run   0.00 sec
+18/77 Test #18: fixedwide.mixed_native ............................   Passed    0.20 sec
+19/77 Test #19: fixedwide.mixed_runtime ...........................   Passed    1.00 sec
+20/77 Test #20: fixedwide.format ..................................***Not Run   0.00 sec
+21/77 Test #21: fixedwide.readme ..................................   Passed    0.01 sec
+22/77 Test #22: fixedwide.literal_header_only .....................   Passed    0.01 sec
+23/77 Test #23: fixedwide.floating_header_only ....................   Passed    0.01 sec
+24/77 Test #24: fixedwide.to_floating_header_only .................   Passed    0.01 sec
+25/77 Test #25: fixedwide.audit.audit_same_domain .................   Passed    4.92 sec
+26/77 Test #26: fixedwide.audit.audit_unchecked ...................   Passed    1.05 sec
+27/77 Test #27: fixedwide.audit.audit_midpoint ....................   Passed   14.60 sec
+28/77 Test #28: fixedwide.audit.audit_mixed .......................   Passed    6.77 sec
+29/77 Test #29: fixedwide.audit.audit_known .......................   Passed    0.01 sec
+30/77 Test #30: fixedwide.audit.audit_floating ....................   Passed    0.01 sec
+31/77 Test #31: fixedwide.audit.audit_io ..........................   Passed    0.11 sec
+32/77 Test #32: fixedwide.audit.audit_text_targeted ...............   Passed    0.00 sec
+33/77 Test #33: fixedwide.audit.audit_portable_edges ..............   Passed    0.00 sec
+34/77 Test #34: fixedwide.audit.audit_portable_div128 .............   Passed    0.00 sec
+35/77 Test #35: fixedwide.audit.audit_fastpath_rounding ...........   Passed    0.02 sec
+36/77 Test #36: fixedwide.negative.ambiguous_mixed_mul ............   Passed    0.16 sec
+37/77 Test #37: fixedwide.negative.invalid_bits ...................   Passed    0.09 sec
+38/77 Test #38: fixedwide.negative.invalid_scale ..................   Passed    0.08 sec
+39/77 Test #39: fixedwide.negative.runtime_scale ..................   Passed    0.08 sec
+40/77 Test #40: fixedwide.negative.literal_empty ..................   Passed    0.24 sec
+41/77 Test #41: fixedwide.negative.literal_invalid ................   Passed    0.24 sec
+42/77 Test #42: fixedwide.negative.literal_too_precise ............   Passed    0.23 sec
+43/77 Test #43: fixedwide.negative.literal_overflow ...............   Passed    0.26 sec
+44/77 Test #44: fixedwide.negative.literal_embedded_nul ...........   Passed    0.23 sec
+45/77 Test #45: fixedwide.negative.literal_unterminated ...........   Passed    0.25 sec
+46/77 Test #46: fixedwide.negative.literal_runtime ................   Passed    0.24 sec
+47/77 Test #47: fixedwide.negative.constructor_empty ..............   Passed    0.27 sec
+48/77 Test #48: fixedwide.negative.constructor_invalid ............   Passed    0.25 sec
+49/77 Test #49: fixedwide.negative.constructor_too_precise ........   Passed    0.23 sec
+50/77 Test #50: fixedwide.negative.constructor_overflow ...........   Passed    0.26 sec
+51/77 Test #51: fixedwide.negative.constructor_embedded_nul .......   Passed    0.25 sec
+52/77 Test #52: fixedwide.negative.constructor_unterminated .......   Passed    0.24 sec
+53/77 Test #53: fixedwide.negative.constructor_runtime ............   Passed    0.26 sec
+54/77 Test #54: fixedwide.negative.constructor_template_inexact ...   Passed    0.26 sec
+55/77 Test #55: fixedwide.negative.constructor_template_runtime ...   Passed    0.26 sec
+56/77 Test #56: fixedwide.negative.operator_runtime ...............   Passed    0.34 sec
+57/77 Test #57: fixedwide.negative.operator_inexact ...............   Passed    0.34 sec
+58/77 Test #58: fixedwide.oracle ..................................   Passed    0.10 sec
+59/77 Test #59: fixedwide.coverage_wide ...........................   Passed    0.37 sec
+60/77 Test #60: fixedwide.coverage_text ...........................   Passed    0.40 sec
+61/77 Test #61: fixedwide.coverage_arithmetic .....................   Passed    3.06 sec
+62/77 Test #62: fixedwide.coverage_adapters .......................   Passed    0.14 sec
+63/77 Test #63: fixedwide.coverage_format_adapters ................   Passed    0.01 sec
+64/77 Test #64: fixedwide.coverage_mixed ..........................   Passed    8.86 sec
+65/77 Test #65: fixedwide.coverage_checked ........................   Passed    0.17 sec
+66/77 Test #66: fixedwide.floating_formats ........................   Passed    7.36 sec
+67/77 Test #67: fixedwide.to_floating .............................   Passed    1.11 sec
+68/77 Test #68: fixedwide.example.01_quick_start ..................   Passed    0.01 sec
+69/77 Test #69: fixedwide.example.02_rounding_modes ...............   Passed    0.01 sec
+70/77 Test #70: fixedwide.example.03_error_handling ...............   Passed    0.01 sec
+71/77 Test #71: fixedwide.example.04_mixed_scales .................   Passed    0.00 sec
+72/77 Test #72: fixedwide.example.05_text_io ......................   Passed    0.01 sec
+73/77 Test #73: fixedwide.example.06_binary_roundtrip .............   Passed    0.01 sec
+74/77 Test #74: fixedwide.example.07_money_ledger .................   Passed    0.01 sec
+75/77 Test #75: fixedwide.example.08_constexpr ....................   Passed    0.01 sec
+76/77 Test #76: fixedwide.example.09_bounded_arithmetic ...........   Passed    0.00 sec
+77/77 Test #77: fixedwide.example.10_checked_chain ................   Passed    0.01 sec
+96% tests passed, 3 tests failed out of 77
+Total Test time (real) =  62.05 sec
+
+First targeted retry (output limited to test status; the corrupted executable could not run):
+1/3 Test #16: fixedwide.overflow ...............   Passed    0.09 sec
+2/3 Test #17: fixedwide.constexpr ..............***Failed    0.01 sec
+3/3 Test #20: fixedwide.format .................   Passed    0.00 sec
+67% tests passed, 1 tests failed out of 3
+Total Test time (real) =   0.11 sec
+
+Final targeted retry:
+1/1 Test #17: fixedwide.constexpr ..............   Passed    0.69 sec
+100% tests passed, 0 tests failed out of 1
+Total Test time (real) =   0.69 sec
+
+
+EARLIER HELPER VALIDATION AFTER INITIAL FALLBACK TUNING AND BOUNDARY-TEST EXPANSION
+The earlier results above are preserved as an earlier implementation record. This section records execution against the intermediate helper/test/fuzzer bytes identified below.
+Working-tree source SHA256 (verified unchanged across the campaign):
+9ce414c2454400468688b8d736bff54601704a4f45234980708afacbfc04c3ef  include/fixedwide/detail/mixed_native.hpp
+78a512be1f4b3c423aa886d59533c210ffa48572b800969847ef0035418cadcd  include/fixedwide/mixed.hpp
+f798c69c58ed881406192fb58352a4fbedf457b324c4dae7e66b4cb66b29db5b  src/mixed.cpp
+07f6f642d613d4b0efc743e52fd2f6f6229469f5f5f38348f6cf088361350e21  tests/test_mixed_runtime.cpp
+700098fabbaa3aaafa15d257b302b7f574520bbb994b582af3eceb6da98742c6  fuzz/fuzz.cpp
+Binary SHA256 for this earlier campaign:
+ed4a54af78c3385ad6881ebc225f66744c6800e86baaf63fcc71533eda1ca1c7  build/clang19-sanitize/tests/test_mixed_runtime
+Build: cmake --build build/clang19-sanitize --target test_mixed_runtime fixedwide_fuzz -j2
+Run: ASAN_OPTIONS=detect_leaks=0 LSAN_OPTIONS=detect_leaks=0 ctest --test-dir build/clang19-sanitize -R '^fixedwide.mixed_runtime$' --verbose
+Build exit code: 0; CTest exit code: 0.
+This was a focused rerun at the source hashes above; the full 77-test sanitized suite preceded it.
+19: test_mixed_runtime passed (1223814 checks)
+1/1 Test #19: fixedwide.mixed_runtime ..........   Passed    1.62 sec
+100% tests passed, 0 tests failed out of 1
+Total Test time (real) =   1.63 sec
+
+
+FINAL VALIDATION AFTER TYPE-AWARE PRODUCT/FALLBACK LAYOUT AND CARRY REGRESSIONS
+Earlier stages above remain historical records. This final stage uses the frozen production headers, expanded carry tests, and unchanged expanded fuzzer.
+Working-tree source SHA256 (verified unchanged throughout this stage):
+6b2d2f5cd8a3107526196951d60077fafef13be918b26065a18bf1de89edb15b  include/fixedwide/detail/mixed_native.hpp
+e1d128b352cff9c406aaf9815f0d209f55eb5d77287551118ddb1ca7343aaeaf  include/fixedwide/mixed.hpp
+f798c69c58ed881406192fb58352a4fbedf457b324c4dae7e66b4cb66b29db5b  src/mixed.cpp
+4a934c9761bc672c0fa34914d2bcaee9c27ec8fedd196243803c6bee653e7d0a  tests/test_mixed_runtime.cpp
+5e040f348c075604f00794a4d6736d77a27a8ca4b890814e8fafc68646816bb5  tests/test_coverage_mixed.cpp
+700098fabbaa3aaafa15d257b302b7f574520bbb994b582af3eceb6da98742c6  fuzz/fuzz.cpp
+Final binary SHA256:
+fbdb970912df3420827591c248f18cc36e864f13cce23f84a9cd119e7a1f2cd9  build/clang19-sanitize/tests/test_mixed_runtime
+Build: cmake --build build/clang19-sanitize --target test_mixed_runtime fixedwide_fuzz -j2
+Run: ASAN_OPTIONS=detect_leaks=0 LSAN_OPTIONS=detect_leaks=0 ctest --test-dir build/clang19-sanitize -R '^fixedwide.mixed_runtime$' --verbose
+Build and CTest exit codes: 0.
+Final scope: targeted runtime differential suite, including all new carry regressions, with ASan + UBSan. The earlier full 77-test suite is preserved separately above.
+19: test_mixed_runtime passed (1226146 checks)
+1/1 Test #19: fixedwide.mixed_runtime ..........   Passed    1.50 sec
+100% tests passed, 0 tests failed out of 1
+Total Test time (real) =   1.50 sec

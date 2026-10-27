@@ -1,5 +1,46 @@
 #include <fixedwide/literal.hpp>
 
+namespace {
+using Price = fixedwide::Fixed64<10>;
+using Amount = fixedwide::Fixed128<12>;
+
+struct Money {
+private:
+    struct LiteralConstructorTag {};
+
+public:
+    Amount value{};
+    template<std::size_t N>
+    consteval Money(const char (&text)[N], LiteralConstructorTag = {}) : value(text) {}
+};
+
+// Ordinary expressions in instantiated templates must remain immediate too:
+// a constexpr local alone does not catch accidental runtime literal calls.
+template<class Tag>
+Price template_price() {
+    return Price{"100"};
+}
+
+template<class Tag>
+Money template_money() {
+    return Money{"100"};
+}
+
+template<class Tag>
+bool template_aggregate() {
+    struct Quote {
+        Price bid{}, ask{};
+    };
+    // MSVC rejects direct consteval temporaries in this local aggregate, with
+    // either positional or designated initialization. Keep ordinary named
+    // locals here; template_price and the generic lambda still test temporaries.
+    Price bid{"100"};
+    Price ask{"101"};
+    Quote quote{bid, ask};
+    return quote.bid == "100" && quote.ask == "101";
+}
+} // namespace
+
 // No link to fixedwide, no exceptions, and no constexpr on the local variable:
 // the public API must still do all decimal conversion during compilation.
 int main() {
@@ -20,5 +61,12 @@ int main() {
     long second = 0;
     accumulate(first);
     accumulate(second);
-    return minimum == F::min() && constructed == minimum && first == 125 && second == 125 ? 0 : 1;
+    auto price = template_price<int>();
+    auto money = template_money<int>();
+    auto generic_price = [](auto) { return Price{"100"}; };
+    return minimum == F::min() && constructed == minimum && first == 125 && second == 125 &&
+                   price.raw() == Price::scale() * 100 && money.value.raw() == Amount::scale() * 100 &&
+                   template_aggregate<int>() && generic_price(0) == price
+               ? 0
+               : 1;
 }

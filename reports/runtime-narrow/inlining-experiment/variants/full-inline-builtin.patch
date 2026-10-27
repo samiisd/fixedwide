@@ -1,0 +1,38 @@
+--- a/include/fixedwide/detail/mixed_native.hpp
++++ b/include/fixedwide/detail/mixed_native.hpp
+@@ -371,25 +370,0 @@
+-#if defined(__clang__)
+-    // Clang's signed overflow builtin computes a full 256-bit product. Use
+-    // one 64x64 product for small magnitudes and at most one cross product.
+-    const u128 lhs = a < 0 ? u128{0} - static_cast<u128>(a) : static_cast<u128>(a);
+-    const u128 rhs = b < 0 ? u128{0} - static_cast<u128>(b) : static_cast<u128>(b);
+-    const auto lhs_high = static_cast<std::uint64_t>(lhs >> 64);
+-    const auto rhs_high = static_cast<std::uint64_t>(rhs >> 64);
+-    const auto lhs_low = static_cast<std::uint64_t>(lhs);
+-    const auto rhs_low = static_cast<std::uint64_t>(rhs);
+-    if (lhs_high != 0 && rhs_high != 0) return false;
+-    u128 product = static_cast<u128>(lhs_low) * rhs_low;
+-    if ((lhs_high | rhs_high) != 0) {
+-        // Each high limb is at most 2^63, so this sum fits unsigned int128.
+-        const u128 upper =
+-            (lhs_high != 0 ? static_cast<u128>(lhs_high) * rhs_low : static_cast<u128>(rhs_high) * lhs_low) +
+-            (product >> 64);
+-        if ((upper >> 64) != 0) return false;
+-        product = (upper << 64) | static_cast<std::uint64_t>(product);
+-    }
+-    const bool negative = (a < 0) != (b < 0);
+-    if (product > limit_magnitude_u128<128>(negative)) return false;
+-    result = static_cast<i128>(negative ? u128{0} - product : product);
+-    return true;
+-#else
+-    // GCC already specializes the builtin efficiently for narrow operands.
+@@ -397 +371,0 @@
+-#endif
+@@ -401 +375 @@
+-[[nodiscard]] constexpr Attempt try_mul(RawA a, RawB b, Rounding rounding) noexcept {
++[[nodiscard, gnu::always_inline]] constexpr Attempt try_mul(RawA a, RawB b, Rounding rounding) noexcept {
+--- a/include/fixedwide/mixed.hpp
++++ b/include/fixedwide/mixed.hpp
+@@ -276 +276 @@
+-[[nodiscard]] inline std::expected<Dest, ArithmeticError> mul_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b,
++[[nodiscard, gnu::always_inline]] inline std::expected<Dest, ArithmeticError> mul_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b,

@@ -1,6 +1,6 @@
 # The instruction-count gate must configure on a bare CI runner, so it comes
-# first and depends on nothing but the library itself. Everything below it
-# differential-tests against Boost.Multiprecision and needs Boost headers.
+# first and depends on nothing but the library itself. External benchmark
+# dependencies are optional and must not affect this target's configuration.
 add_executable(fixedwide_icount icount.cpp)
 target_link_libraries(fixedwide_icount PRIVATE fixedwide::fixedwide)
 # Same vectorisation discipline as the timed benchmarks: a vectorised fixture
@@ -11,7 +11,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_compile_options(fixedwide_icount PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize)
 endif()
 
-# Sticky-error chain and log10 benchmarks use the shared harness and no Boost.
+# Focused microbenchmarks have no Boost dependency.
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
     add_executable(fixedwide_checked_chain_bench checked_chain_bench.cpp)
     target_link_libraries(fixedwide_checked_chain_bench PRIVATE fixedwide::fixedwide)
@@ -23,6 +23,40 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
     else()
         target_compile_options(fixedwide_checked_chain_bench PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off)
         target_compile_options(fixedwide_log10_bench PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off -fno-fast-math)
+    endif()
+endif()
+
+option(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK
+    "Build the Google Benchmark runtime-narrow comparison" OFF)
+if(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" OR MSVC)
+        message(FATAL_ERROR "The runtime-narrow benchmark currently requires GCC or Clang")
+    endif()
+    find_package(benchmark 1.9.4 CONFIG QUIET)
+    if(NOT benchmark_FOUND)
+        include(FetchContent)
+        set(BENCHMARK_ENABLE_TESTING OFF)
+        set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
+        set(BENCHMARK_ENABLE_INSTALL OFF)
+        set(BENCHMARK_ENABLE_WERROR OFF)
+        # v1.9.4. An immutable commit also supports reproducible offline builds
+        # through FETCHCONTENT_SOURCE_DIR_GOOGLEBENCHMARK.
+        FetchContent_Declare(googlebenchmark
+            GIT_REPOSITORY https://github.com/google/benchmark.git
+            GIT_TAG eddb0241389718a23a42db6af5f0164b6e0139af)
+        FetchContent_MakeAvailable(googlebenchmark)
+        set(_fixedwide_google_benchmark_version "1.9.4 (eddb0241389718a23a42db6af5f0164b6e0139af)")
+    else()
+        set(_fixedwide_google_benchmark_version "${benchmark_VERSION}")
+    endif()
+    add_executable(fixedwide_runtime_narrow_bench runtime_narrow_bench.cpp)
+    target_link_libraries(fixedwide_runtime_narrow_bench PRIVATE fixedwide::fixedwide benchmark::benchmark)
+    target_compile_definitions(fixedwide_runtime_narrow_bench PRIVATE
+        FIXEDWIDE_GOOGLE_BENCHMARK_VERSION="${_fixedwide_google_benchmark_version}")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(fixedwide_runtime_narrow_bench PRIVATE -fno-vectorize -fno-slp-vectorize -ffp-contract=off -fno-fast-math)
+    else()
+        target_compile_options(fixedwide_runtime_narrow_bench PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off -fno-fast-math)
     endif()
 endif()
 

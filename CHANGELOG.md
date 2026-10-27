@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.10] - 2026-10-27
+
+### Changed
+- Add checked runtime native paths for `mul_to`, mixed-scale `add_to` / `sub_to`,
+  and `fixed_cast` when actual values fit signed 128-bit arithmetic. Keep the
+  existing compile-time native paths and general rational kernels. Intermediate
+  overflow falls back without changing rounding or error precedence.
+- Evaluate same-scale addition and subtraction directly in native or 256-bit
+  limb arithmetic, including wide intermediate cancellation in replacement
+  chains. Narrow sign-extended Fixed256 values without a rational conversion.
+- Keep public signatures, storage, constant evaluation, and the forced-portable
+  dispatch unchanged.
+
+### Fixed
+- Restore the sign of an `INT128_MIN` rounded result using unsigned arithmetic,
+  avoiding undefined behavior when the newly supported native operands reach it.
+
+### Added
+- Differential boundary, exhaustive-grid and full-range randomized tests, plus
+  mixed runtime-path checks in the existing fuzzer. Compare values and exact
+  error codes across every rounding mode.
+- An opt-in Google Benchmark target for realistic and forced-fallback workloads,
+  with complete result validation before timing and native/portable reports;
+  see `reports/runtime-narrow/README.md` for measured results and limitations.
+
+## [0.6.9] - 2026-10-26
+
+### Fixed
+- Preserve compile-time construction of braced string literals inside function
+  templates and generic lambdas on affected Clang versions (LLVM#219272).
+  An internal defaulted constructor argument avoids the compiler's temporary
+  reuse path. Literal validation, numeric results and storage layout are unchanged.
+  User-defined `consteval` wrappers need the matching constructor workaround on
+  affected Clang versions; fixing the inner fixedwide type cannot repair an outer
+  constructor's immediate invocation.
+- Add header-only regression coverage for ordinary template expressions,
+  aggregate initializers and tagged wrappers, without requiring caller-side
+  `constexpr` variables or alternate literal syntax.
+
+### Added
+- Exact `log10_floor` with integer-oracle and boundary tests, already merged
+  since 0.6.8.
+
 ## [0.6.8] - 2026-10-15
 
 ### Added

@@ -1,0 +1,461 @@
+diff --git a/benchmarks/CMakeLists.txt b/benchmarks/CMakeLists.txt
+index e1cc8df..292f70e 100644
+--- a/benchmarks/CMakeLists.txt
++++ b/benchmarks/CMakeLists.txt
+@@ -2,2 +2,2 @@
+-# first and depends on nothing but the library itself. Everything below it
+-# differential-tests against Boost.Multiprecision and needs Boost headers.
++# first and depends on nothing but the library itself. External benchmark
++# dependencies are optional and must not affect this target's configuration.
+@@ -20,2 +19,0 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
+-    add_executable(fixedwide_runtime_narrow_bench runtime_narrow_bench.cpp)
+-    target_link_libraries(fixedwide_runtime_narrow_bench PRIVATE fixedwide::fixedwide)
+@@ -25 +22,0 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
+-        target_compile_options(fixedwide_runtime_narrow_bench PRIVATE -fno-vectorize -fno-slp-vectorize -ffp-contract=off -fno-fast-math)
+@@ -28,0 +26,33 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
++    endif()
++endif()
++
++option(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK
++    "Build the Google Benchmark runtime-narrow comparison" OFF)
++if(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK)
++    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" OR MSVC)
++        message(FATAL_ERROR "The runtime-narrow benchmark currently requires GCC or Clang")
++    endif()
++    find_package(benchmark 1.9.4 CONFIG QUIET)
++    if(NOT benchmark_FOUND)
++        include(FetchContent)
++        set(BENCHMARK_ENABLE_TESTING OFF)
++        set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
++        set(BENCHMARK_ENABLE_INSTALL OFF)
++        set(BENCHMARK_ENABLE_WERROR OFF)
++        # v1.9.4. An immutable commit also supports reproducible offline builds
++        # through FETCHCONTENT_SOURCE_DIR_GOOGLEBENCHMARK.
++        FetchContent_Declare(googlebenchmark
++            GIT_REPOSITORY https://github.com/google/benchmark.git
++            GIT_TAG eddb0241389718a23a42db6af5f0164b6e0139af)
++        FetchContent_MakeAvailable(googlebenchmark)
++        set(_fixedwide_google_benchmark_version "1.9.4 (eddb0241389718a23a42db6af5f0164b6e0139af)")
++    else()
++        set(_fixedwide_google_benchmark_version "${benchmark_VERSION}")
++    endif()
++    add_executable(fixedwide_runtime_narrow_bench runtime_narrow_bench.cpp)
++    target_link_libraries(fixedwide_runtime_narrow_bench PRIVATE fixedwide::fixedwide benchmark::benchmark)
++    target_compile_definitions(fixedwide_runtime_narrow_bench PRIVATE
++        FIXEDWIDE_GOOGLE_BENCHMARK_VERSION="${_fixedwide_google_benchmark_version}")
++    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
++        target_compile_options(fixedwide_runtime_narrow_bench PRIVATE -fno-vectorize -fno-slp-vectorize -ffp-contract=off -fno-fast-math)
++    else()
+diff --git a/benchmarks/runtime_narrow_bench.cpp b/benchmarks/runtime_narrow_bench.cpp
+index b6dbb66..941a03b 100644
+--- a/benchmarks/runtime_narrow_bench.cpp
++++ b/benchmarks/runtime_narrow_bench.cpp
+@@ -4,3 +4 @@
+-#include <algorithm>
+-#include <charconv>
+-#include <chrono>
++#include <benchmark/benchmark.h>
+@@ -8,0 +7 @@
++#include <memory>
+@@ -9,0 +9 @@
++#include <string>
+@@ -22,3 +22 @@ constexpr std::size_t corpus_size = 1U << 16;
+-std::size_t iterations = 1U << 20;
+-unsigned repetitions = 7;
+-std::uint64_t sink = 0;
++std::size_t validations = 0;
+@@ -102,28 +100,10 @@ bool product_fits(Money left, Right right) {
+-template<class F>
+-double time_loop(F operation, std::size_t count) {
+-    // Both paths include the same indexing, expected handling and unsigned sink.
+-    // The memory clobber prevents hoisting repeated traversals of the corpus;
+-    // the operation wrappers remain noinline on both sides.
+-    std::uint64_t checksum = 0;
+-    const auto start = std::chrono::steady_clock::now();
+-    for (std::size_t i = 0; i < count; ++i) {
+-        const auto result = operation(i & (corpus_size - 1));
+-        checksum +=
+-            result ? (result->raw().low ^ result->raw().high) : (static_cast<std::uint64_t>(result.error()) + 1);
+-        asm volatile("" : "+r"(checksum) : : "memory");
+-    }
+-    const auto end = std::chrono::steady_clock::now();
+-    sink += checksum; // Deliberately modulo 2^64, even for full-range fixtures.
+-    return std::chrono::duration<double, std::nano>(end - start).count() / static_cast<double>(count);
+-}
+-
+-double median(std::vector<double> values) {
+-    std::sort(values.begin(), values.end());
+-    const std::size_t middle = values.size() / 2;
+-    return (values.size() & 1U) != 0 ? values[middle] : (values[middle - 1] + values[middle]) / 2;
+-}
+-
+-void print_samples(const std::vector<double>& values) {
+-    std::putchar('"');
+-    for (std::size_t i = 0; i < values.size(); ++i) std::printf("%s%.6f", i == 0 ? "" : ";", values[i]);
+-    std::putchar('"');
++template<class Operation>
++void register_operation(std::string name, Operation operation) {
++    benchmark::RegisterBenchmark(name, [operation](benchmark::State& state) {
++        std::size_t index = 0;
++        for (auto _ : state) {
++            auto result = operation(index++ & (corpus_size - 1));
++            benchmark::DoNotOptimize(result);
++        }
++        state.SetItemsProcessed(state.iterations());
++    })->Unit(benchmark::kNanosecond);
+@@ -133 +113 @@ template<class General, class Public>
+-void measure_pair(const char* name, General general, Public optimized, ResultKind expected = ResultKind::success) {
++void register_pair(const char* name, General general, Public optimized, ResultKind expected = ResultKind::success) {
+@@ -148,0 +129 @@ void measure_pair(const char* name, General general, Public optimized, ResultKin
++        ++validations;
+@@ -151,22 +132,2 @@ void measure_pair(const char* name, General general, Public optimized, ResultKin
+-    (void)time_loop(general, corpus_size);
+-    (void)time_loop(optimized, corpus_size);
+-    std::vector<double> general_samples(repetitions), public_samples(repetitions);
+-    for (unsigned repeat = 0; repeat < repetitions; ++repeat) {
+-        // Alternate pair order to reduce systematic frequency/temperature drift.
+-        if ((repeat & 1U) == 0) {
+-            general_samples[repeat] = time_loop(general, iterations);
+-            public_samples[repeat] = time_loop(optimized, iterations);
+-        } else {
+-            public_samples[repeat] = time_loop(optimized, iterations);
+-            general_samples[repeat] = time_loop(general, iterations);
+-        }
+-    }
+-    const double general_ns = median(general_samples);
+-    const double public_ns = median(public_samples);
+-    std::printf("%s,%zu,%u,%.6f,%.6f,%.6f,%.3f,%.3f,", name, iterations, repetitions, general_ns, public_ns,
+-                public_ns - general_ns, 100.0 * (public_ns / general_ns - 1.0), general_ns / public_ns);
+-    print_samples(general_samples);
+-    std::putchar(',');
+-    print_samples(public_samples);
+-    std::putchar('\n');
+-    std::fflush(stdout);
++    register_operation(std::string(name) + "/general", general);
++    register_operation(std::string(name) + "/public", optimized);
+@@ -176,2 +137,2 @@ template<class Right>
+-void measure_products(const char* name, const std::vector<Money>& left, const std::vector<Right>& right,
+-                      bool expect_fallback, ResultKind expected = ResultKind::success) {
++void register_products(const char* name, const std::vector<Money>& left, const std::vector<Right>& right,
++                       bool expect_fallback, ResultKind expected = ResultKind::success) {
+@@ -180,3 +141,16 @@ void measure_products(const char* name, const std::vector<Money>& left, const st
+-    measure_pair(
+-        name, [&](std::size_t i) { return general_product(left[i], right[i]); },
+-        [&](std::size_t i) { return public_product(left[i], right[i]); }, expected);
++    // Registered callbacks own an immutable snapshot, and both sides read the
++    // exact same allocation. Later fixture generation cannot mutate their data.
++    const auto a = std::make_shared<const std::vector<Money>>(left);
++    const auto b = std::make_shared<const std::vector<Right>>(right);
++    register_pair(
++        name, [a, b](std::size_t i) { return general_product((*a)[i], (*b)[i]); },
++        [a, b](std::size_t i) { return public_product((*a)[i], (*b)[i]); }, expected);
++}
++
++template<class Dest, bool Subtract, class A, class B>
++void register_add_sub(const char* name, const std::vector<A>& left, const std::vector<B>& right) {
++    const auto a = std::make_shared<const std::vector<A>>(left);
++    const auto b = std::make_shared<const std::vector<B>>(right);
++    register_pair(
++        name, [a, b](std::size_t i) { return general_add_sub<Dest, Subtract>((*a)[i], (*b)[i]); },
++        [a, b](std::size_t i) { return public_add_sub<Dest, Subtract>((*a)[i], (*b)[i]); });
+@@ -185,5 +159,5 @@ void measure_products(const char* name, const std::vector<Money>& left, const st
+-template<class T>
+-bool parse_positive(const char* text, T& result) {
+-    const std::string_view value(text);
+-    const auto parsed = std::from_chars(value.data(), value.data() + value.size(), result);
+-    return parsed.ec == std::errc{} && parsed.ptr == value.data() + value.size() && result != 0;
++void register_cast(const char* name, const std::vector<Wide>& values, ResultKind expected = ResultKind::success) {
++    const auto data = std::make_shared<const std::vector<Wide>>(values);
++    register_pair(
++        name, [data](std::size_t i) { return general_cast((*data)[i]); },
++        [data](std::size_t i) { return public_cast((*data)[i]); }, expected);
+@@ -195,0 +170,8 @@ Raw signed_raw(std::mt19937_64& rng, std::uint64_t bound, Raw factor) {
++
++Raw random_raw(std::mt19937_64& rng) {
++    // Sequence draws explicitly: constructor argument evaluation order differs
++    // between GCC and Clang, which otherwise changes the supposedly same corpus.
++    const auto low = rng();
++    const auto high = rng();
++    return Raw(low, high);
++}
+@@ -199,4 +181,7 @@ int main(int argc, char** argv) {
+-    if (argc > 3 || (argc > 1 && !parse_positive(argv[1], iterations)) ||
+-        (argc > 2 && !parse_positive(argv[2], repetitions))) {
+-        std::fprintf(stderr, "usage: %s [positive_iterations [positive_repetitions]]\n", argv[0]);
+-        return 2;
++    bool validate_only = false;
++    int remaining = 1;
++    for (int i = 1; i < argc; ++i) {
++        if (std::string_view(argv[i]) == "--validate-only")
++            validate_only = true;
++        else
++            argv[remaining++] = argv[i];
+@@ -203,0 +189,4 @@ int main(int argc, char** argv) {
++    argc = remaining;
++    argv[argc] = nullptr;
++    benchmark::Initialize(&argc, argv);
++    if (benchmark::ReportUnrecognizedArguments(argc, argv)) return 2;
+@@ -211,2 +200,5 @@ int main(int argc, char** argv) {
+-    std::puts("workload,iterations,repetitions,general_median_ns,public_median_ns,delta_ns,delta_percent,speedup,"
+-              "general_samples_ns,public_samples_ns");
++    benchmark::AddCustomContext("compiler", __VERSION__);
++    benchmark::AddCustomContext("backend", backend);
++    benchmark::AddCustomContext("seed", "42");
++    benchmark::AddCustomContext("samples_per_workload", std::to_string(corpus_size));
++    benchmark::AddCustomContext("google_benchmark", FIXEDWIDE_GOOGLE_BENCHMARK_VERSION);
+@@ -235,2 +227,2 @@ int main(int argc, char** argv) {
+-    measure_products("mul_price.realistic", slope, price, false);
+-    measure_products("mul_fx.realistic", amount, fx, false);
++    register_products("mul_price.realistic", slope, price, false);
++    register_products("mul_fx.realistic", amount, fx, false);
+@@ -238,3 +230,6 @@ int main(int argc, char** argv) {
+-        measure_pair(
+-            name, [&](std::size_t i) { return general_replace(total[i], previous[i], next[i]); },
+-            [&](std::size_t i) { return public_replace(total[i], previous[i], next[i]); }, expected);
++        const auto t = std::make_shared<const std::vector<Money>>(total);
++        const auto p = std::make_shared<const std::vector<Money>>(previous);
++        const auto n = std::make_shared<const std::vector<Money>>(next);
++        register_pair(
++            name, [t, p, n](std::size_t i) { return general_replace((*t)[i], (*p)[i], (*n)[i]); },
++            [t, p, n](std::size_t i) { return public_replace((*t)[i], (*p)[i], (*n)[i]); }, expected);
+@@ -243,9 +238,3 @@ int main(int argc, char** argv) {
+-    measure_pair(
+-        "add_mixed.realistic", [&](std::size_t i) { return general_add_sub<Money, false>(amount[i], price[i]); },
+-        [&](std::size_t i) { return public_add_sub<Money, false>(amount[i], price[i]); });
+-    measure_pair(
+-        "sub_mixed.realistic", [&](std::size_t i) { return general_add_sub<Money, true>(amount[i], price[i]); },
+-        [&](std::size_t i) { return public_add_sub<Money, true>(amount[i], price[i]); });
+-    measure_pair(
+-        "cast.sign_extension", [&](std::size_t i) { return general_cast(wide[i]); },
+-        [&](std::size_t i) { return public_cast(wide[i]); });
++    register_add_sub<Money, false>("add_mixed.realistic", amount, price);
++    register_add_sub<Money, true>("sub_mixed.realistic", amount, price);
++    register_cast("cast.sign_extension", wide);
+@@ -255 +244,2 @@ int main(int argc, char** argv) {
+-        const Raw a(rng(), (std::uint64_t{1} << 26) + (rng() & 0x3ffU));
++        const auto low = rng();
++        const Raw a(low, (std::uint64_t{1} << 26) + (rng() & 0x3ffU));
+@@ -258 +248,2 @@ int main(int argc, char** argv) {
+-        fx[i] = Money::from_raw(Raw(rng(), 64 + (rng() & 7U)));
++        const auto fx_low = rng();
++        fx[i] = Money::from_raw(Raw(fx_low, 64 + (rng() & 7U)));
+@@ -260,2 +251,2 @@ int main(int argc, char** argv) {
+-    measure_products("mul_price.fallback_success", slope, price, true);
+-    measure_products("mul_fx.fallback_success", slope, fx, true);
++    register_products("mul_price.fallback_success", slope, price, true);
++    register_products("mul_fx.fallback_success", slope, fx, true);
+@@ -263 +254,2 @@ int main(int argc, char** argv) {
+-        const Raw a(rng(), (std::uint64_t{1} << 61) | (rng() >> 3));
++        const auto low = rng();
++        const Raw a(low, (std::uint64_t{1} << 61) | (rng() >> 3));
+@@ -267,2 +259,2 @@ int main(int argc, char** argv) {
+-    measure_products("mul_price.fallback_overflow", slope, price, true, ResultKind::overflow);
+-    measure_products("mul_fx.fallback_overflow", slope, fx, true, ResultKind::overflow);
++    register_products("mul_price.fallback_overflow", slope, price, true, ResultKind::overflow);
++    register_products("mul_fx.fallback_overflow", slope, fx, true, ResultKind::overflow);
+@@ -282,3 +274 @@ int main(int argc, char** argv) {
+-    measure_pair(
+-        "cast.outside_int128", [&](std::size_t i) { return general_cast(wide[i]); },
+-        [&](std::size_t i) { return public_cast(wide[i]); }, ResultKind::overflow);
++    register_cast("cast.outside_int128", wide, ResultKind::overflow);
+@@ -286,6 +276,2 @@ int main(int argc, char** argv) {
+-    measure_pair(
+-        "add_mixed.fallback_success", [&](std::size_t i) { return general_add_sub<Whole, false>(total[i], whole[i]); },
+-        [&](std::size_t i) { return public_add_sub<Whole, false>(total[i], whole[i]); });
+-    measure_pair(
+-        "sub_mixed.fallback_success", [&](std::size_t i) { return general_add_sub<Whole, true>(total[i], whole[i]); },
+-        [&](std::size_t i) { return public_add_sub<Whole, true>(total[i], whole[i]); });
++    register_add_sub<Whole, false>("add_mixed.fallback_success", total, whole);
++    register_add_sub<Whole, true>("sub_mixed.fallback_success", total, whole);
+@@ -293,3 +279,3 @@ int main(int argc, char** argv) {
+-        total[i] = Money::from_raw(Raw(rng(), rng()));
+-        previous[i] = Money::from_raw(Raw(rng(), rng()));
+-        next[i] = Money::from_raw(Raw(rng(), rng()));
++        total[i] = Money::from_raw(random_raw(rng));
++        previous[i] = Money::from_raw(random_raw(rng));
++        next[i] = Money::from_raw(random_raw(rng));
+@@ -298 +284,3 @@ int main(int argc, char** argv) {
+-    std::fprintf(stderr, "# unsigned_sink=%llu\n", static_cast<unsigned long long>(sink));
++    benchmark::AddCustomContext("validated_comparisons", std::to_string(validations));
++    if (!validate_only) benchmark::RunSpecifiedBenchmarks();
++    benchmark::Shutdown();
+diff --git a/include/fixedwide/detail/mixed_native.hpp b/include/fixedwide/detail/mixed_native.hpp
+index 5d91212..b6dfc9c 100644
+--- a/include/fixedwide/detail/mixed_native.hpp
++++ b/include/fixedwide/detail/mixed_native.hpp
+@@ -191,0 +192,11 @@ template<typename Raw>
++template<unsigned K>
++[[nodiscard]] constexpr bool try_scale(i128 value, i128& result) noexcept {
++    static_assert(K <= 38);
++    constexpr i128 factor = pow10_v<K>;
++    // The factor is positive; truncation toward zero gives the exact lower
++    // input bound too. Reject before multiplying, without a 256-bit product.
++    if (value < dest_min<128>() / factor || value > dest_max<128>() / factor) return false;
++    result = value * factor;
++    return true;
++}
++
+@@ -203 +214 @@ template<std::size_t BitsDest, unsigned Ds, unsigned Dd>
+-                if (__builtin_mul_overflow(value, pow10_v<gap>, &scaled)) return std::nullopt;
++                if (!try_scale<gap>(value, scaled)) return std::nullopt;
+@@ -290,2 +301,2 @@ template<unsigned Da, unsigned Db, std::size_t BitsDest, unsigned Dd, typename R
+-        if (__builtin_mul_overflow(static_cast<i128>(a), pow10_v<sum_scale - Da>, &lhs) ||
+-            __builtin_mul_overflow(static_cast<i128>(b), pow10_v<sum_scale - Db>, &rhs))
++        if (!try_scale<sum_scale - Da>(static_cast<i128>(a), lhs) ||
++            !try_scale<sum_scale - Db>(static_cast<i128>(b), rhs))
+@@ -358,0 +370,56 @@ template<std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db, std::si
++#if defined(__clang__)
++// Keep narrow magnitudes narrow so Clang can eliminate their high limbs.
++template<typename Raw>
++[[nodiscard]] constexpr auto product_magnitude(Raw raw) noexcept {
++    const i128 value = static_cast<i128>(raw);
++    if constexpr (sizeof(Raw) <= sizeof(std::uint64_t)) {
++        const auto bits = static_cast<std::uint64_t>(value);
++        return value < 0 ? std::uint64_t{0} - bits : bits;
++    } else {
++        const auto bits = static_cast<u128>(value);
++        return value < 0 ? u128{0} - bits : bits;
++    }
++}
++#endif
++
++template<typename RawA, typename RawB>
++[[nodiscard]] constexpr bool try_product(RawA a, RawB b, i128& result) noexcept {
++#if defined(__clang__)
++    // Clang's signed overflow builtin computes a full 256-bit product. Use
++    // unsigned limbs, preserving the raw widths to simplify a 128x64 product.
++    const u128 lhs = product_magnitude(a);
++    const u128 rhs = product_magnitude(b);
++    const auto lhs_high = static_cast<std::uint64_t>(lhs >> 64);
++    const auto rhs_high = static_cast<std::uint64_t>(rhs >> 64);
++    const auto lhs_low = static_cast<std::uint64_t>(lhs);
++    const auto rhs_low = static_cast<std::uint64_t>(rhs);
++    if (lhs_high != 0 && rhs_high != 0) return false;
++    constexpr bool has_narrow_operand = sizeof(RawA) <= sizeof(std::uint64_t) || sizeof(RawB) <= sizeof(std::uint64_t);
++    u128 cross = 0;
++    if (has_narrow_operand || (lhs_high | rhs_high) != 0) {
++        if constexpr (has_narrow_operand) {
++            // One high limb is known zero. Its product disappears, avoiding
++            // a runtime size branch for the remaining cross product.
++            cross = static_cast<u128>(lhs_high) * rhs_low + static_cast<u128>(rhs_high) * lhs_low;
++        } else {
++            cross = lhs_high != 0 ? static_cast<u128>(lhs_high) * rhs_low : static_cast<u128>(rhs_high) * lhs_low;
++        }
++        // Reject before the low multiply: its carry can only increase this.
++        if ((cross >> 64) != 0) return false;
++    }
++    const u128 low = static_cast<u128>(lhs_low) * rhs_low;
++    const u128 upper = cross + (low >> 64);
++    if ((upper >> 64) != 0) return false;
++    const u128 product = (upper << 64) | static_cast<std::uint64_t>(low);
++    const bool negative = (static_cast<i128>(a) < 0) != (static_cast<i128>(b) < 0);
++    if (product > limit_magnitude_u128<128>(negative)) return false;
++    result = static_cast<i128>(negative ? u128{0} - product : product);
++    return true;
++#else
++    // GCC already specializes the builtin efficiently for narrow operands.
++    return !__builtin_mul_overflow(static_cast<i128>(a), static_cast<i128>(b), &result);
++#endif
++}
++
++// Keep Clang's optional/expected producer visible to its immediate consumer;
++// outlining it would materialize both states and retain dynamic rounding.
+@@ -359,0 +427,3 @@ template<unsigned Da, unsigned Db, std::size_t BitsDest, unsigned Dd, typename R
++#if defined(__clang__)
++[[gnu::always_inline]]
++#endif
+@@ -363 +433 @@ template<unsigned Da, unsigned Db, std::size_t BitsDest, unsigned Dd, typename R
+-        if (__builtin_mul_overflow(static_cast<i128>(a), static_cast<i128>(b), &product)) return std::nullopt;
++        if (!try_product(a, b, product)) return std::nullopt;
+diff --git a/include/fixedwide/mixed.hpp b/include/fixedwide/mixed.hpp
+index 6120365..d75656b 100644
+--- a/include/fixedwide/mixed.hpp
++++ b/include/fixedwide/mixed.hpp
+@@ -197,0 +198,23 @@ template<typename Dest, std::size_t BitsA, unsigned Da>
++#if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
++namespace detail {
++// Keep the general kernel's argument/return storage out of the native attempt.
++// Clang otherwise gives the rejected fast path a large frame and extra saved
++// registers. This adapter lets it tail-call the unchanged general calculation.
++template<typename Dest, bool Subtract, typename A, typename B>
++[[gnu::noinline]] std::expected<Dest, ArithmeticError> runtime_add_sub_fallback(A a, B b, Rounding rounding) noexcept {
++    auto res = mixed_add_sub_kernel(to_int256_raw(a.raw()), A::fractional_digits, to_int256_raw(b.raw()),
++                                    B::fractional_digits, Subtract, Dest::fractional_digits, rounding, Dest::bits);
++    if (!res) return std::unexpected(res.error());
++    return from_int256_raw<Dest>(*res);
++}
++
++template<typename Dest, typename A, typename B>
++[[gnu::noinline]] std::expected<Dest, ArithmeticError> runtime_mul_fallback(A a, B b, Rounding rounding) noexcept {
++    auto res = mixed_mul_kernel(to_int256_raw(a.raw()), A::fractional_digits, to_int256_raw(b.raw()),
++                                B::fractional_digits, Dest::fractional_digits, rounding, Dest::bits);
++    if (!res) return std::unexpected(res.error());
++    return from_int256_raw<Dest>(*res);
++}
++} // namespace detail
++#endif
++
+@@ -224,0 +248,3 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
++#endif
++#if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
++    if constexpr (BitsA <= 128 && BitsB <= 128) return detail::runtime_add_sub_fallback<Dest, false>(a, b, rounding);
+@@ -258,0 +285,3 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
++#endif
++#if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
++    if constexpr (BitsA <= 128 && BitsB <= 128) return detail::runtime_add_sub_fallback<Dest, true>(a, b, rounding);
+@@ -275,0 +305,4 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
++#if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
++// Preserve constant rounding modes across the runtime-attempt boundary.
++[[gnu::always_inline]]
++#endif
+@@ -290,0 +324,4 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
++#endif
++#if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
++    if constexpr (BitsA <= 128 && BitsB <= 128 && Dest::bits <= 128)
++        return detail::runtime_mul_fallback<Dest>(a, b, rounding);
+diff --git a/scripts/bench_runtime_narrow.sh b/scripts/bench_runtime_narrow.sh
+index c6700d3..b33875d 100755
+--- a/scripts/bench_runtime_narrow.sh
++++ b/scripts/bench_runtime_narrow.sh
+@@ -2 +2 @@
+-# Paired direct-kernel/public-API timings, never a wall-clock pass/fail gate.
++# Google Benchmark direct-kernel/public-API comparisons; no timing pass/fail gate.
+@@ -10,2 +10,4 @@ cxx=${CXX:-g++}
+-iterations=${ITERATIONS:-1048576}
+-repetitions=${REPETITIONS:-7}
++min_time=${MIN_TIME:-0.1s}
++repetitions=${REPETITIONS:-9}
++hash_command=(sha256sum)
++if ! command -v sha256sum >/dev/null; then hash_command=(shasum -a 256); fi
+@@ -18 +20 @@ repetitions=${REPETITIONS:-7}
+-    printf 'iterations=%s repetitions=%s\n' "$iterations" "$repetitions"
++    printf 'benchmark_min_time=%s benchmark_repetitions=%s random_interleaving=true\n' "$min_time" "$repetitions"
+@@ -20,2 +22,2 @@ repetitions=${REPETITIONS:-7}
+-    sha256sum benchmarks/runtime_narrow_bench.cpp include/fixedwide/detail/mixed_native.hpp \
+-        include/fixedwide/mixed.hpp src/mixed.cpp
++    "${hash_command[@]}" benchmarks/runtime_narrow_bench.cpp benchmarks/CMakeLists.txt \
++        include/fixedwide/detail/mixed_native.hpp include/fixedwide/mixed.hpp src/mixed.cpp
+@@ -32 +34 @@ for backend in native portable; do
+-    build="build-runtime-narrow-${backend}"
++    build="build-runtime-narrow-$(basename "$cxx")-${backend}"
+@@ -34,0 +37,3 @@ for backend in native portable; do
++    if [[ -n "${GOOGLE_BENCHMARK_SOURCE:-}" ]]; then
++        extra+=("-DFETCHCONTENT_SOURCE_DIR_GOOGLEBENCHMARK=$GOOGLE_BENCHMARK_SOURCE")
++    fi
+@@ -36 +41,2 @@ for backend in native portable; do
+-        -DCMAKE_CXX_COMPILER="$cxx" -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
++        -DCMAKE_CXX_COMPILER="$cxx" -DBUILD_SHARED_LIBS=OFF -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
++        -DFIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK=ON \
+@@ -39,3 +45,9 @@ for backend in native portable; do
+-    "${runner[@]}" "$build/benchmarks/fixedwide_runtime_narrow_bench" "$iterations" "$repetitions" \
+-        > "$out/samples-${backend}.csv" 2> "$out/validation-${backend}.csv"
+-    sha256sum "$build/benchmarks/fixedwide_runtime_narrow_bench" >> "$out/environment.txt"
++    ninja -C "$build" -t commands fixedwide_runtime_narrow_bench >> "$out/environment.txt"
++    "${runner[@]}" "$build/benchmarks/fixedwide_runtime_narrow_bench" \
++        "--benchmark_min_time=$min_time" "--benchmark_repetitions=$repetitions" \
++        --benchmark_min_warmup_time=0.02 --benchmark_enable_random_interleaving=true \
++        --benchmark_report_aggregates_only=false --benchmark_display_aggregates_only=true \
++        --benchmark_out_format=json "--benchmark_out=$out/benchmark-${backend}.json" \
++        > "$out/benchmark-${backend}.txt" 2> "$out/validation-${backend}.txt"
++    "${hash_command[@]}" "$build/benchmarks/fixedwide_runtime_narrow_bench" >> "$out/environment.txt"
++    "${hash_command[@]}" "$build/libfixedwide.a" >> "$out/environment.txt"

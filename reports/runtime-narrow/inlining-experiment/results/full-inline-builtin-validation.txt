@@ -1,0 +1,33 @@
+# compiler=Ubuntu Clang 19.1.1 (1ubuntu1~24.04.2) backend=native seed=42 samples=65536
+workload,samples,successes,overflows,mismatches
+mul_price.realistic,65536,65536,0,0
+mul_fx.realistic,65536,65536,0,0
+replace.realistic,65536,65536,0,0
+add_mixed.realistic,65536,65536,0,0
+sub_mixed.realistic,65536,65536,0,0
+cast.sign_extension,65536,65536,0,0
+mul_price.fallback_success,65536,65536,0,0
+mul_fx.fallback_success,65536,65536,0,0
+mul_price.fallback_overflow,65536,0,65536,0
+mul_fx.fallback_overflow,65536,0,65536,0
+replace.wide_cancellation,65536,65536,0,0
+cast.outside_int128,65536,0,65536,0
+add_mixed.fallback_success,65536,65536,0,0
+sub_mixed.fallback_success,65536,65536,0,0
+replace.full_range,65536,43664,21872,0
+2026-10-27T18:58:16+08:00
+Running /tmp/fixedwide-api-full-inline-builtin-clang
+Run on (9 X 2300 MHz CPU s)
+CPU Caches:
+  L1 Data 48 KiB (x4)
+  L1 Instruction 32 KiB (x4)
+  L2 Unified 2048 KiB (x4)
+  L3 Unified 266240 KiB (x1)
+Load Average: 0.40, 0.64, 0.96
+backend: native
+compiler: Ubuntu Clang 19.1.1 (1ubuntu1~24.04.2)
+google_benchmark: 1.9.4
+samples_per_workload: 65536
+seed: 42
+validated_comparisons: 983040
+***WARNING*** ASLR is enabled, the results may have unreproducible noise in them.

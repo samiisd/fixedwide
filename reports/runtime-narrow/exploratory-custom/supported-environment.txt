@@ -1,0 +1,134 @@
+Task date: 2026-10-27
+Supported compiler measurements, 1048576 operations per side, nine alternating pairs.
+CPU affinity 0; shared host, no frequency lock or CPU isolation.
+Release -O3 -DNDEBUG, no -march, no LTO; scalar benchmark loops and no fast-math.
+Exact compile and link commands below supersede this summary.
+Source commit: 39765459396f9072ff322b5ae672b9e1ec6e1b91
+Source hashes:
+bb3c46e30ede092458aec779fba9abc7f40d4c34299f5b3d37de749152d2caf2  benchmarks/runtime_narrow_bench.cpp
+ca82da9bce7f6275f9915c363f57d740f66114ff2bfa861aadb157e3eeeca443  include/fixedwide/detail/mixed_native.hpp
+78a512be1f4b3c423aa886d59533c210ffa48572b800969847ef0035418cadcd  include/fixedwide/mixed.hpp
+f798c69c58ed881406192fb58352a4fbedf457b324c4dae7e66b4cb66b29db5b  src/mixed.cpp
+Architecture:                            x86_64
+CPU op-mode(s):                          32-bit, 64-bit
+Address sizes:                           46 bits physical, 57 bits virtual
+Byte Order:                              Little Endian
+CPU(s):                                  9
+On-line CPU(s) list:                     0-8
+Vendor ID:                               GenuineIntel
+Model name:                              INTEL(R) XEON(R) PLATINUM 8573C
+BIOS Model name:                           CPU @ 0.0GHz
+BIOS CPU family:                         0
+CPU family:                              6
+Model:                                   207
+Thread(s) per core:                      1
+Core(s) per socket:                      9
+Socket(s):                               1
+Stepping:                                2
+BogoMIPS:                                4600.00
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities
+Hypervisor vendor:                       KVM
+Virtualization type:                     full
+L1d cache:                               240 KiB (5 instances)
+L1i cache:                               160 KiB (5 instances)
+L2 cache:                                10 MiB (5 instances)
+L3 cache:                                260 MiB (1 instance)
+NUMA node(s):                            1
+NUMA node0 CPU(s):                       0-8
+Vulnerability Gather data sampling:      Not affected
+Vulnerability Ghostwrite:                Not affected
+Vulnerability Indirect target selection: Vulnerable
+Vulnerability Itlb multihit:             Not affected
+Vulnerability L1tf:                      Not affected
+Vulnerability Mds:                       Not affected
+Vulnerability Meltdown:                  Not affected
+Vulnerability Mmio stale data:           Not affected
+Vulnerability Old microcode:             Not affected
+Vulnerability Reg file data sampling:    Not affected
+Vulnerability Retbleed:                  Vulnerable
+Vulnerability Spec rstack overflow:      Not affected
+Vulnerability Spec store bypass:         Vulnerable
+Vulnerability Spectre v1:                Vulnerable: __user pointer sanitization and usercopy barriers only; no swapgs barriers
+Vulnerability Spectre v2:                Vulnerable; STIBP: disabled; PBRSB-eIBRS: Not affected; BHI: Vulnerable
+Vulnerability Srbds:                     Not affected
+Vulnerability Tsa:                       Not affected
+Vulnerability Tsx async abort:           Not affected
+Vulnerability Vmscape:                   Not affected
+
+Configuration: gcc14-native
+g++-14 (Ubuntu 14.2.0-4ubuntu2~24.04.1) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -Werror -O3 -DNDEBUG -std=c++23 -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off -fno-fast-math -MD -MT benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -MF benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o.d -o benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/benchmarks/runtime_narrow_bench.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -MF CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o.d -o CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/arithmetic.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/mixed.cpp.o -MF CMakeFiles/fixedwide.dir/src/mixed.cpp.o.d -o CMakeFiles/fixedwide.dir/src/mixed.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/mixed.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/chars.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/integer_chars.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/floating.cpp.o -MF CMakeFiles/fixedwide.dir/src/floating.cpp.o.d -o CMakeFiles/fixedwide.dir/src/floating.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/floating.cpp
+/usr/bin/g++-14  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/bigint.cpp.o -MF CMakeFiles/fixedwide.dir/src/bigint.cpp.o.d -o CMakeFiles/fixedwide.dir/src/bigint.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/bigint.cpp
+: && /usr/bin/cmake -E rm -f libfixedwide.a && /usr/bin/ar qc libfixedwide.a  CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o CMakeFiles/fixedwide.dir/src/mixed.cpp.o CMakeFiles/fixedwide.dir/src/chars.cpp.o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o CMakeFiles/fixedwide.dir/src/floating.cpp.o CMakeFiles/fixedwide.dir/src/bigint.cpp.o && /usr/bin/ranlib libfixedwide.a && :
+: && /usr/bin/g++-14 -Werror -O3 -DNDEBUG  benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -o benchmarks/fixedwide_runtime_narrow_bench  libfixedwide.a && :
+297db5fbb563584709c71dd6d3d6a93405ba88ab76f047fcd1c34bae62848d11  build/gcc14-native/benchmarks/fixedwide_runtime_narrow_bench
+ed07a3a4001a4b355100ff5f5e97012d08636e341efc5173800fc6412c02f165  build/gcc14-native/libfixedwide.a
+Run: taskset -c 0 build/gcc14-native/benchmarks/fixedwide_runtime_narrow_bench 1048576 9
+
+Configuration: gcc14-portable
+g++-14 (Ubuntu 14.2.0-4ubuntu2~24.04.1) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -Werror -O3 -DNDEBUG -std=c++23 -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off -fno-fast-math -MD -MT benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -MF benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o.d -o benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/benchmarks/runtime_narrow_bench.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -MF CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o.d -o CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/arithmetic.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/mixed.cpp.o -MF CMakeFiles/fixedwide.dir/src/mixed.cpp.o.d -o CMakeFiles/fixedwide.dir/src/mixed.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/mixed.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/chars.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/integer_chars.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/floating.cpp.o -MF CMakeFiles/fixedwide.dir/src/floating.cpp.o.d -o CMakeFiles/fixedwide.dir/src/floating.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/floating.cpp
+/usr/bin/g++-14 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/bigint.cpp.o -MF CMakeFiles/fixedwide.dir/src/bigint.cpp.o.d -o CMakeFiles/fixedwide.dir/src/bigint.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/bigint.cpp
+: && /usr/bin/cmake -E rm -f libfixedwide.a && /usr/bin/ar qc libfixedwide.a  CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o CMakeFiles/fixedwide.dir/src/mixed.cpp.o CMakeFiles/fixedwide.dir/src/chars.cpp.o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o CMakeFiles/fixedwide.dir/src/floating.cpp.o CMakeFiles/fixedwide.dir/src/bigint.cpp.o && /usr/bin/ranlib libfixedwide.a && :
+: && /usr/bin/g++-14 -Werror -O3 -DNDEBUG  benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -o benchmarks/fixedwide_runtime_narrow_bench  libfixedwide.a && :
+b32f0d0069db92c7216ecdbe6439abf6b1091ba811d35fd3849702e45d698788  build/gcc14-portable/benchmarks/fixedwide_runtime_narrow_bench
+7e891392aa6b95d5c015b17fe890a1b856f58b2b53fd3b5b66b5939f91ffdaef  build/gcc14-portable/libfixedwide.a
+Run: taskset -c 0 build/gcc14-portable/benchmarks/fixedwide_runtime_narrow_bench 1048576 9
+
+Configuration: clang19-native
+Ubuntu clang version 19.1.1 (1ubuntu1~24.04.2)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-19/bin
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -Werror -O3 -DNDEBUG -std=c++23 -fno-vectorize -fno-slp-vectorize -ffp-contract=off -fno-fast-math -MD -MT benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -MF benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o.d -o benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/benchmarks/runtime_narrow_bench.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -MF CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o.d -o CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/arithmetic.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/mixed.cpp.o -MF CMakeFiles/fixedwide.dir/src/mixed.cpp.o.d -o CMakeFiles/fixedwide.dir/src/mixed.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/mixed.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/chars.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/integer_chars.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/floating.cpp.o -MF CMakeFiles/fixedwide.dir/src/floating.cpp.o.d -o CMakeFiles/fixedwide.dir/src/floating.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/floating.cpp
+/usr/bin/clang++-19  -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/bigint.cpp.o -MF CMakeFiles/fixedwide.dir/src/bigint.cpp.o.d -o CMakeFiles/fixedwide.dir/src/bigint.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/bigint.cpp
+: && /usr/bin/cmake -E rm -f libfixedwide.a && /usr/bin/llvm-ar-19 qc libfixedwide.a  CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o CMakeFiles/fixedwide.dir/src/mixed.cpp.o CMakeFiles/fixedwide.dir/src/chars.cpp.o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o CMakeFiles/fixedwide.dir/src/floating.cpp.o CMakeFiles/fixedwide.dir/src/bigint.cpp.o && /usr/bin/llvm-ranlib-19 libfixedwide.a && :
+: && /usr/bin/clang++-19 -Werror -O3 -DNDEBUG  benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -o benchmarks/fixedwide_runtime_narrow_bench  libfixedwide.a && :
+1b6431c70177213d4dbc27cbd47c98c1bf0b9146fa0526f1198a881efdb79a35  build/clang19-bench/benchmarks/fixedwide_runtime_narrow_bench
+9df60d00b96135f7fe81a4b68953586ab0036db911e1cde7e0421e8595919287  build/clang19-bench/libfixedwide.a
+Run: taskset -c 0 build/clang19-bench/benchmarks/fixedwide_runtime_narrow_bench 1048576 9
+
+Configuration: clang19-portable
+Ubuntu clang version 19.1.1 (1ubuntu1~24.04.2)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-19/bin
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -Werror -O3 -DNDEBUG -std=c++23 -fno-vectorize -fno-slp-vectorize -ffp-contract=off -fno-fast-math -MD -MT benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -MF benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o.d -o benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/benchmarks/runtime_narrow_bench.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -MF CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o.d -o CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/arithmetic.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/mixed.cpp.o -MF CMakeFiles/fixedwide.dir/src/mixed.cpp.o.d -o CMakeFiles/fixedwide.dir/src/mixed.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/mixed.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/chars.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -MF CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o.d -o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/integer_chars.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/floating.cpp.o -MF CMakeFiles/fixedwide.dir/src/floating.cpp.o.d -o CMakeFiles/fixedwide.dir/src/floating.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/floating.cpp
+/usr/bin/clang++-19 -DFIXEDWIDE_FORCE_PORTABLE -I/workspace/scratch/77ced77b7ec2/fixedwide/include -I/workspace/scratch/77ced77b7ec2/fixedwide/src -Werror -O3 -DNDEBUG -std=c++23 -fPIC -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow -Wold-style-cast -MD -MT CMakeFiles/fixedwide.dir/src/bigint.cpp.o -MF CMakeFiles/fixedwide.dir/src/bigint.cpp.o.d -o CMakeFiles/fixedwide.dir/src/bigint.cpp.o -c /workspace/scratch/77ced77b7ec2/fixedwide/src/bigint.cpp
+: && /usr/bin/cmake -E rm -f libfixedwide.a && /usr/bin/llvm-ar-19 qc libfixedwide.a  CMakeFiles/fixedwide.dir/src/arithmetic.cpp.o CMakeFiles/fixedwide.dir/src/mixed.cpp.o CMakeFiles/fixedwide.dir/src/chars.cpp.o CMakeFiles/fixedwide.dir/src/integer_chars.cpp.o CMakeFiles/fixedwide.dir/src/floating.cpp.o CMakeFiles/fixedwide.dir/src/bigint.cpp.o && /usr/bin/llvm-ranlib-19 libfixedwide.a && :
+: && /usr/bin/clang++-19 -Werror -O3 -DNDEBUG  benchmarks/CMakeFiles/fixedwide_runtime_narrow_bench.dir/runtime_narrow_bench.cpp.o -o benchmarks/fixedwide_runtime_narrow_bench  libfixedwide.a && :
+511a74a7e09f0be96fc9c2b8bab4e4d54c6a523ee1157e53dc16307af090988f  build/clang19-bench-portable/benchmarks/fixedwide_runtime_narrow_bench
+e5ce6f10a8faabc9e555c02d8495adab79e4ec1971d7758e678df97898b0b3aa  build/clang19-bench-portable/libfixedwide.a
+Run: taskset -c 0 build/clang19-bench-portable/benchmarks/fixedwide_runtime_narrow_bench 1048576 9
+Post-run bb3c46e30ede092458aec779fba9abc7f40d4c34299f5b3d37de749152d2caf2  benchmarks/runtime_narrow_bench.cpp
+Post-run ca82da9bce7f6275f9915c363f57d740f66114ff2bfa861aadb157e3eeeca443  include/fixedwide/detail/mixed_native.hpp
+Post-run 78a512be1f4b3c423aa886d59533c210ffa48572b800969847ef0035418cadcd  include/fixedwide/mixed.hpp
+Post-run f798c69c58ed881406192fb58352a4fbedf457b324c4dae7e66b4cb66b29db5b  src/mixed.cpp

@@ -362,6 +362,16 @@ destination, and are exact: both sides are lifted to a common exponent and the
 integers compared. No division happens and nothing is rounded, so the answer is
 never a rounding artefact. Both are `constexpr` for every width.
 
+On native int128 backends, `mul_to` can use a checked runtime fast path for
+operands and destinations up to 128 bits; mixed-scale add/sub accepts operands
+up to 128 bits and destinations up to 256 bits. Intermediate overflow falls
+back to the exact general kernel, since later scaling or cancellation can
+still produce a valid result. Same-scale add/sub works directly in native or
+256-bit limb arithmetic. `fixed_cast` also tries native rescaling into up to
+128 bits, including sign-extended Fixed256 inputs. These are implementation
+choices, not additional limits or caller preconditions. Every rounding mode
+and error code retains the same contract; forced-portable dispatch is unchanged.
+
 > See [`examples/04_mixed_scales.cpp`](../examples/04_mixed_scales.cpp), and
 > [benchmarks.md](benchmarks.md#the-cost-of-a-mixed-operation) for what each of
 > these costs and when the narrow path applies.
