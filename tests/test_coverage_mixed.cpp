@@ -66,6 +66,87 @@ void mixed_pair() {
         }
 }
 
+// The coverage gate runs this binary on its own. Keep the runtime paths backed
+// by an independent integer oracle here as well as by the kernel differential
+// suite, including fallbacks whose intermediate overflows but final result fits.
+template<class D, class A, class B>
+void runtime_case(const cpp_int& x, const cpp_int& y) {
+    const auto a = A::from_raw(from_integer<typename A::raw_type>(x));
+    const auto b = B::from_raw(from_integer<typename B::raw_type>(y));
+    const cpp_int aa = integer(a.raw()), bb = integer(b.raw());
+    const cpp_int sa = power10(A::fractional_digits), sb = power10(B::fractional_digits),
+                  sd = power10(D::fractional_digits);
+    for (auto mode : modes) {
+        agrees(add_to<D>(a, b, mode), rounded((aa * sb + bb * sa) * sd, sa * sb, mode, D::bits));
+        agrees(sub_to<D>(a, b, mode), rounded((aa * sb - bb * sa) * sd, sa * sb, mode, D::bits));
+        agrees(mul_to<D>(a, b, mode), rounded(aa * bb * sd, sa * sb, mode, D::bits));
+        agrees(fixed_cast<D>(a, mode), rounded(aa * sd, sa, mode, D::bits));
+    }
+}
+
+template<class D, class A>
+void runtime_cast_case(const cpp_int& x) {
+    const auto a = A::from_raw(from_integer<typename A::raw_type>(x));
+    const cpp_int aa = integer(a.raw());
+    for (auto mode : modes)
+        agrees(fixed_cast<D>(a, mode),
+               rounded(aa * power10(D::fractional_digits), power10(A::fractional_digits), mode, D::bits));
+}
+
+void runtime_narrow_paths() {
+    const cpp_int p63 = cpp_int{1} << 63, p64 = cpp_int{1} << 64, p127 = cpp_int{1} << 127, p128 = cpp_int{1} << 128,
+                  p192 = cpp_int{1} << 192, p255 = cpp_int{1} << 255;
+    const std::vector<cpp_int> narrow{0, 1, -1, 15, -15, 127, 128, -129, p63 - 1, -p63, p64, -p64, p127 - 1, -p127};
+    for (const auto& x : narrow)
+        for (const auto& y : narrow) {
+            runtime_case<Fixed128<12>, Fixed128<12>, Fixed128<12>>(x, y);
+            runtime_case<Fixed128<12>, Fixed128<12>, Fixed64<10>>(x, y);
+            runtime_case<Fixed128<10>, Fixed128<12>, Fixed128<10>>(x, y);
+            runtime_case<Fixed128<18>, Fixed128<12>, Fixed128<6>>(x, y);
+            runtime_case<Fixed256<12>, Fixed128<12>, Fixed128<12>>(x, y);
+            runtime_case<Fixed256<10>, Fixed128<12>, Fixed128<10>>(x, y);
+            runtime_case<Fixed8<0>, Fixed128<1>, Fixed128<0>>(x, y);
+        }
+    // Alignment can overflow before an opposing term brings the exact sum
+    // into range. Native sum overflow can likewise disappear after rescaling.
+    runtime_case<Fixed128<1>, Fixed128<0>, Fixed128<1>>(p127 / 10 + 1, -p127 + 1);
+    runtime_case<Fixed128<0>, Fixed128<1>, Fixed128<1>>(p127 - 1, p127 - 1);
+    for (int q = -3; q <= 3; ++q)
+        for (int delta = -1; delta <= 1; ++delta) {
+            const cpp_int raw = cpp_int{q} * power10(20) + power10(20) / 2 + delta;
+            runtime_case<Fixed128<0>, Fixed128<20>, Fixed128<0>>(raw, 1);
+            runtime_cast_case<Fixed128<0>, Fixed256<20>>(raw);
+        }
+
+    const std::vector<cpp_int> wide{0,    1,     -1,   p127 - 1, -p127,    p127, -p127 - 1,
+                                    p128, -p128, p192, -p192,    p255 - 1, -p255};
+    for (const auto& x : wide) {
+        for (const auto& y : wide) {
+            runtime_case<Fixed256<12>, Fixed256<12>, Fixed256<12>>(x, y);
+            runtime_case<Fixed128<12>, Fixed256<12>, Fixed256<12>>(x, y);
+            runtime_case<Fixed8<0>, Fixed256<0>, Fixed256<0>>(x, y);
+        }
+        runtime_case<Fixed256<12>, Fixed256<12>, Fixed128<12>>(x, 1);
+        runtime_case<Fixed256<12>, Fixed128<12>, Fixed256<12>>(1, x);
+        runtime_cast_case<Fixed128<0>, Fixed256<38>>(x);
+        runtime_cast_case<Fixed128<0>, Fixed256<39>>(x);
+        runtime_cast_case<Fixed128<0>, Fixed256<76>>(x);
+        runtime_cast_case<Fixed128<38>, Fixed256<0>>(x);
+    }
+    for (const auto& endpoint : narrow) {
+        runtime_case<Fixed128<0>, Fixed256<0>, Fixed256<0>>(p128, -p128 + endpoint);
+        runtime_case<Fixed8<0>, Fixed256<0>, Fixed256<0>>(p128, -p128 + endpoint);
+    }
+    for (const auto& x : std::vector<cpp_int>{0, 1, -1, p127 - 1, -p127})
+        for (const auto& y : std::vector<cpp_int>{0, 1, -1, p127 - 1, -p127}) {
+            runtime_case<Fixed128<0>, Fixed128<19>, Fixed128<20>>(x, y);
+            runtime_case<Fixed128<0>, Fixed128<38>, Fixed128<38>>(x, y);
+            runtime_case<Fixed128<38>, Fixed128<0>, Fixed128<0>>(x, y);
+            runtime_case<Fixed256<76>, Fixed128<0>, Fixed128<0>>(x, y);
+            runtime_case<Fixed256<38>, Fixed128<0>, Fixed128<38>>(x, y);
+        }
+}
+
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
 // Calling through a volatile pointer intentionally checks the implementations
 // of the bound predicates, which ordinary arithmetic evaluates at compile time.
@@ -114,7 +195,7 @@ void native_bounds() {
     CHECK(!n::check_range<8>(-129));
     CHECK(n::check_range<128>(-42).value() == -42);
     const n::i128 big = n::i128{1} << 110;
-    for (n::i128 value : {n::i128{0}, n::i128{1}, -n::i128{7}, big, -big}) {
+    for (n::i128 value : {n::i128{0}, n::i128{1}, -n::i128{7}, big, -big, n::dest_min<128>(), n::dest_max<128>()}) {
         for (n::i128 divisor : {n::i128{1}, n::i128{10}, n::i128{1} << 80})
             for (auto mode : modes) {
                 const auto got = n::divide_rounded(value, divisor, mode, n::limit_magnitude_u128<128>(value < 0));
@@ -131,6 +212,7 @@ void native_bounds() {
 
 void run_coverage_mixed() {
     comparison_reference();
+    runtime_narrow_paths();
     // The denominator needs the 1024-bit tier; directed rounding still has a representable result.
     const auto x = Fixed256<0>::from_raw(from_integer<i256>(power10(76)));
     const auto z = Fixed256<76>::from_raw(from_integer<i256>(power10(76)));

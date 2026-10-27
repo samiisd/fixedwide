@@ -181,6 +181,12 @@ template<typename Dest, std::size_t BitsA, unsigned Da>
             detail::mixed_native::cast<BitsA, Da, Dest::bits, Dest::fractional_digits>(a.raw(), rounding);
         if (!native) return std::unexpected(native.error());
         return Dest::from_raw(static_cast<typename Dest::raw_type>(*native));
+    } else if constexpr (Dest::bits <= 128) {
+        if (const auto native =
+                detail::mixed_native::try_cast<Da, Dest::bits, Dest::fractional_digits>(a.raw(), rounding)) {
+            if (!*native) return std::unexpected(native->error());
+            return Dest::from_raw(static_cast<typename Dest::raw_type>(**native));
+        }
     }
 #endif
     auto res =
@@ -207,6 +213,14 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
             a.raw(), b.raw(), false, rounding);
         if (!native) return std::unexpected(native.error());
         return Dest::from_raw(static_cast<typename Dest::raw_type>(*native));
+    } else if constexpr (Da == Db && Da == Dest::fractional_digits) {
+        return detail::mixed_native::add_sub_same_scale<Dest>(a.raw(), b.raw(), false);
+    } else if constexpr (BitsA <= 128 && BitsB <= 128) {
+        if (const auto native = detail::mixed_native::try_add_sub<Da, Db, Dest::bits, Dest::fractional_digits>(
+                a.raw(), b.raw(), false, rounding)) {
+            if (!*native) return std::unexpected(native->error());
+            return Dest::from_raw(static_cast<typename Dest::raw_type>(**native));
+        }
     }
 #endif
     auto res = detail::mixed_add_sub_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
@@ -233,6 +247,14 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
             a.raw(), b.raw(), true, rounding);
         if (!native) return std::unexpected(native.error());
         return Dest::from_raw(static_cast<typename Dest::raw_type>(*native));
+    } else if constexpr (Da == Db && Da == Dest::fractional_digits) {
+        return detail::mixed_native::add_sub_same_scale<Dest>(a.raw(), b.raw(), true);
+    } else if constexpr (BitsA <= 128 && BitsB <= 128) {
+        if (const auto native = detail::mixed_native::try_add_sub<Da, Db, Dest::bits, Dest::fractional_digits>(
+                a.raw(), b.raw(), true, rounding)) {
+            if (!*native) return std::unexpected(native->error());
+            return Dest::from_raw(static_cast<typename Dest::raw_type>(**native));
+        }
     }
 #endif
     auto res = detail::mixed_add_sub_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
@@ -259,6 +281,12 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
             a.raw(), b.raw(), rounding);
         if (!native) return std::unexpected(native.error());
         return Dest::from_raw(static_cast<typename Dest::raw_type>(*native));
+    } else if constexpr (BitsA <= 128 && BitsB <= 128 && Dest::bits <= 128) {
+        if (const auto native = detail::mixed_native::try_mul<Da, Db, Dest::bits, Dest::fractional_digits>(
+                a.raw(), b.raw(), rounding)) {
+            if (!*native) return std::unexpected(native->error());
+            return Dest::from_raw(static_cast<typename Dest::raw_type>(**native));
+        }
     }
 #endif
     auto res = detail::mixed_mul_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,

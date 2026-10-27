@@ -1,0 +1,70 @@
+Date: 2026-10-27 (task date)
+Purpose: exploratory decision about optional reciprocal rescaling, not release performance evidence.
+GCC 13 is outside fixedwide's supported GCC 14+ matrix.
+Host is shared; no frequency lock, no isolated CPU, no -march, no LTO.
+Nine pairs in alternating order, 4,194,304 operations per side per pair.
+Both operations include a checked signed product and nearest-even rounding.
+Correctness: 6,000,000 random/log-distributed magnitudes per divisor plus 65,536 realistic products per divisor; zero mismatches.
+Compile from repository root:
+g++ -std=c++23 -O3 -DNDEBUG -ffp-contract=off -fno-fast-math -fno-tree-vectorize -fno-tree-slp-vectorize -Iinclude reports/runtime-narrow/reciprocal-experiment-gcc13.cpp -o /tmp/fixedwide_reciprocal_experiment
+Run:
+taskset -c 0 /tmp/fixedwide_reciprocal_experiment
+Compiler:
+g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+Commit before local edits:
+87d828754d7d9f98f84c4b89c1dfde538756ad5d
+
+CPU:
+Architecture:                            x86_64
+CPU op-mode(s):                          32-bit, 64-bit
+Address sizes:                           46 bits physical, 57 bits virtual
+Byte Order:                              Little Endian
+CPU(s):                                  9
+On-line CPU(s) list:                     0-8
+Vendor ID:                               GenuineIntel
+Model name:                              INTEL(R) XEON(R) PLATINUM 8573C
+BIOS Model name:                           CPU @ 0.0GHz
+BIOS CPU family:                         0
+CPU family:                              6
+Model:                                   207
+Thread(s) per core:                      1
+Core(s) per socket:                      9
+Socket(s):                               1
+Stepping:                                2
+BogoMIPS:                                4600.00
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities
+Hypervisor vendor:                       KVM
+Virtualization type:                     full
+L1d cache:                               240 KiB (5 instances)
+L1i cache:                               160 KiB (5 instances)
+L2 cache:                                10 MiB (5 instances)
+L3 cache:                                260 MiB (1 instance)
+NUMA node(s):                            1
+NUMA node0 CPU(s):                       0-8
+Vulnerability Gather data sampling:      Not affected
+Vulnerability Ghostwrite:                Not affected
+Vulnerability Indirect target selection: Vulnerable
+Vulnerability Itlb multihit:             Not affected
+Vulnerability L1tf:                      Not affected
+Vulnerability Mds:                       Not affected
+Vulnerability Meltdown:                  Not affected
+Vulnerability Mmio stale data:           Not affected
+Vulnerability Old microcode:             Not affected
+Vulnerability Reg file data sampling:    Not affected
+Vulnerability Retbleed:                  Vulnerable
+Vulnerability Spec rstack overflow:      Not affected
+Vulnerability Spec store bypass:         Vulnerable
+Vulnerability Spectre v1:                Vulnerable: __user pointer sanitization and usercopy barriers only; no swapgs barriers
+Vulnerability Spectre v2:                Vulnerable; STIBP: disabled; PBRSB-eIBRS: Not affected; BHI: Vulnerable
+Vulnerability Srbds:                     Not affected
+Vulnerability Tsa:                       Not affected
+Vulnerability Tsx async abort:           Not affected
+Vulnerability Vmscape:                   Not affected
+
+0b39c476be7b3afc17ef6f45d5471b14b63255fde84a1d3b3cbcc0aba5447ced  reports/runtime-narrow/reciprocal-experiment-gcc13.cpp
+ca82da9bce7f6275f9915c363f57d740f66114ff2bfa861aadb157e3eeeca443  include/fixedwide/detail/mixed_native.hpp

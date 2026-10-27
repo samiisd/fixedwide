@@ -18,6 +18,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         overflow
         constexpr
         mixed_native
+        mixed_runtime
         format
         readme
     )

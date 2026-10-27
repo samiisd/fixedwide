@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.10] - 2026-10-27
+
+### Changed
+- Add checked runtime native paths for `mul_to`, mixed-scale `add_to` / `sub_to`,
+  and `fixed_cast` when actual values fit signed 128-bit arithmetic. Keep the
+  existing compile-time native paths and general rational kernels. Intermediate
+  overflow falls back without changing rounding or error precedence.
+- Evaluate same-scale addition and subtraction directly in native or 256-bit
+  limb arithmetic, including wide intermediate cancellation in replacement
+  chains. Narrow sign-extended Fixed256 values without a rational conversion.
+- Keep public signatures, storage, constant evaluation, and the forced-portable
+  dispatch unchanged.
+
+### Fixed
+- Restore the sign of an `INT128_MIN` rounded result using unsigned arithmetic,
+  avoiding undefined behavior when the newly supported native operands reach it.
+
+### Added
+- Differential boundary, exhaustive-grid and full-range randomized tests, plus
+  mixed runtime-path checks in the existing fuzzer. Compare values and exact
+  error codes across every rounding mode.
+- A reproducible paired benchmark for realistic and forced-fallback workloads;
+  see `reports/runtime-narrow/README.md` for measured results and limitations.
+
 ## [0.6.9] - 2026-10-26
 
 ### Fixed

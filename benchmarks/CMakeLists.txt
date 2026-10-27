@@ -11,18 +11,22 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_compile_options(fixedwide_icount PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize)
 endif()
 
-# Sticky-error chain and log10 benchmarks use the shared harness and no Boost.
+# Focused microbenchmarks have no Boost dependency.
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
     add_executable(fixedwide_checked_chain_bench checked_chain_bench.cpp)
     target_link_libraries(fixedwide_checked_chain_bench PRIVATE fixedwide::fixedwide)
     add_executable(fixedwide_log10_bench log10_bench.cpp)
     target_link_libraries(fixedwide_log10_bench PRIVATE fixedwide::fixedwide)
+    add_executable(fixedwide_runtime_narrow_bench runtime_narrow_bench.cpp)
+    target_link_libraries(fixedwide_runtime_narrow_bench PRIVATE fixedwide::fixedwide)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         target_compile_options(fixedwide_checked_chain_bench PRIVATE -fno-vectorize -fno-slp-vectorize -ffp-contract=off)
         target_compile_options(fixedwide_log10_bench PRIVATE -fno-vectorize -fno-slp-vectorize -ffp-contract=off -fno-fast-math)
+        target_compile_options(fixedwide_runtime_narrow_bench PRIVATE -fno-vectorize -fno-slp-vectorize -ffp-contract=off -fno-fast-math)
     else()
         target_compile_options(fixedwide_checked_chain_bench PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off)
         target_compile_options(fixedwide_log10_bench PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off -fno-fast-math)
+        target_compile_options(fixedwide_runtime_narrow_bench PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off -fno-fast-math)
     endif()
 endif()
 

@@ -78,12 +78,34 @@ disagreement between the two measurements, and both are reported:
 
 ## The cost of a mixed operation
 
-`mul_to`, `div_to` and `add_to` have two implementations. When the aligned
-intermediate fits 126 bits, `detail::mixed_native` does the whole thing in one
-`__int128`. Otherwise a multi-limb kernel in `src/mixed.cpp` evaluates the exact
-rational and rounds once.
+The original compile-time bounds select unconditional native arithmetic when
+the operand widths and scales prove that all intermediates fit. Since 0.6.10,
+`mul_to`, `add_to` / `sub_to`, and `fixed_cast` also try checked signed 128-bit
+arithmetic when their actual values fit, even if their types' worst cases do
+not. Rescaling still rounds exactly once. An intermediate overflow declines
+the attempt, allowing the general rational kernel in `src/mixed.cpp` to finish
+the calculation without prematurely rejecting a representable result.
 
-Instructions per operation:
+Same-scale add/sub uses native or 256-bit limb arithmetic directly, including
+wide intermediate cancellation. A Fixed256 value whose upper limbs extend bit
+127's sign can use native narrowing. These runtime paths are disabled by
+`FIXEDWIDE_FORCE_PORTABLE`; existing compile-time paths and public contracts
+are unchanged. `div_to` and `mul_div_to` retain their previous dispatch.
+
+The paired runtime-path benchmark covers realistic magnitudes, successful
+fallbacks, overflow results, and the complete wide replacement chain:
+
+```bash
+CXX=g++-14 scripts/bench_runtime_narrow.sh reports/runtime-narrow-local
+```
+
+Every timing row first compares 65,536 complete results, including error codes,
+with direct calls to the general kernels. Alternating paired samples and raw
+timings are retained. Results and the optional reciprocal-division decision are
+in [reports/runtime-narrow](../reports/runtime-narrow/README.md).
+
+Historical instruction-count workloads (their type/scale combinations are
+unchanged):
 
 | | native | general, 64-bit operands | general, 256-bit operands |
 |---|---:|---:|---:|
@@ -116,10 +138,10 @@ new one on the same machine:
 The native row is the control: it does not go through this kernel and does not
 move.
 
-What remains is real work: the general path evaluates an exact rational and
-performs a division that the native path avoids entirely. If a mixed operation
-is on a hot path, keeping the destination scale close to what the operands need
-still keeps you on the native side, and
+The general path still constructs an exact rational and performs limb division;
+the native path uses exact native rescaling when needed. Keeping the
+destination scale close to the operands' scales increases the range of values
+that fit the native intermediates, and
 [api_reference.md](api_reference.md#mixed-scale-operations) says where that
 boundary is. All three tiers are in the baseline above, so none of them can
 regress unnoticed.
