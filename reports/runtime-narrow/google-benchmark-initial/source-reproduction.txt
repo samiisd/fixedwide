@@ -1,0 +1,19 @@
+Initial measured-source reconstruction verification
+Base commit: 544c4ab09735cc809f83850e9a380211bfa4a1bc
+Patch SHA256: 5ce29291b6a561fa944b748f78286bd6e32e2e8bad6bdd5a417951127fd670b0
+Patch format: zero-context unified diff; apply with git apply --unidiff-zero.
+Method: reconstruct source files with git show BASE:PATH and restore git ls-tree file modes in an isolated temporary repository; git apply --unidiff-zero --check, then git apply --unidiff-zero initial-inputs.patch.
+The original context-bearing patch and the zero-context replacement produced byte-identical files and identical file modes.
+No builds or timings were run.
+
+PASS 8099c949162231e22f65180d862cada4c7fe83ecfb73380507324d1b40da0810  benchmarks/runtime_narrow_bench.cpp
+PASS ba996e96cdb38d258b9809e70899795239a93efa7b8814010c6d3b493c3a74b8  benchmarks/CMakeLists.txt
+PASS 9ce414c2454400468688b8d736bff54601704a4f45234980708afacbfc04c3ef  include/fixedwide/detail/mixed_native.hpp
+PASS 78a512be1f4b3c423aa886d59533c210ffa48572b800969847ef0035418cadcd  include/fixedwide/mixed.hpp
+PASS 927ff5e7882305a42cc6880bc2acade10d3afa2fedc1ae0b2a29ea0294a92ca3  include/fixedwide/version.hpp
+PASS f798c69c58ed881406192fb58352a4fbedf457b324c4dae7e66b4cb66b29db5b  src/mixed.cpp
+
+Runner content and executable mode also preserved:
+PASS b5217de962ce7d0616da245ccc82613dfe3af4f1ae76f9c9526530b7ee7000dc  scripts/bench_runtime_narrow.sh
+
+All six source hashes recorded in environment.txt reproduced exactly.

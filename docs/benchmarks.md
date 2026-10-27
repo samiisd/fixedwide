@@ -92,17 +92,20 @@ wide intermediate cancellation. A Fixed256 value whose upper limbs extend bit
 `FIXEDWIDE_FORCE_PORTABLE`; existing compile-time paths and public contracts
 are unchanged. `div_to` and `mul_div_to` retain their previous dispatch.
 
-The paired runtime-path benchmark covers realistic magnitudes, successful
-fallbacks, overflow results, and the complete wide replacement chain:
+The Google Benchmark runtime-path target covers realistic magnitudes,
+successful fallbacks, overflow results, and the complete wide replacement chain:
 
 ```bash
 CXX=g++-14 scripts/bench_runtime_narrow.sh reports/runtime-narrow-local
 ```
 
-Every timing row first compares 65,536 complete results, including error codes,
-with direct calls to the general kernels. Alternating paired samples and raw
-timings are retained. Results and the optional reciprocal-division decision are
-in [reports/runtime-narrow](../reports/runtime-narrow/README.md).
+Before timing, every workload compares 65,536 complete results, including error
+codes, with direct calls to the general kernels. Google Benchmark controls the
+timing loop, repetitions, random interleaving, result barriers, and statistics.
+Raw repetitions and aggregate results are retained as JSON. The target is
+opt-in, so the instruction-count gate does not acquire a Google Benchmark
+dependency. Build details, results, and the optional reciprocal-division
+decision are in [reports/runtime-narrow](../reports/runtime-narrow/README.md).
 
 Historical instruction-count workloads (their type/scale combinations are
 unchanged):

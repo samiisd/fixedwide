@@ -64,6 +64,21 @@ void replacement_differential(Fixed128<12> total, Fixed128<12> previous, Fixed12
                    detail::mixed_cast_kernel(*replaced_reference, 12, 12, Rounding::exact, 128));
 }
 
+template<unsigned K>
+void scale_boundary_differential(std::uint64_t choice, Rounding mode) {
+    using Scaled = Fixed128<K>;
+    using I128 = wide::int128;
+    using U128 = wide::uint128;
+    constexpr U128 factor = static_cast<U128>(Scaled::scale());
+    constexpr I128 upper = static_cast<I128>(static_cast<U128>(I128::max()) / factor);
+    constexpr I128 lower = -static_cast<I128>(U128{0, 0x8000'0000'0000'0000ULL} / factor);
+    const bool negative = (choice & 1u) != 0;
+    const I128 delta{static_cast<std::int64_t>((choice >> 1) % 3u) - 1};
+    const auto a = Fixed128<0>::from_raw((negative ? lower : upper) + delta);
+    mixed_differential<Scaled>(a, negative ? Scaled::max() : Scaled::min(), mode);
+    mixed_differential<Scaled>(a, Fixed128<0>::from_raw(I128{1}), mode);
+}
+
 } // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
@@ -179,12 +194,22 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         // Change source and destination scales in both directions. A divisor
         // beyond int128 capacity must bypass native pow10 instantiation.
         switch (u3 % 4u) {
-        case 0: mixed_differential<Fixed128<20>>(Fixed128<12>::from_raw(i1), Fixed128<6>::from_raw(i2), mode); break;
+        case 0:
+            mixed_differential<Fixed128<20>>(Fixed128<12>::from_raw(i1), Fixed128<6>::from_raw(i2), mode);
+            scale_boundary_differential<1>(u1, mode);
+            break;
         case 1:
             mixed_differential<Fixed64<10>>(Fixed128<12>::from_raw(narrow1), Fixed128<10>::from_raw(narrow2), mode);
+            scale_boundary_differential<12>(u1, mode);
             break;
-        case 2: mixed_differential<Fixed128<0>>(Fixed128<19>::from_raw(i1), Fixed128<20>::from_raw(i2), mode); break;
-        default: mixed_differential<Fixed128<38>>(Fixed128<0>::from_raw(i1), Fixed128<0>::from_raw(i2), mode); break;
+        case 2:
+            mixed_differential<Fixed128<0>>(Fixed128<19>::from_raw(i1), Fixed128<20>::from_raw(i2), mode);
+            scale_boundary_differential<19>(u1, mode);
+            break;
+        default:
+            mixed_differential<Fixed128<38>>(Fixed128<0>::from_raw(i1), Fixed128<0>::from_raw(i2), mode);
+            scale_boundary_differential<38>(u1, mode);
+            break;
         }
     }
 

@@ -1,0 +1,20 @@
+sample,D=10000000000,pair=0,divq_ns=7.290579,reciprocal_ns=10.604198
+sample,D=10000000000,pair=1,divq_ns=7.342820,reciprocal_ns=10.175742
+sample,D=10000000000,pair=2,divq_ns=8.297443,reciprocal_ns=9.671411
+sample,D=10000000000,pair=3,divq_ns=8.193635,reciprocal_ns=9.920484
+sample,D=10000000000,pair=4,divq_ns=7.596714,reciprocal_ns=10.581226
+sample,D=10000000000,pair=5,divq_ns=7.473889,reciprocal_ns=10.518744
+sample,D=10000000000,pair=6,divq_ns=7.455992,reciprocal_ns=9.912228
+sample,D=10000000000,pair=7,divq_ns=8.017474,reciprocal_ns=10.373042
+sample,D=10000000000,pair=8,divq_ns=7.264072,reciprocal_ns=9.837559
+D=10000000000 divq=7.474 reciprocal=10.176 speedup=0.734 sink=4802659367329968128
+sample,D=1000000000000,pair=0,divq_ns=17.364520,reciprocal_ns=16.913732
+sample,D=1000000000000,pair=1,divq_ns=16.750542,reciprocal_ns=18.662239
+sample,D=1000000000000,pair=2,divq_ns=17.948710,reciprocal_ns=17.348231
+sample,D=1000000000000,pair=3,divq_ns=18.286786,reciprocal_ns=19.561237
+sample,D=1000000000000,pair=4,divq_ns=20.171951,reciprocal_ns=17.942868
+sample,D=1000000000000,pair=5,divq_ns=24.565564,reciprocal_ns=17.503569
+sample,D=1000000000000,pair=6,divq_ns=42.328846,reciprocal_ns=27.478200
+sample,D=1000000000000,pair=7,divq_ns=16.526938,reciprocal_ns=20.764631
+sample,D=1000000000000,pair=8,divq_ns=17.663907,reciprocal_ns=16.770384
+D=1000000000000 divq=17.949 reciprocal=17.943 speedup=1.000 sink=17081047524820104576

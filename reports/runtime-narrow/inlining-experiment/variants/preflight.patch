@@ -1,0 +1,92 @@
+--- a/include/fixedwide/detail/mixed_native.hpp
++++ b/include/fixedwide/detail/mixed_native.hpp
+@@ -370 +370,14 @@
+-[[nodiscard]] constexpr bool try_product(i128 a, i128 b, i128& result) noexcept {
++template<typename Raw>
++[[nodiscard]] constexpr auto product_magnitude(Raw raw) noexcept {
++    const i128 value = static_cast<i128>(raw);
++    if constexpr (sizeof(Raw) <= 8) {
++        const auto bits = static_cast<std::uint64_t>(value);
++        return value < 0 ? std::uint64_t{0} - bits : bits;
++    } else {
++        const auto bits = static_cast<u128>(value);
++        return value < 0 ? u128{0} - bits : bits;
++    }
++}
++
++template<typename RawA, typename RawB>
++[[nodiscard]] constexpr bool try_product(RawA a, RawB b, i128& result) noexcept {
+@@ -372,4 +385,10 @@
+-    // Clang's signed overflow builtin computes a full 256-bit product. Use
+-    // one 64x64 product for small magnitudes and at most one cross product.
+-    const u128 lhs = a < 0 ? u128{0} - static_cast<u128>(a) : static_cast<u128>(a);
+-    const u128 rhs = b < 0 ? u128{0} - static_cast<u128>(b) : static_cast<u128>(b);
++    if constexpr ((sizeof(RawA) <= 8) != (sizeof(RawB) <= 8)) {
++        const i128 wide = sizeof(RawA) > 8 ? static_cast<i128>(a) : static_cast<i128>(b);
++        const auto narrow = static_cast<std::int64_t>(sizeof(RawA) <= 8 ? static_cast<i128>(a) : static_cast<i128>(b));
++        auto high = static_cast<std::int64_t>(wide >> 64);
++        high += static_cast<std::int64_t>(high < 0);
++        std::int64_t high_product;
++        if (__builtin_mul_overflow(high, narrow, &high_product)) return false;
++    }
++    const u128 lhs = product_magnitude(a);
++    const u128 rhs = product_magnitude(b);
+@@ -381,10 +400,14 @@
+-    u128 product = static_cast<u128>(lhs_low) * rhs_low;
+-    if ((lhs_high | rhs_high) != 0) {
+-        // Each high limb is at most 2^63, so this sum fits unsigned int128.
+-        const u128 upper =
+-            (lhs_high != 0 ? static_cast<u128>(lhs_high) * rhs_low : static_cast<u128>(rhs_high) * lhs_low) +
+-            (product >> 64);
+-        if ((upper >> 64) != 0) return false;
+-        product = (upper << 64) | static_cast<std::uint64_t>(product);
+-    }
+-    const bool negative = (a < 0) != (b < 0);
++    u128 cross = 0;
++    if (sizeof(RawA) <= 8 || sizeof(RawB) <= 8 || (lhs_high | rhs_high) != 0) {
++        if constexpr (sizeof(RawA) <= 8 || sizeof(RawB) <= 8) {
++            cross = static_cast<u128>(lhs_high) * rhs_low + static_cast<u128>(rhs_high) * lhs_low;
++        } else {
++            cross = lhs_high != 0 ? static_cast<u128>(lhs_high) * rhs_low : static_cast<u128>(rhs_high) * lhs_low;
++        }
++        if ((cross >> 64) != 0) return false;
++    }
++    const u128 low = static_cast<u128>(lhs_low) * rhs_low;
++    const u128 upper = cross + (low >> 64);
++    if ((upper >> 64) != 0) return false;
++    const u128 product = (upper << 64) | static_cast<std::uint64_t>(low);
++    const bool negative = (static_cast<i128>(a) < 0) != (static_cast<i128>(b) < 0);
+@@ -395,2 +418 @@
+-    // GCC already specializes the builtin efficiently for narrow operands.
+-    return !__builtin_mul_overflow(a, b, &result);
++    return !__builtin_mul_overflow(static_cast<i128>(a), static_cast<i128>(b), &result);
+@@ -401 +423 @@
+-[[nodiscard]] constexpr Attempt try_mul(RawA a, RawB b, Rounding rounding) noexcept {
++[[nodiscard, gnu::always_inline]] constexpr Attempt try_mul(RawA a, RawB b, Rounding rounding) noexcept {
+@@ -404 +426 @@
+-        if (!try_product(static_cast<i128>(a), static_cast<i128>(b), product)) return std::nullopt;
++        if (!try_product(a, b, product)) return std::nullopt;
+--- a/include/fixedwide/mixed.hpp
++++ b/include/fixedwide/mixed.hpp
+@@ -265,0 +266,12 @@
++namespace detail {
++template<typename Dest, typename A, typename B>
++[[gnu::noinline]] std::expected<Dest, ArithmeticError>
++runtime_mul_fallback(A a, B b, Rounding rounding) noexcept {
++    auto res = mixed_mul_kernel(to_int256_raw(a.raw()), A::fractional_digits,
++                                to_int256_raw(b.raw()), B::fractional_digits,
++                                Dest::fractional_digits, rounding, Dest::bits);
++    if (!res) return std::unexpected(res.error());
++    return from_int256_raw<Dest>(*res);
++}
++} // namespace detail
++
+@@ -276 +288 @@
+-[[nodiscard]] inline std::expected<Dest, ArithmeticError> mul_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b,
++[[nodiscard, gnu::always_inline]] inline std::expected<Dest, ArithmeticError> mul_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b,
+@@ -292,4 +304 @@
+-    auto res = detail::mixed_mul_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
+-                                        Dest::fractional_digits, rounding, Dest::bits);
+-    if (!res) return std::unexpected(res.error());
+-    return detail::from_int256_raw<Dest>(*res);
++    return detail::runtime_mul_fallback<Dest>(a, b, rounding);

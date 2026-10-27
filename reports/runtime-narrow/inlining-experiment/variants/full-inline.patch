@@ -1,0 +1,10 @@
+--- a/include/fixedwide/detail/mixed_native.hpp
++++ b/include/fixedwide/detail/mixed_native.hpp
+@@ -401 +401 @@
+-[[nodiscard]] constexpr Attempt try_mul(RawA a, RawB b, Rounding rounding) noexcept {
++[[nodiscard, gnu::always_inline]] constexpr Attempt try_mul(RawA a, RawB b, Rounding rounding) noexcept {
+--- a/include/fixedwide/mixed.hpp
++++ b/include/fixedwide/mixed.hpp
+@@ -276 +276 @@
+-[[nodiscard]] inline std::expected<Dest, ArithmeticError> mul_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b,
++[[nodiscard, gnu::always_inline]] inline std::expected<Dest, ArithmeticError> mul_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b,

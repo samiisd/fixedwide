@@ -1,0 +1,5 @@
+--- a/include/fixedwide/detail/mixed_native.hpp
++++ b/include/fixedwide/detail/mixed_native.hpp
+@@ -401 +401 @@
+-[[nodiscard]] constexpr Attempt try_mul(RawA a, RawB b, Rounding rounding) noexcept {
++[[nodiscard, gnu::always_inline]] constexpr Attempt try_mul(RawA a, RawB b, Rounding rounding) noexcept {

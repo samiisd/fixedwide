@@ -1,12 +1,12 @@
 // The general side calls the compiled kernels directly: calling the public API
 // on both sides would silently stop measuring a baseline once it is optimized.
 #include <fixedwide/mixed.hpp>
-#include <algorithm>
-#include <charconv>
-#include <chrono>
+#include <benchmark/benchmark.h>
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 #include <random>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -19,9 +19,7 @@ using Raw = fw::wide::int128;
 
 namespace {
 constexpr std::size_t corpus_size = 1U << 16;
-std::size_t iterations = 1U << 20;
-unsigned repetitions = 7;
-std::uint64_t sink = 0;
+std::size_t validations = 0;
 enum class ResultKind { success, overflow, mixed };
 
 [[noreturn]] void fail(const char* message) {
@@ -99,38 +97,20 @@ bool product_fits(Money left, Right right) {
     return fits_int128(fw::detail::to_int256_raw(left.raw()) * fw::detail::to_int256_raw(right.raw()));
 }
 
-template<class F>
-double time_loop(F operation, std::size_t count) {
-    // Both paths include the same indexing, expected handling and unsigned sink.
-    // The memory clobber prevents hoisting repeated traversals of the corpus;
-    // the operation wrappers remain noinline on both sides.
-    std::uint64_t checksum = 0;
-    const auto start = std::chrono::steady_clock::now();
-    for (std::size_t i = 0; i < count; ++i) {
-        const auto result = operation(i & (corpus_size - 1));
-        checksum +=
-            result ? (result->raw().low ^ result->raw().high) : (static_cast<std::uint64_t>(result.error()) + 1);
-        asm volatile("" : "+r"(checksum) : : "memory");
-    }
-    const auto end = std::chrono::steady_clock::now();
-    sink += checksum; // Deliberately modulo 2^64, even for full-range fixtures.
-    return std::chrono::duration<double, std::nano>(end - start).count() / static_cast<double>(count);
-}
-
-double median(std::vector<double> values) {
-    std::sort(values.begin(), values.end());
-    const std::size_t middle = values.size() / 2;
-    return (values.size() & 1U) != 0 ? values[middle] : (values[middle - 1] + values[middle]) / 2;
-}
-
-void print_samples(const std::vector<double>& values) {
-    std::putchar('"');
-    for (std::size_t i = 0; i < values.size(); ++i) std::printf("%s%.6f", i == 0 ? "" : ";", values[i]);
-    std::putchar('"');
+template<class Operation>
+void register_operation(std::string name, Operation operation) {
+    benchmark::RegisterBenchmark(name, [operation](benchmark::State& state) {
+        std::size_t index = 0;
+        for (auto _ : state) {
+            auto result = operation(index++ & (corpus_size - 1));
+            benchmark::DoNotOptimize(result);
+        }
+        state.SetItemsProcessed(state.iterations());
+    })->Unit(benchmark::kNanosecond);
 }
 
 template<class General, class Public>
-void measure_pair(const char* name, General general, Public optimized, ResultKind expected = ResultKind::success) {
+void register_pair(const char* name, General general, Public optimized, ResultKind expected = ResultKind::success) {
     std::size_t successes = 0;
     std::size_t overflows = 0;
     for (std::size_t i = 0; i < corpus_size; ++i) {
@@ -146,61 +126,70 @@ void measure_pair(const char* name, General general, Public optimized, ResultKin
             fail("fixture produced an unexpected result kind");
         successes += static_cast<std::size_t>(reference.has_value());
         overflows += static_cast<std::size_t>(!reference && reference.error() == fw::ArithmeticError::overflow);
+        ++validations;
     }
     std::fprintf(stderr, "%s,%zu,%zu,%zu,0\n", name, corpus_size, successes, overflows);
-    (void)time_loop(general, corpus_size);
-    (void)time_loop(optimized, corpus_size);
-    std::vector<double> general_samples(repetitions), public_samples(repetitions);
-    for (unsigned repeat = 0; repeat < repetitions; ++repeat) {
-        // Alternate pair order to reduce systematic frequency/temperature drift.
-        if ((repeat & 1U) == 0) {
-            general_samples[repeat] = time_loop(general, iterations);
-            public_samples[repeat] = time_loop(optimized, iterations);
-        } else {
-            public_samples[repeat] = time_loop(optimized, iterations);
-            general_samples[repeat] = time_loop(general, iterations);
-        }
-    }
-    const double general_ns = median(general_samples);
-    const double public_ns = median(public_samples);
-    std::printf("%s,%zu,%u,%.6f,%.6f,%.6f,%.3f,%.3f,", name, iterations, repetitions, general_ns, public_ns,
-                public_ns - general_ns, 100.0 * (public_ns / general_ns - 1.0), general_ns / public_ns);
-    print_samples(general_samples);
-    std::putchar(',');
-    print_samples(public_samples);
-    std::putchar('\n');
-    std::fflush(stdout);
+    register_operation(std::string(name) + "/general", general);
+    register_operation(std::string(name) + "/public", optimized);
 }
 
 template<class Right>
-void measure_products(const char* name, const std::vector<Money>& left, const std::vector<Right>& right,
-                      bool expect_fallback, ResultKind expected = ResultKind::success) {
+void register_products(const char* name, const std::vector<Money>& left, const std::vector<Right>& right,
+                       bool expect_fallback, ResultKind expected = ResultKind::success) {
     for (std::size_t i = 0; i < corpus_size; ++i)
         if (product_fits(left[i], right[i]) == expect_fallback) fail("incorrect product fixture magnitude");
-    measure_pair(
-        name, [&](std::size_t i) { return general_product(left[i], right[i]); },
-        [&](std::size_t i) { return public_product(left[i], right[i]); }, expected);
+    // Registered callbacks own an immutable snapshot, and both sides read the
+    // exact same allocation. Later fixture generation cannot mutate their data.
+    const auto a = std::make_shared<const std::vector<Money>>(left);
+    const auto b = std::make_shared<const std::vector<Right>>(right);
+    register_pair(
+        name, [a, b](std::size_t i) { return general_product((*a)[i], (*b)[i]); },
+        [a, b](std::size_t i) { return public_product((*a)[i], (*b)[i]); }, expected);
 }
 
-template<class T>
-bool parse_positive(const char* text, T& result) {
-    const std::string_view value(text);
-    const auto parsed = std::from_chars(value.data(), value.data() + value.size(), result);
-    return parsed.ec == std::errc{} && parsed.ptr == value.data() + value.size() && result != 0;
+template<class Dest, bool Subtract, class A, class B>
+void register_add_sub(const char* name, const std::vector<A>& left, const std::vector<B>& right) {
+    const auto a = std::make_shared<const std::vector<A>>(left);
+    const auto b = std::make_shared<const std::vector<B>>(right);
+    register_pair(
+        name, [a, b](std::size_t i) { return general_add_sub<Dest, Subtract>((*a)[i], (*b)[i]); },
+        [a, b](std::size_t i) { return public_add_sub<Dest, Subtract>((*a)[i], (*b)[i]); });
+}
+
+void register_cast(const char* name, const std::vector<Wide>& values, ResultKind expected = ResultKind::success) {
+    const auto data = std::make_shared<const std::vector<Wide>>(values);
+    register_pair(
+        name, [data](std::size_t i) { return general_cast((*data)[i]); },
+        [data](std::size_t i) { return public_cast((*data)[i]); }, expected);
 }
 
 Raw signed_raw(std::mt19937_64& rng, std::uint64_t bound, Raw factor) {
     const Raw value = Raw(rng() % (bound + 1)) * factor;
     return (rng() & 1U) != 0 ? -value : value;
 }
+
+Raw random_raw(std::mt19937_64& rng) {
+    // Sequence draws explicitly: constructor argument evaluation order differs
+    // between GCC and Clang, which otherwise changes the supposedly same corpus.
+    const auto low = rng();
+    const auto high = rng();
+    return Raw(low, high);
+}
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc > 3 || (argc > 1 && !parse_positive(argv[1], iterations)) ||
-        (argc > 2 && !parse_positive(argv[2], repetitions))) {
-        std::fprintf(stderr, "usage: %s [positive_iterations [positive_repetitions]]\n", argv[0]);
-        return 2;
+    bool validate_only = false;
+    int remaining = 1;
+    for (int i = 1; i < argc; ++i) {
+        if (std::string_view(argv[i]) == "--validate-only")
+            validate_only = true;
+        else
+            argv[remaining++] = argv[i];
     }
+    argc = remaining;
+    argv[argc] = nullptr;
+    benchmark::Initialize(&argc, argv);
+    if (benchmark::ReportUnrecognizedArguments(argc, argv)) return 2;
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
     constexpr const char* backend = "native";
 #else
@@ -208,8 +197,11 @@ int main(int argc, char** argv) {
 #endif
     std::fprintf(stderr, "# compiler=%s backend=%s seed=42 samples=%zu\n", __VERSION__, backend, corpus_size);
     std::fputs("workload,samples,successes,overflows,mismatches\n", stderr);
-    std::puts("workload,iterations,repetitions,general_median_ns,public_median_ns,delta_ns,delta_percent,speedup,"
-              "general_samples_ns,public_samples_ns");
+    benchmark::AddCustomContext("compiler", __VERSION__);
+    benchmark::AddCustomContext("backend", backend);
+    benchmark::AddCustomContext("seed", "42");
+    benchmark::AddCustomContext("samples_per_workload", std::to_string(corpus_size));
+    benchmark::AddCustomContext("google_benchmark", FIXEDWIDE_GOOGLE_BENCHMARK_VERSION);
 
     std::mt19937_64 rng(42);
     std::vector<Money> slope(corpus_size), amount(corpus_size), fx(corpus_size), total(corpus_size),
@@ -232,40 +224,40 @@ int main(int argc, char** argv) {
         previous[i] = amount[i];
         next[i] = amount[(i + 1) & (corpus_size - 1)];
     }
-    measure_products("mul_price.realistic", slope, price, false);
-    measure_products("mul_fx.realistic", amount, fx, false);
+    register_products("mul_price.realistic", slope, price, false);
+    register_products("mul_fx.realistic", amount, fx, false);
     const auto replace = [&](const char* name, ResultKind expected = ResultKind::success) {
-        measure_pair(
-            name, [&](std::size_t i) { return general_replace(total[i], previous[i], next[i]); },
-            [&](std::size_t i) { return public_replace(total[i], previous[i], next[i]); }, expected);
+        const auto t = std::make_shared<const std::vector<Money>>(total);
+        const auto p = std::make_shared<const std::vector<Money>>(previous);
+        const auto n = std::make_shared<const std::vector<Money>>(next);
+        register_pair(
+            name, [t, p, n](std::size_t i) { return general_replace((*t)[i], (*p)[i], (*n)[i]); },
+            [t, p, n](std::size_t i) { return public_replace((*t)[i], (*p)[i], (*n)[i]); }, expected);
     };
     replace("replace.realistic");
-    measure_pair(
-        "add_mixed.realistic", [&](std::size_t i) { return general_add_sub<Money, false>(amount[i], price[i]); },
-        [&](std::size_t i) { return public_add_sub<Money, false>(amount[i], price[i]); });
-    measure_pair(
-        "sub_mixed.realistic", [&](std::size_t i) { return general_add_sub<Money, true>(amount[i], price[i]); },
-        [&](std::size_t i) { return public_add_sub<Money, true>(amount[i], price[i]); });
-    measure_pair(
-        "cast.sign_extension", [&](std::size_t i) { return general_cast(wide[i]); },
-        [&](std::size_t i) { return public_cast(wide[i]); });
+    register_add_sub<Money, false>("add_mixed.realistic", amount, price);
+    register_add_sub<Money, true>("sub_mixed.realistic", amount, price);
+    register_cast("cast.sign_extension", wide);
 
     for (std::size_t i = 0; i < corpus_size; ++i) {
         // Products need 136 or 161 bits but the rescaled destination fits.
-        const Raw a(rng(), (std::uint64_t{1} << 26) + (rng() & 0x3ffU));
+        const auto low = rng();
+        const Raw a(low, (std::uint64_t{1} << 26) + (rng() & 0x3ffU));
         slope[i] = Money::from_raw((i & 1U) != 0 ? -a : a);
         price[i] = Price::from_raw(static_cast<std::int64_t>((std::uint64_t{1} << 45) + (rng() & 0xffffU)));
-        fx[i] = Money::from_raw(Raw(rng(), 64 + (rng() & 7U)));
+        const auto fx_low = rng();
+        fx[i] = Money::from_raw(Raw(fx_low, 64 + (rng() & 7U)));
     }
-    measure_products("mul_price.fallback_success", slope, price, true);
-    measure_products("mul_fx.fallback_success", slope, fx, true);
+    register_products("mul_price.fallback_success", slope, price, true);
+    register_products("mul_fx.fallback_success", slope, fx, true);
     for (std::size_t i = 0; i < corpus_size; ++i) {
-        const Raw a(rng(), (std::uint64_t{1} << 61) | (rng() >> 3));
+        const auto low = rng();
+        const Raw a(low, (std::uint64_t{1} << 61) | (rng() >> 3));
         slope[i] = Money::from_raw((i & 1U) != 0 ? -a : a);
         fx[i] = Money::from_raw(a);
     }
-    measure_products("mul_price.fallback_overflow", slope, price, true, ResultKind::overflow);
-    measure_products("mul_fx.fallback_overflow", slope, fx, true, ResultKind::overflow);
+    register_products("mul_price.fallback_overflow", slope, price, true, ResultKind::overflow);
+    register_products("mul_fx.fallback_overflow", slope, fx, true, ResultKind::overflow);
 
     for (std::size_t i = 0; i < corpus_size; ++i) {
         const Raw high = Raw::max() - Raw(rng() & 0xffffU);
@@ -279,21 +271,17 @@ int main(int argc, char** argv) {
         whole[i] = Whole::from_raw(delta);
     }
     replace("replace.wide_cancellation");
-    measure_pair(
-        "cast.outside_int128", [&](std::size_t i) { return general_cast(wide[i]); },
-        [&](std::size_t i) { return public_cast(wide[i]); }, ResultKind::overflow);
+    register_cast("cast.outside_int128", wide, ResultKind::overflow);
     // Alignment to scale 12 overflows int128; the final scale-zero answer fits.
-    measure_pair(
-        "add_mixed.fallback_success", [&](std::size_t i) { return general_add_sub<Whole, false>(total[i], whole[i]); },
-        [&](std::size_t i) { return public_add_sub<Whole, false>(total[i], whole[i]); });
-    measure_pair(
-        "sub_mixed.fallback_success", [&](std::size_t i) { return general_add_sub<Whole, true>(total[i], whole[i]); },
-        [&](std::size_t i) { return public_add_sub<Whole, true>(total[i], whole[i]); });
+    register_add_sub<Whole, false>("add_mixed.fallback_success", total, whole);
+    register_add_sub<Whole, true>("sub_mixed.fallback_success", total, whole);
     for (std::size_t i = 0; i < corpus_size; ++i) {
-        total[i] = Money::from_raw(Raw(rng(), rng()));
-        previous[i] = Money::from_raw(Raw(rng(), rng()));
-        next[i] = Money::from_raw(Raw(rng(), rng()));
+        total[i] = Money::from_raw(random_raw(rng));
+        previous[i] = Money::from_raw(random_raw(rng));
+        next[i] = Money::from_raw(random_raw(rng));
     }
     replace("replace.full_range", ResultKind::mixed);
-    std::fprintf(stderr, "# unsigned_sink=%llu\n", static_cast<unsigned long long>(sink));
+    benchmark::AddCustomContext("validated_comparisons", std::to_string(validations));
+    if (!validate_only) benchmark::RunSpecifiedBenchmarks();
+    benchmark::Shutdown();
 }

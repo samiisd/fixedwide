@@ -1,0 +1,36 @@
+Date: 2026-10-27
+Clang 19 Debug, native backend; original coverage gates unchanged.
+Final rerun includes width-aware cross-first products, Clang inline/fallback boundaries, and the second-carry oracle regressions.
+Working-tree base: 544c4ab09735cc809f83850e9a380211bfa4a1bc; exact tested source hashes below.
+Coverage-only validation: build and run test_coverage all; full CTest runs are recorded separately.
+Profile source: this executable only. All library sources/headers included, no function/branch exclusions.
+Base: 87d828754d7d9f98f84c4b89c1dfde538756ad5d
+Compiler: Ubuntu clang version 19.1.1 (1ubuntu1~24.04.2)
+
+Commands (from repository root):
+cmake -S . -B build/clang-coverage -G Ninja -DCMAKE_CXX_COMPILER=clang++-19 -DCMAKE_BUILD_TYPE=Debug -DFIXEDWIDE_COVERAGE=ON -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=OFF
+cmake --build build/clang-coverage --target test_coverage -j2
+mkdir -p /tmp/fixedwide-final2-native-coverage
+LLVM_PROFILE_FILE=/tmp/fixedwide-final2-native-coverage/current.profraw build/clang-coverage/tests/test_coverage all
+llvm-profdata-19 merge -sparse /tmp/fixedwide-final2-native-coverage/current.profraw -o /tmp/fixedwide-final2-native-coverage/coverage.profdata
+mapfile -t sources < <(rg --files "$PWD/src" "$PWD/include/fixedwide" -g "*.hpp" -g "*.cpp" | sort)
+llvm-cov-19 export -format=lcov build/clang-coverage/tests/test_coverage -instr-profile=/tmp/fixedwide-final2-native-coverage/coverage.profdata -sources "${sources[@]}" > /tmp/fixedwide-final2-native-coverage/coverage.lcov
+llvm-cov-19 export -skip-functions build/clang-coverage/tests/test_coverage -instr-profile=/tmp/fixedwide-final2-native-coverage/coverage.profdata -sources "${sources[@]}" > /tmp/fixedwide-final2-native-coverage/llvm-export.json
+python3 scripts/coverage_report.py --lcov /tmp/fixedwide-final2-native-coverage/coverage.lcov --llvm-json /tmp/fixedwide-final2-native-coverage/llvm-export.json --source-root "$PWD" --backend native --output /tmp/fixedwide-final2-native-coverage --min-source-lines 99 --min-llvm-lines 95 --min-llvm-branches 90
+
+coverage suite all passed; assertions=7411154
+Distinct source lines: 4458/4494 = 99.198932% (required >=99%)
+LLVM lines: 3952/4128 = 95.736434% (required >=95%)
+LLVM branches: 1716/1868 = 91.862955% (required >=90%)
+Coverage gate: PASS
+
+SHA-256 source files:
+6b2d2f5cd8a3107526196951d60077fafef13be918b26065a18bf1de89edb15b  include/fixedwide/detail/mixed_native.hpp
+e1d128b352cff9c406aaf9815f0d209f55eb5d77287551118ddb1ca7343aaeaf  include/fixedwide/mixed.hpp
+f798c69c58ed881406192fb58352a4fbedf457b324c4dae7e66b4cb66b29db5b  src/mixed.cpp
+5e040f348c075604f00794a4d6736d77a27a8ca4b890814e8fafc68646816bb5  tests/test_coverage_mixed.cpp
+e3752ef647f6dc28dc9156c7209a8a3daa48c8aef28b5093ec7c8a2850e8564e  tests/coverage_support.hpp
+dd73b70c251a7c64e5b545c5b2fc712097a9275395925f5ce951520580b38770  tests/test_coverage.cpp
+
+SHA-256 coverage executable:
+1479cc2b13bdfbf5b9d34f103ad5157e2bb022aca1eb4135a8bbab36b71dfeba  build/clang-coverage/tests/test_coverage

@@ -107,6 +107,30 @@ void runtime_narrow_paths() {
             runtime_case<Fixed256<10>, Fixed128<12>, Fixed128<10>>(x, y);
             runtime_case<Fixed8<0>, Fixed128<1>, Fixed128<0>>(x, y);
         }
+    // Cross terms can fit 64 bits while their sum with the low-product carry
+    // does not. Verify this distinct overflow against arbitrary-precision
+    // arithmetic, including products that become representable after rescaling.
+    const std::vector<std::array<cpp_int, 2>> carries{{p64 + 2, p64 - 1}, {2 * p64 + 5, p63 - 1}};
+    for (const auto& pair : carries)
+        for (int sign_a : {-1, 1})
+            for (int sign_b : {-1, 1}) {
+                const cpp_int x = pair[0] * sign_a, y = pair[1] * sign_b;
+                runtime_case<Fixed128<0>, Fixed128<0>, Fixed128<0>>(x, y);
+                runtime_case<Fixed128<0>, Fixed128<0>, Fixed128<0>>(y, x);
+                runtime_case<Fixed128<12>, Fixed128<12>, Fixed128<12>>(x, y);
+                runtime_case<Fixed128<12>, Fixed128<12>, Fixed128<12>>(y, x);
+                const auto overflow = rounded(x * y, 1, Rounding::exact, 128);
+                CHECK(!overflow);
+                CHECK(overflow.error() == ArithmeticError::overflow);
+                CHECK(rounded(x * y, power10(12), Rounding::nearest_even, 128));
+                if (pair[1] == p63 - 1) {
+                    runtime_case<Fixed128<0>, Fixed128<0>, Fixed64<0>>(x, y);
+                    runtime_case<Fixed128<0>, Fixed64<0>, Fixed128<0>>(y, x);
+                    runtime_case<Fixed128<12>, Fixed128<12>, Fixed64<10>>(x, y);
+                    runtime_case<Fixed128<12>, Fixed64<10>, Fixed128<12>>(y, x);
+                    CHECK(rounded(x * y, power10(10), Rounding::nearest_even, 128));
+                }
+            }
     // Alignment can overflow before an opposing term brings the exact sum
     // into range. Native sum overflow can likewise disappear after rescaling.
     runtime_case<Fixed128<1>, Fixed128<0>, Fixed128<1>>(p127 / 10 + 1, -p127 + 1);

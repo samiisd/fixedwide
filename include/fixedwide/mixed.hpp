@@ -195,6 +195,29 @@ template<typename Dest, std::size_t BitsA, unsigned Da>
     return detail::from_int256_raw<Dest>(*res);
 }
 
+#if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+namespace detail {
+// Keep the general kernel's argument/return storage out of the native attempt.
+// Clang otherwise gives the rejected fast path a large frame and extra saved
+// registers. This adapter lets it tail-call the unchanged general calculation.
+template<typename Dest, bool Subtract, typename A, typename B>
+[[gnu::noinline]] std::expected<Dest, ArithmeticError> runtime_add_sub_fallback(A a, B b, Rounding rounding) noexcept {
+    auto res = mixed_add_sub_kernel(to_int256_raw(a.raw()), A::fractional_digits, to_int256_raw(b.raw()),
+                                    B::fractional_digits, Subtract, Dest::fractional_digits, rounding, Dest::bits);
+    if (!res) return std::unexpected(res.error());
+    return from_int256_raw<Dest>(*res);
+}
+
+template<typename Dest, typename A, typename B>
+[[gnu::noinline]] std::expected<Dest, ArithmeticError> runtime_mul_fallback(A a, B b, Rounding rounding) noexcept {
+    auto res = mixed_mul_kernel(to_int256_raw(a.raw()), A::fractional_digits, to_int256_raw(b.raw()),
+                                B::fractional_digits, Dest::fractional_digits, rounding, Dest::bits);
+    if (!res) return std::unexpected(res.error());
+    return from_int256_raw<Dest>(*res);
+}
+} // namespace detail
+#endif
+
 /// `a + b`, evaluated exactly and rounded once into `Dest`.
 ///
 /// The sum is formed at the wider of the two scales, so the only rounding is the one that lands it in `Dest`.
@@ -222,6 +245,9 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
             return Dest::from_raw(static_cast<typename Dest::raw_type>(**native));
         }
     }
+#endif
+#if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+    if constexpr (BitsA <= 128 && BitsB <= 128) return detail::runtime_add_sub_fallback<Dest, false>(a, b, rounding);
 #endif
     auto res = detail::mixed_add_sub_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
                                             false, Dest::fractional_digits, rounding, Dest::bits);
@@ -257,6 +283,9 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
         }
     }
 #endif
+#if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+    if constexpr (BitsA <= 128 && BitsB <= 128) return detail::runtime_add_sub_fallback<Dest, true>(a, b, rounding);
+#endif
     auto res = detail::mixed_add_sub_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
                                             true, Dest::fractional_digits, rounding, Dest::bits);
     if (!res) return std::unexpected(res.error());
@@ -273,6 +302,10 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
 /// \param rounding how to resolve the single rounding.
 /// \return the result, or an `ArithmeticError`.
 template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsigned Db>
+#if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+// Preserve constant rounding modes across the runtime-attempt boundary.
+[[gnu::always_inline]]
+#endif
 [[nodiscard]] inline std::expected<Dest, ArithmeticError> mul_to(basic_fixed<BitsA, Da> a, basic_fixed<BitsB, Db> b,
                                                                  Rounding rounding = Rounding::nearest_even) noexcept {
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
@@ -288,6 +321,10 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
             return Dest::from_raw(static_cast<typename Dest::raw_type>(**native));
         }
     }
+#endif
+#if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+    if constexpr (BitsA <= 128 && BitsB <= 128 && Dest::bits <= 128)
+        return detail::runtime_mul_fallback<Dest>(a, b, rounding);
 #endif
     auto res = detail::mixed_mul_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
                                         Dest::fractional_digits, rounding, Dest::bits);

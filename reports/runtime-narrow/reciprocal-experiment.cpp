@@ -2,9 +2,9 @@
 // Positive magnitudes are bounded by 2^127; the realistic products are checked.
 // reciprocal = ceil(2^128 / D), giving an estimate at most one above floor(n/D).
 // One exact correction recovers both quotient and remainder. The candidate is
-// deliberately kept here for reproducibility after showing no consistent gain.
-// GCC 13 is outside fixedwide's supported GCC matrix; do not use these timings
-// as release performance claims. See reciprocal-experiment-gcc13-environment.txt.
+// deliberately kept here to reproduce the decision about optional rescaling.
+// This standalone experiment is separate from the Google Benchmark API suite.
+// See reciprocal-environment.txt for the compiler, commands, and limitations.
 #include <fixedwide/detail/mixed_native.hpp>
 #include <algorithm>
 #include <array>

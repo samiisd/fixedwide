@@ -1,0 +1,18 @@
+Date: 2026-10-27 UTC
+Compiler: g++-14 (Ubuntu 14.2.0-4ubuntu2~24.04.1) 14.2.0
+Release -O3 -DNDEBUG, native backend; GCC14 final-header rebuild.
+Working-tree base: 544c4ab09735cc809f83850e9a380211bfa4a1bc; exact key source and executable hashes below.
+Commands:
+cmake -S . -B build/gcc14-icount-final -G Ninja -DCMAKE_CXX_COMPILER=g++-14 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-Werror -DFIXEDWIDE_BUILD_BENCHMARKS=ON -DFIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK=OFF -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF
+cmake --build build/gcc14-icount-final --target fixedwide_icount -j1
+taskset -c 8 scripts/icount.sh --binary build/gcc14-icount-final/benchmarks/fixedwide_icount > reports/runtime-narrow/validation/gcc14-icount.csv
+python3 scripts/compare_icount.py benchmarks/baseline/x86_64-gcc-14.csv reports/runtime-narrow/validation/gcc14-icount.csv > reports/runtime-narrow/validation/gcc14-icount-comparison.txt
+Result: PASS against the unchanged committed baseline and its 1% threshold.
+Rows without a committed baseline are labeled NEW by the existing comparison script.
+
+6b2d2f5cd8a3107526196951d60077fafef13be918b26065a18bf1de89edb15b  include/fixedwide/detail/mixed_native.hpp
+e1d128b352cff9c406aaf9815f0d209f55eb5d77287551118ddb1ca7343aaeaf  include/fixedwide/mixed.hpp
+f798c69c58ed881406192fb58352a4fbedf457b324c4dae7e66b4cb66b29db5b  src/mixed.cpp
+2fb7aea73e94384de7b6dc9785ee47e91b85960f10c8ec803d35fb18a3466b8e  benchmarks/icount.cpp
+0249d39b1ebc94dcbec295b5a8b05522b917764227bf29536e7cce38c46f68cc  benchmarks/baseline/x86_64-gcc-14.csv
+54d2df7c79382e0f4a84caddc221ea8794f31d9c9139f28147ea32c97832e7b9  build/gcc14-icount-final/benchmarks/fixedwide_icount

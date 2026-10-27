@@ -184,6 +184,111 @@ void test_extreme_scales() {
     }
 }
 
+template<unsigned K>
+void test_scale_boundaries() {
+    using Scaled = Fixed128<K>;
+    using WideScaled = Fixed256<K>;
+    const auto factor = static_cast<wide::uint128>(Scaled::scale());
+    const I128 upper = static_cast<I128>(static_cast<wide::uint128>(I128::max()) / factor);
+    const I128 lower = -static_cast<I128>(wide::uint128{0, 0x8000'0000'0000'0000ULL} / factor);
+    for (auto boundary : {lower, upper}) {
+        for (int delta : {-1, 0, 1}) {
+            const I128 raw = boundary + I128{delta};
+            const auto a = Fixed128<0>::from_raw(raw);
+            // The constant-scale multiplication must accept its exact bounds
+            // and decline their neighbours without losing a wide result or a
+            // sum that becomes representable through cancellation.
+            check_pair<Scaled>(a, Scaled{});
+            check_pair<WideScaled>(a, Scaled{});
+            check_pair<Scaled>(a, raw.is_negative() ? Scaled::max() : Scaled::min());
+            check_pair<Scaled>(a, small<Fixed128<0>>(1));
+            for (auto mode : modes) {
+                check_cast<Scaled>(a, mode);
+                check_cast<Scaled>(Fixed256<0>{a}, mode);
+            }
+        }
+    }
+}
+
+void test_product_boundaries() {
+    using U128 = wide::uint128;
+    const U128 positive_limit = static_cast<U128>(I128::max());
+    const U128 negative_limit{0, 0x8000'0000'0000'0000ULL};
+    const std::array factors{I128{1},
+                             I128{2},
+                             I128{3},
+                             I128{10},
+                             I128{INT64_MAX},
+                             I128{1} << 63,
+                             (I128{1} << 63) + I128{1},
+                             (I128{1} << 64) - I128{1},
+                             I128{1} << 64,
+                             (I128{1} << 64) + I128{1},
+                             I128{1} << 126,
+                             I128::max(),
+                             I128::min()};
+    for (auto factor : factors) {
+        const U128 magnitude = wide::magnitude(factor);
+        for (auto limit : {positive_limit, negative_limit}) {
+            const U128 threshold = limit / magnitude;
+            for (int delta : {-1, 0, 1}) {
+                if (delta < 0 && threshold.is_zero()) continue;
+                const U128 candidate = delta < 0 ? threshold - U128{1} : threshold + U128{delta};
+                for (bool negative : {false, true}) {
+                    if (candidate > (negative ? negative_limit : positive_limit)) continue;
+                    const U128 bits = negative ? U128{} - candidate : candidate;
+                    const I128 a{bits.low, bits.high};
+                    for (auto b : {factor, -factor}) {
+                        // At scale zero, the signed product itself must fit.
+                        // With scale reduction, an overflowing product may
+                        // still have a valid final answer via the kernel.
+                        check_pair<Fixed128<0>>(Fixed128<0>::from_raw(a), Fixed128<0>::from_raw(b));
+                        check_pair<Money>(Money::from_raw(a), Money::from_raw(b));
+                    }
+                }
+            }
+        }
+        // Rejecting two nonzero high limbs must never reject multiplication
+        // by zero; both operand orders matter for asymmetric limb shortcuts.
+        check_pair<Money>(Money::from_raw(factor), Money{});
+        check_pair<Money>(Money{}, Money::from_raw(factor));
+    }
+}
+
+void test_product_carries() {
+    // The high cross product fits one limb, but adding the carry from the
+    // low product overflows that limb. Neither product fits unsigned int128:
+    // (2^64 + 2)(2^64 - 1) and (2^65 + 5)(2^63 - 1).
+    const std::array cases{std::array{I128{2, 1}, I128{~std::uint64_t{0}, 0}}, std::array{I128{5, 2}, I128{INT64_MAX}}};
+    for (const auto& pair : cases) {
+        for (bool negative_a : {false, true}) {
+            for (bool negative_b : {false, true}) {
+                const I128 a = negative_a ? -pair[0] : pair[0];
+                const I128 b = negative_b ? -pair[1] : pair[1];
+                const auto integer_a = Fixed128<0>::from_raw(a);
+                const auto integer_b = Fixed128<0>::from_raw(b);
+                check_pair<Fixed128<0>>(integer_a, integer_b);
+                check_pair<Fixed128<0>>(integer_b, integer_a);
+                check_pair<Money>(Money::from_raw(a), Money::from_raw(b));
+                check_pair<Money>(Money::from_raw(b), Money::from_raw(a));
+                const auto overflow = mul_to<Fixed128<0>>(integer_a, integer_b, Rounding::exact);
+                CHECK(!overflow);
+                CHECK(overflow.error() == ArithmeticError::overflow);
+                CHECK(mul_to<Money>(Money::from_raw(a), Money::from_raw(b), Rounding::nearest_even));
+
+                if (pair[1] == I128{INT64_MAX}) {
+                    const auto narrow = static_cast<std::int64_t>(b);
+                    check_pair<Fixed128<0>>(integer_a, Fixed64<0>::from_raw(narrow));
+                    check_pair<Fixed128<0>>(Fixed64<0>::from_raw(narrow), integer_a);
+                    check_pair<Money>(Money::from_raw(a), Fixed64<10>::from_raw(narrow));
+                    check_pair<Money>(Fixed64<10>::from_raw(narrow), Money::from_raw(a));
+                    CHECK(mul_to<Money>(Money::from_raw(a), Fixed64<10>::from_raw(narrow), Rounding::nearest_even));
+                }
+            }
+        }
+    }
+}
+
 void test_wide_values() {
     const I256 p127{0, 0x8000'0000'0000'0000ULL, 0, 0};
     const I256 p128{0, 0, 1, 0};
@@ -339,6 +444,12 @@ int main() {
     test_boundaries();
     test_rounding_and_precedence();
     test_extreme_scales();
+    test_scale_boundaries<1>();
+    test_scale_boundaries<12>();
+    test_scale_boundaries<19>();
+    test_scale_boundaries<38>();
+    test_product_boundaries();
+    test_product_carries();
     test_wide_values();
     test_replacement();
     test_native_minimum_division();

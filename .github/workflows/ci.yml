@@ -369,6 +369,43 @@ jobs:
             current-clang.csv
             log10-report/
 
+  runtime-benchmark:
+    name: runtime benchmark smoke (${{ matrix.backend }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [ native, portable ]
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 cmake ninja-build
+      # The Google Benchmark target is opt-in. This job exercises its pinned
+      # dependency and validates every fixture; timing never gates shared CI.
+      - name: Build the runtime benchmark
+        run: |
+          cmake -B build-runtime -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=g++-14 \
+            -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
+            -DFIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK=ON \
+            -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF \
+            ${{ matrix.backend == 'portable' && '-DFIXEDWIDE_FORCE_PORTABLE=ON' || '' }}
+          cmake --build build-runtime --target fixedwide_runtime_narrow_bench
+      - name: Validate fixtures and exercise Google Benchmark
+        run: |
+          build-runtime/benchmarks/fixedwide_runtime_narrow_bench \
+            --benchmark_min_time=0.001s --benchmark_repetitions=1 \
+            --benchmark_enable_random_interleaving=true \
+            --benchmark_out=runtime-benchmark.json --benchmark_out_format=json \
+            2> runtime-validation.txt
+          cat runtime-validation.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: runtime-benchmark-${{ matrix.backend }}
+          path: |
+            runtime-benchmark.json
+            runtime-validation.txt
+
   fuzz:
     name: fuzz smoke
     runs-on: ubuntu-24.04

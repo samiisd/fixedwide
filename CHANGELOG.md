@@ -28,7 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Differential boundary, exhaustive-grid and full-range randomized tests, plus
   mixed runtime-path checks in the existing fuzzer. Compare values and exact
   error codes across every rounding mode.
-- A reproducible paired benchmark for realistic and forced-fallback workloads;
+- An opt-in Google Benchmark target for realistic and forced-fallback workloads,
+  with complete result validation before timing and native/portable reports;
   see `reports/runtime-narrow/README.md` for measured results and limitations.
 
 ## [0.6.9] - 2026-10-26

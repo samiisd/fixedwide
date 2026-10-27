@@ -1,25 +1,27 @@
-Date: 2026-10-27 (task date)
-Purpose: exploratory decision about optional reciprocal rescaling, not release performance evidence.
-GCC 13 is outside fixedwide's supported GCC 14+ matrix.
-Host is shared; no frequency lock, no isolated CPU, no -march, no LTO.
-Nine pairs in alternating order, 4,194,304 operations per side per pair.
-Both operations include a checked signed product and nearest-even rounding.
-Correctness: 6,000,000 random/log-distributed magnitudes per divisor plus 65,536 realistic products per divisor; zero mismatches.
-Compile from repository root:
-g++ -std=c++23 -O3 -DNDEBUG -ffp-contract=off -fno-fast-math -fno-tree-vectorize -fno-tree-slp-vectorize -Iinclude reports/runtime-narrow/reciprocal-experiment-gcc13.cpp -o /tmp/fixedwide_reciprocal_experiment
-Run:
-taskset -c 0 /tmp/fixedwide_reciprocal_experiment
-Compiler:
-g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0
-Copyright (C) 2023 Free Software Foundation, Inc.
+Date: 2026-10-27 UTC
+Purpose: optional reciprocal-rescaling experiment; neither candidate is installed in the library.
+Correctness: 6,000,000 random/log-distributed magnitudes and 65,536 realistic products per divisor.
+Two divisors (10^10 and 10^12): 12,131,072 comparisons per compiler, zero mismatches; both runs exited 0.
+Nine alternating pairs, 4,194,304 operations per side per pair; medians are reported in the raw records.
+Both paths include the same checked signed product and exact nearest-even rounding.
+Pinned to CPU 0 on a shared virtual host; no CPU frequency lock, no LTO, no -march.
+Only the unchanged divide_magnitude helper is called from mixed_native.hpp; its file hash below was recorded after both runs while unrelated runtime guards were being refined.
+Commands (from repository root):
+g++-14 -std=c++23 -O3 -DNDEBUG -ffp-contract=off -fno-fast-math -fno-tree-vectorize -fno-tree-slp-vectorize -Iinclude reports/runtime-narrow/reciprocal-experiment.cpp -o /tmp/fixedwide_reciprocal_supported_gcc14
+taskset -c 0 /tmp/fixedwide_reciprocal_supported_gcc14 > reports/runtime-narrow/reciprocal-gcc14.txt
+clang++-19 -std=c++23 -O3 -DNDEBUG -ffp-contract=off -fno-fast-math -fno-vectorize -fno-slp-vectorize -Iinclude reports/runtime-narrow/reciprocal-experiment.cpp -o /tmp/fixedwide_reciprocal_supported_clang19
+taskset -c 0 /tmp/fixedwide_reciprocal_supported_clang19 > reports/runtime-narrow/reciprocal-clang19.txt
+Commit before experiment-only rename: 544c4ab09735cc809f83850e9a380211bfa4a1bc
+
+g++-14 (Ubuntu 14.2.0-4ubuntu2~24.04.1) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-
-Commit before local edits:
-87d828754d7d9f98f84c4b89c1dfde538756ad5d
-
-CPU:
+Ubuntu clang version 19.1.1 (1ubuntu1~24.04.2)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-19/bin
+Linux 4d02a57b2f1b 6.18.55 #1 SMP Wed Oct 14 19:45:18 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
 Architecture:                            x86_64
 CPU op-mode(s):                          32-bit, 64-bit
 Address sizes:                           46 bits physical, 57 bits virtual
@@ -65,6 +67,7 @@ Vulnerability Srbds:                     Not affected
 Vulnerability Tsa:                       Not affected
 Vulnerability Tsx async abort:           Not affected
 Vulnerability Vmscape:                   Not affected
-
-0b39c476be7b3afc17ef6f45d5471b14b63255fde84a1d3b3cbcc0aba5447ced  reports/runtime-narrow/reciprocal-experiment-gcc13.cpp
-ca82da9bce7f6275f9915c363f57d740f66114ff2bfa861aadb157e3eeeca443  include/fixedwide/detail/mixed_native.hpp
+123a88027b38dd5f1ee4e67906c82baa5bd66e7bab0a603f871672c882ece9eb  reports/runtime-narrow/reciprocal-experiment.cpp
+affb2cce909b9309ea7bf48f29001ce1198c2fea3e25b049f0b00ceb46e4b17e  include/fixedwide/detail/mixed_native.hpp
+69ca52cc92f44c66e42806447ba68593d5cb113678a2a86a43339fc65bb3a6fd  /tmp/fixedwide_reciprocal_supported_gcc14
+8376157bf14de8e5b93910eb3216950c9fb4ba179801f72f6db5bfbc4a66268f  /tmp/fixedwide_reciprocal_supported_clang19
