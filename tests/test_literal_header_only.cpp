@@ -31,9 +31,12 @@ bool template_aggregate() {
     struct Quote {
         Price bid{}, ask{};
     };
-    // MSVC rejects the equivalent designated form with C7595. Positional
-    // aggregate initialization still tests braced temporaries inside a template.
-    Quote quote{Price{"100"}, Price{"101"}};
+    // MSVC rejects direct consteval temporaries in this local aggregate, with
+    // either positional or designated initialization. Keep ordinary named
+    // locals here; template_price and the generic lambda still test temporaries.
+    Price bid{"100"};
+    Price ask{"101"};
+    Quote quote{bid, ask};
     return quote.bid == "100" && quote.ask == "101";
 }
 } // namespace
