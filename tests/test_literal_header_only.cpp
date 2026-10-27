@@ -31,7 +31,9 @@ bool template_aggregate() {
     struct Quote {
         Price bid{}, ask{};
     };
-    Quote quote{.bid = Price{"100"}, .ask = Price{"101"}};
+    // MSVC rejects the equivalent designated form with C7595. Positional
+    // aggregate initialization still tests braced temporaries inside a template.
+    Quote quote{Price{"100"}, Price{"101"}};
     return quote.bid == "100" && quote.ask == "101";
 }
 } // namespace
