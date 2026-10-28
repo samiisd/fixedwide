@@ -28,9 +28,11 @@ endif()
 
 option(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK
     "Build the Google Benchmark runtime-narrow comparison" OFF)
-if(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK)
+option(FIXEDWIDE_BUILD_BATCH_BENCHMARK
+    "Build the Google Benchmark SoA batch comparison" OFF)
+if(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK OR FIXEDWIDE_BUILD_BATCH_BENCHMARK)
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" OR MSVC)
-        message(FATAL_ERROR "The runtime-narrow benchmark currently requires GCC or Clang")
+        message(FATAL_ERROR "The runtime-narrow and batch benchmarks currently require GCC or Clang")
     endif()
     find_package(benchmark 1.9.4 CONFIG QUIET)
     if(NOT benchmark_FOUND)
@@ -49,6 +51,9 @@ if(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK)
     else()
         set(_fixedwide_google_benchmark_version "${benchmark_VERSION}")
     endif()
+endif()
+
+if(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK)
     add_executable(fixedwide_runtime_narrow_bench runtime_narrow_bench.cpp)
     target_link_libraries(fixedwide_runtime_narrow_bench PRIVATE fixedwide::fixedwide benchmark::benchmark)
     target_compile_definitions(fixedwide_runtime_narrow_bench PRIVATE
@@ -58,6 +63,17 @@ if(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK)
     else()
         target_compile_options(fixedwide_runtime_narrow_bench PRIVATE -fno-tree-vectorize -fno-tree-slp-vectorize -ffp-contract=off -fno-fast-math)
     endif()
+endif()
+
+if(FIXEDWIDE_BUILD_BATCH_BENCHMARK)
+    add_executable(fixedwide_batch_bench batch_bench.cpp)
+    target_link_libraries(fixedwide_batch_bench PRIVATE fixedwide::fixedwide benchmark::benchmark)
+    target_compile_definitions(fixedwide_batch_bench PRIVATE
+        FIXEDWIDE_GOOGLE_BENCHMARK_VERSION="${_fixedwide_google_benchmark_version}")
+    # Unlike single-operation microbenchmarks, the array loop IS the workload.
+    # Let the compiler vectorize it, without changing the consumer ISA or FP
+    # contract. No -march=native and no forced vectorization-disable flags.
+    target_compile_options(fixedwide_batch_bench PRIVATE -ffp-contract=off -fno-fast-math)
 endif()
 
 find_package(Boost)

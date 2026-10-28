@@ -14,6 +14,7 @@
 #include <fixedwide/mixed.hpp>
 #include <fixedwide/unchecked.hpp>
 #include <fixedwide/checked.hpp>
+#include <fixedwide/batch.hpp>
 #include <fixedwide/chars.hpp>
 #include <fixedwide/literal.hpp>
 #include <fixedwide/binary.hpp>
