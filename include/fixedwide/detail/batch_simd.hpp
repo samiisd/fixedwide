@@ -176,6 +176,11 @@ template<class Commit, class Dest>
 inline constexpr bool nothrow_commit = noexcept(std::declval<Commit&>()(std::size_t{}, std::declval<const Dest&>()));
 
 template<class Commit, class Dest>
+#if defined(__GNUC__) && !defined(__clang__)
+// Keep the callback inside this small wrapper when GCC's translation-unit
+// inlining budget would otherwise introduce a call from AVX2 into legacy SSE.
+[[gnu::flatten]]
+#endif
 [[nodiscard, gnu::always_inline]] inline std::expected<void, ArithmeticError>
 commit_one(Commit& commit, std::size_t row, const Dest& value) noexcept(nothrow_commit<Commit, Dest>) {
 #if defined(__clang__)

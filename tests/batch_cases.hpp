@@ -127,6 +127,29 @@ inline void test_multiply_domains() {
     for (auto a : {1271, 1275, 1279, 1281, -1281, -1285, -1289, -1291})
         product<fw::Fixed8<0>>(raw<fw::Fixed128<1>>(a), raw<fw::Fixed64<0>>(1));
 
+    // Exact coefficient certificates still require a destination range check
+    // in both the binary and same-scale prepared multiplication paths.
+    for (auto a : {-1290, -1280, -1270, 0, 1260, 1270, 1280, 1290}) {
+        using Dest = fw::Fixed8<0>;
+        const auto lhs = raw<fw::Fixed128<1>>(a);
+        const auto rhs = raw<fw::Fixed64<0>>(1);
+        const auto prepared_lhs = raw<fw::Fixed128<0>>(a);
+        const auto prepared_rhs = raw<fw::Fixed64<1>>(1);
+        const auto binary = batch::mul_to<Dest>(fw::Rounding::exact)(lhs, rhs);
+        const auto prepared = batch::prepare_mul_to<Dest>(prepared_rhs, fw::Rounding::exact)(prepared_lhs);
+        same(binary, fw::mul_to<Dest>(lhs, rhs, fw::Rounding::exact));
+        same(prepared, fw::mul_to<Dest>(prepared_lhs, prepared_rhs, fw::Rounding::exact));
+        for (const auto& result : {binary, prepared}) {
+            if (a >= -1280 && a <= 1270) {
+                CHECK(result);
+                CHECK(*result == raw<Dest>(a / 10));
+            } else {
+                CHECK(!result);
+                CHECK(result.error() == Error::overflow);
+            }
+        }
+    }
+
     // Gaps at and beyond the native power-of-ten limits must use a valid
     // scalar fallback, never instantiate an overflowing native constant.
     for (auto a : {Raw{0}, Raw{1}, Raw{-1}, Raw::min(), Raw::max()}) {

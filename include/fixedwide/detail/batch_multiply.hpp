@@ -3,7 +3,6 @@
 #include <fixedwide/mixed.hpp>
 #include <cstdint>
 #include <expected>
-#include <optional>
 #include <type_traits>
 
 // Arithmetic used by the batch interface. Prepared broadcasts also reuse
@@ -180,18 +179,16 @@ multiply_split(u128 a, std::uint64_t b, bool negative, Rounding rounding, const 
     return finish<Dest>(quotient + tail.quotient, tail.remainder, divide.value(), negative, rounding);
 }
 
-#endif
-
 // Certify a signed64 coefficient before multiplying. The reconstructed source
 // must match exactly; a failed certificate says nothing about the arithmetic
 // result, since the other operand can cancel the remaining denominator.
+// Return the raw product through an output parameter so a successful row does
+// not materialize nested optional/expected objects before its destination check.
 template<typename Dest, typename A, typename B>
 #if defined(__clang__)
 [[gnu::always_inline]]
 #endif
-[[nodiscard]] constexpr std::optional<std::expected<Dest, ArithmeticError>>
-try_exact_product(A a, B b, Rounding rounding) noexcept {
-#if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+[[nodiscard]] constexpr bool try_exact_product(A a, B b, Rounding rounding, i128& product) noexcept {
     constexpr unsigned product_scale = A::fractional_digits + B::fractional_digits;
     if constexpr (A::bits > 64 && A::bits <= 128 && B::bits <= 64 && Dest::bits <= 128 &&
                   product_scale > Dest::fractional_digits && product_scale - Dest::fractional_digits <= 19) {
@@ -200,20 +197,15 @@ try_exact_product(A a, B b, Rounding rounding) noexcept {
                 static_cast<std::uint64_t>(mixed_native::pow10_v<product_scale - Dest::fractional_digits>);
             std::int64_t coefficient;
             if (mixed_native::exact_quotient_i64<denominator>(static_cast<i128>(a.raw()), coefficient)) {
-                const auto product = static_cast<i128>(coefficient) * static_cast<i128>(b.raw());
-                const auto checked = mixed_native::check_range<Dest::bits>(product);
-                if (!checked) return std::unexpected(checked.error());
-                return Dest::from_raw(static_cast<typename Dest::raw_type>(product));
+                product = static_cast<i128>(coefficient) * static_cast<i128>(b.raw());
+                return true;
             }
         }
     }
-#else
-    (void)a;
-    (void)b;
-    (void)rounding;
-#endif
-    return std::nullopt;
+    return false;
 }
+
+#endif
 
 template<typename Dest, typename A, typename B>
 #if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
@@ -221,8 +213,12 @@ template<typename Dest, typename A, typename B>
 #endif
 [[nodiscard]] inline std::expected<Dest, ArithmeticError> multiply_to(A a, B b, Rounding rounding) noexcept {
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
-    if (const auto exact = try_exact_product<Dest>(a, b, rounding)) return *exact;
-    if (const auto exact = try_exact_product<Dest>(b, a, rounding)) return *exact;
+    i128 product;
+    if (try_exact_product<Dest>(a, b, rounding, product) || try_exact_product<Dest>(b, a, rounding, product)) {
+        const auto checked = mixed_native::check_range<Dest::bits>(product);
+        if (!checked) return std::unexpected(checked.error());
+        return Dest::from_raw(static_cast<typename Dest::raw_type>(product));
+    }
     constexpr unsigned product_scale = A::fractional_digits + B::fractional_digits;
     if constexpr (A::bits <= 128 && B::bits <= 128 && Dest::bits <= 128 && product_scale >= Dest::fractional_digits &&
                   product_scale - Dest::fractional_digits <= 19) {
@@ -298,7 +294,12 @@ public:
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
         if constexpr (A::bits <= 128 && B::bits <= 128 && Dest::bits <= 128 &&
                       A::fractional_digits == Dest::fractional_digits && B::fractional_digits <= 19) {
-            if (const auto exact = try_exact_product<Dest>(a, factor_, rounding_)) return *exact;
+            i128 product;
+            if (try_exact_product<Dest>(a, factor_, rounding_, product)) {
+                const auto checked = mixed_native::check_range<Dest::bits>(product);
+                if (!checked) return std::unexpected(checked.error());
+                return Dest::from_raw(static_cast<typename Dest::raw_type>(product));
+            }
             if constexpr (B::bits <= 64) {
                 const bool negative = (static_cast<i128>(a.raw()) < 0) != negative_;
                 return multiply_split<Dest>(native_magnitude(a.raw()), reduced_factor_, negative, rounding_, divisor_);
