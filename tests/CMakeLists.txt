@@ -223,6 +223,18 @@ if(FIXEDWIDE_BUILD_ORACLE_TESTS)
     add_test(NAME fixedwide.batch_oracle COMMAND test_batch_oracle)
 endif()
 
+if(Boost_FOUND AND (FIXEDWIDE_BUILD_TESTS OR FIXEDWIDE_BUILD_ORACLE_TESTS))
+    add_executable(test_exact_coefficients test_exact_coefficients.cpp)
+    target_link_libraries(test_exact_coefficients PRIVATE fixedwide::fixedwide)
+    target_include_directories(test_exact_coefficients PRIVATE ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME fixedwide.exact_coefficients COMMAND test_exact_coefficients)
+    add_executable(test_zen5 test_zen5.cpp)
+    target_link_libraries(test_zen5 PRIVATE fixedwide::fixedwide)
+    target_include_directories(test_zen5 PRIVATE ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME fixedwide.zen5_candidates COMMAND test_zen5)
+    set_tests_properties(fixedwide.zen5_candidates PROPERTIES SKIP_RETURN_CODE 77)
+endif()
+
 # Independent, focused coverage regressions supplement the large differential
 # suites. Boost is a test-only dependency and never propagates to consumers.
 if(Boost_FOUND AND (FIXEDWIDE_BUILD_TESTS OR FIXEDWIDE_BUILD_ORACLE_TESTS))

@@ -58,6 +58,8 @@ jobs:
       # this script and every editor invoke it.
       - name: clang-format
         run: ./scripts/format.sh --check
+      - name: Benchmark measurement controls
+        run: python3 -m unittest discover -s scripts -p test_zen5_bench.py
       # Warnings are errors here and nowhere else, so a new warning fails a pull
       # request without making every other job brittle. Both backends, because
       # they compile different code.
@@ -388,9 +390,10 @@ jobs:
             -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
             -DFIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK=ON \
             -DFIXEDWIDE_BUILD_BATCH_BENCHMARK=ON \
+            -DFIXEDWIDE_BUILD_ZEN5_BENCHMARK=ON \
             -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF \
             ${{ matrix.backend == 'portable' && '-DFIXEDWIDE_FORCE_PORTABLE=ON' || '' }}
-          cmake --build build-runtime --target fixedwide_runtime_narrow_bench fixedwide_batch_bench
+          cmake --build build-runtime --target fixedwide_runtime_narrow_bench fixedwide_batch_bench fixedwide_zen5_bench
       - name: Validate fixtures and exercise Google Benchmark
         shell: bash
         run: |
@@ -402,6 +405,8 @@ jobs:
           cat runtime-validation.txt
           build-runtime/benchmarks/fixedwide_batch_bench --validate-only \
             2>&1 | tee batch-validation.txt
+          build-runtime/benchmarks/fixedwide_zen5_bench --validate-only --sizes=0,1,4,8,64 \
+            2>&1 | tee zen5-validation.txt
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -410,6 +415,7 @@ jobs:
             runtime-benchmark.json
             runtime-validation.txt
             batch-validation.txt
+            zen5-validation.txt
 
   fuzz:
     name: fuzz smoke

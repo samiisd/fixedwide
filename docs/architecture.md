@@ -99,6 +99,12 @@ instructions are confined to target-specific functions, so the default build
 retains baseline CPU compatibility. Unsupported shapes and CPUs use the scalar
 path. See [the batch API](batch.md#four-row-simd-without-changing-storage).
 
+Exact mixed multiplication also certifies coefficients beyond signed64 with
+unsigned128 modular arithmetic and a bounded signed quotient. Its checked
+128-by-64 product retains all overflow information; it does not require BMI2,
+ADX, or SIMD. The AVX-512 and IFMA investigation kernels live under
+`benchmarks/`, are not installed, and do not participate in library dispatch.
+
 Comparison is the exception: `==` and `<=>` need no destination and cannot lose
 anything, because both sides are lifted to a common exponent and the integers
 compared — no division happens. There are two implementations here too, for a

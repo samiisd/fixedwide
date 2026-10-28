@@ -114,6 +114,69 @@ refusal. These ranges are not per-quote latency percentiles. Check the run
 conclusion and `completion.json`; partial artifacts from a failed run are not
 successful qualification. Keep generated evidence out of the source diff.
 
+### Candidate executable
+
+Build the optional backend comparison with the same pinned Google Benchmark
+dependency as the existing batch suite:
+
+```bash
+cmake -S . -B build-zen5 -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS='-O3 -march=x86-64' \
+  -DFIXEDWIDE_BUILD_BENCHMARKS=ON -DFIXEDWIDE_BUILD_ZEN5_BENCHMARK=ON
+cmake --build build-zen5 --target fixedwide_zen5_bench
+build-zen5/benchmarks/fixedwide_zen5_bench --validate-only
+build-zen5/benchmarks/fixedwide_zen5_bench --backend=avx512vl94 --sizes=4,64,125000
+```
+
+The default `--backend=all` registers supported backends and names unsupported
+ones explicitly. Forcing an unsupported backend fails instead of substituting
+another implementation. The feature check includes CPUID, OS-enabled vector
+state and every targeted subset. These benchmark-only implementations do not
+change installed-library dispatch.
+
+| Backend name | Tile rows | Exact coefficient scope |
+|---|---:|---|
+| `public_scalar` | 1 | Current-revision public scalar API, including its general fallback |
+| `prepared_scalar` | 1 | Current-revision prepared scalar operation |
+| `avx2` | 4 | Existing signed/unsigned 32-bit coefficient certificates |
+| `avx512vl64`, `avx51264` | 4, 8 | Unsigned64 coefficient magnitudes, with full source reconstruction |
+| `avx512vl94`, `avx51294` | 4, 8 | Full gap-10 coefficient domain, with complete product overflow checks |
+| `ifma256`, `ifma512` | 4, 8 | 52-bit coefficient magnitudes, with full source reconstruction |
+
+Every vector miss and tail uses prepared scalar arithmetic. A call shorter
+than a backend's tile width therefore executes scalar rows; forcing its name
+does not claim that a vector instruction ran. The diagnostic counts identify
+this case. These scalar references are from the current revision; use the
+paired existing batch/runtime cases for comparisons against an earlier SHA.
+
+`--sizes` replaces the default list `1,4,8,64,125000`; it accepts sizes from zero
+through one million and removes duplicates. Sizes below 64 register only q31/q80 products
+and unique-destination delta updates. Larger sizes add intermediate coefficient
+widths, wide factors, interleaved misses, all-off-grid successful fallback,
+refused prefixes, and duplicate destinations with sink holes. The q31/q50
+fixtures start near `2^30`/`2^49`; q63p1/q80/q90 start near
+`2^63+1`/`2^80`/`2^90`. Coefficients vary by row and signs alternate.
+
+The new kernels cover exact `Fixed128<12>` times a broadcast `Fixed64<10>`,
+either storing each product or performing checked row-value and ordered
+balance additions. Each delta row checks both additions before publishing
+either result. Quote factors alternate signs to keep repeated updates bounded;
+plan preparation, packing, fallback and stores remain inside each timed call.
+Rounded anchored/FX operations, wide replacement and segmented publication
+remain controls in `fixedwide_batch_bench`; they do not execute these new
+candidate backends.
+
+`diagnostic_*` counters describe a separate, validated positive-quote execution.
+`simd_evaluated` and `simd_accepted` include speculative lanes in the final tile;
+`simd_commits` counts published rows. `fallback_maps` counts actual prepared
+scalar calls for rejected lanes, not necessarily general wide-arithmetic calls.
+`tail_maps` is separate, and direct product stores are distinguished from
+per-row callbacks. Timing uses `completed_rows`, excluding the failed row and
+untouched suffix; zero completed rows are reported per call. Empty benchmark
+filters fail. The default suite and `--validate-only` validate results, exact
+errors, ordered prefixes, reverse quotes and instrumented-kernel equivalence
+before timing.
+
 ## The regression gate
 
 ```bash
