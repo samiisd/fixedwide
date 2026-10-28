@@ -86,12 +86,18 @@ which is above `log2(10)` for every `e`.
 
 ## Instruction sets beyond the baseline
 
-There is hand-written assembly for `mulq` and `divq`, and nothing for BMI2, ADX
-or any vector extension. That is a measured decision, not an omission: GCC emits
-`mulx`/`adcx`/`adox` on its own at `-march=x86-64-v3`, and doing so makes wide
-arithmetic about 10% *slower*.
+Scalar wide arithmetic has hand-written assembly for `mulq` and `divq`, with no
+explicit BMI2, ADX or vector implementation. In the recorded wide-arithmetic
+benchmarks, GCC emits `mulx`/`adcx`/`adox` on its own at `-march=x86-64-v3`, and
+doing so makes those operations about 10% *slower*.
 [benchmarks.md](benchmarks.md#build-flags-do-not-reach-for--marchnative) has the
 table.
+
+Exact prepared batches have a separate optional AVX2 implementation, selected
+by runtime CPU dispatch for explicit blocks of at least four rows. Its vector
+instructions are confined to target-specific functions, so the default build
+retains baseline CPU compatibility. Unsupported shapes and CPUs use the scalar
+path. See [the batch API](batch.md#four-row-simd-without-changing-storage).
 
 Comparison is the exception: `==` and `<=>` need no destination and cannot lose
 anything, because both sides are lifted to a common exponent and the integers

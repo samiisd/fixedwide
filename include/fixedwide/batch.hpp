@@ -9,6 +9,7 @@
 #include <fixedwide/arithmetic.hpp>
 #include <fixedwide/mixed.hpp>
 #include <fixedwide/detail/batch_multiply.hpp>
+#include <fixedwide/detail/batch_simd.hpp>
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -142,6 +143,13 @@ for_each(std::size_t count, Map&& map, Commit&& commit,
                   "batch commit must return expected<void, ArithmeticError>");
     (detail::check_size(inputs, count), ...);
 
+    using Simd = fixedwide::detail::batch::simd_dispatch<std::remove_cvref_t<Map>, Inputs...>;
+    if constexpr (BlockSize >= 4 && Simd::available) {
+        if !consteval {
+            if (Simd::can_run(map, count)) return Simd::template for_each<Error>(map, commit, inputs...);
+        }
+    }
+
     std::size_t first = 0;
     for (; count - first >= BlockSize; first += BlockSize) {
         const auto block = detail::evaluate_block(map, first, std::make_index_sequence<BlockSize>{}, inputs...);
@@ -178,6 +186,14 @@ transform(std::span<Dest, Extent> output, Map&& map,
     static_assert(std::is_nothrow_destructible_v<Dest>, "batch values must be nonthrowing to destroy");
     static_assert(std::is_nothrow_copy_assignable_v<Dest>, "batch output assignment must not throw");
     static_assert(BlockSize > 0 && BlockSize <= 64, "batch block size must be in [1, 64]");
+    using Simd = fixedwide::detail::batch::simd_dispatch<std::remove_cvref_t<Map>, Inputs...>;
+    if constexpr (BlockSize >= 4 && Simd::available) {
+        if !consteval {
+            (detail::check_size(inputs, output.size()), ...);
+            if (Simd::can_run(map, output.size()))
+                return Simd::template transform<Error>(map, std::span<Dest>{output}, inputs...);
+        }
+    }
     if constexpr (!detail::mapped_result<detail::mapped_type<Map, Inputs...>>::checked) {
         // An infallible map has no error flags or accepted-prefix decision to
         // retain. A canonical loop exposes comparison/select and conversions

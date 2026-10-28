@@ -2,7 +2,9 @@
 #include <fixedwide/fixed.hpp>
 #include <fixedwide/error.hpp>
 #include <fixedwide/rounding.hpp>
+#include <bit>
 #include <compare>
+#include <cstdint>
 #include <expected>
 #include <optional>
 
@@ -421,6 +423,29 @@ template<typename RawA, typename RawB>
 #endif
 }
 
+// Reconstruct a signed64 quotient without division, then prove it against the
+// full input. For D=2^s*odd, odd has an inverse modulo 2^64. An exact quotient
+// in signed64 is therefore recoverable from the low word of (value >> s).
+// The final equality rejects both inexact values and wrapped candidates whose
+// true quotient needs more than 64 bits. A miss makes no arithmetic decision.
+template<std::uint64_t Denominator>
+[[nodiscard]] constexpr bool exact_quotient_i64(i128 value, std::int64_t& quotient) noexcept {
+    static_assert(Denominator != 0);
+    constexpr unsigned shift = std::countr_zero(Denominator);
+    constexpr std::uint64_t inverse = [] {
+        constexpr auto odd = Denominator >> shift;
+        auto result = odd;
+        // Every odd number is its inverse modulo eight. Five Newton steps
+        // double those three correct bits past the required 64-bit precision.
+        for (unsigned i = 0; i < 5; ++i) result *= 2 - odd * result;
+        return result;
+    }();
+    const auto candidate = static_cast<std::uint64_t>(value >> shift) * inverse;
+    quotient = std::bit_cast<std::int64_t>(candidate);
+    // signed64 x unsigned64 fits signed128, including the signed minimum.
+    return static_cast<i128>(quotient) * static_cast<i128>(Denominator) == value;
+}
+
 // Keep Clang's optional/expected producer visible to its immediate consumer;
 // outlining it would materialize both states and retain dynamic rounding.
 template<unsigned Da, unsigned Db, std::size_t BitsDest, unsigned Dd, typename RawA, typename RawB>
@@ -429,6 +454,27 @@ template<unsigned Da, unsigned Db, std::size_t BitsDest, unsigned Dd, typename R
 #endif
 [[nodiscard]] constexpr Attempt try_mul(RawA a, RawB b, Rounding rounding) noexcept {
     if !consteval {
+        constexpr unsigned product_scale = Da + Db;
+        constexpr bool wide_a = sizeof(RawA) > sizeof(std::uint64_t) && sizeof(RawA) <= sizeof(i128);
+        constexpr bool wide_b = sizeof(RawB) > sizeof(std::uint64_t) && sizeof(RawB) <= sizeof(i128);
+        if constexpr (BitsDest <= 128 && product_scale > Dd && product_scale - Dd <= 19 &&
+                      ((wide_a && sizeof(RawB) <= sizeof(std::uint64_t)) ||
+                       (wide_b && sizeof(RawA) <= sizeof(std::uint64_t)))) {
+            if (rounding == Rounding::exact) {
+                constexpr auto divisor = static_cast<std::uint64_t>(pow10_v<product_scale - Dd>);
+                std::int64_t quotient;
+                if constexpr (wide_a) {
+                    if (exact_quotient_i64<divisor>(static_cast<i128>(a), quotient))
+                        return check_range<BitsDest>(static_cast<i128>(quotient) * static_cast<i128>(b));
+                } else {
+                    if (exact_quotient_i64<divisor>(static_cast<i128>(b), quotient))
+                        return check_range<BitsDest>(static_cast<i128>(quotient) * static_cast<i128>(a));
+                }
+            }
+        }
+        // Other factors can cancel an inexact quotient; an oversized result
+        // must still report overflow before inexact. Only the proven quotient
+        // above skips the existing product/rescale and general fallback.
         i128 product;
         if (!try_product(a, b, product)) return std::nullopt;
         return try_rescale<BitsDest, Da + Db, Dd>(product, rounding);

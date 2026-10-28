@@ -11,7 +11,11 @@
 #include <fixedwide/mixed.hpp>
 #include <fixedwide/arithmetic.hpp>
 #include "check.hpp"
+#include <array>
+#include <bit>
+#include <cstdint>
 #include <cstdio>
+#include <limits>
 #include <random>
 #include <vector>
 
@@ -88,9 +92,139 @@ void sweep(const char* label, const std::vector<RawA>& xs, const std::vector<Raw
     }
 }
 
+template<class Dest, class A, class B>
+void multiply_pair(A a, B b) {
+    for (auto mode : all_modes) {
+        const auto general = detail::mixed_mul_kernel(detail::to_int256_raw(a.raw()), A::fractional_digits,
+                                                      detail::to_int256_raw(b.raw()), B::fractional_digits,
+                                                      Dest::fractional_digits, mode, Dest::bits);
+        same<Dest>(fixedwide::mul_to<Dest>(a, b, mode), general, "exact quotient guard");
+        same<Dest>(fixedwide::mul_to<Dest>(b, a, mode), general, "symmetric exact quotient guard");
+    }
+}
+
+template<unsigned Gap>
+void exact_scaled_products() {
+    using A = fixedwide::Fixed128<Gap>;
+    using B = fixedwide::Fixed64<0>;
+    using Dest = fixedwide::Fixed128<0>;
+    using Raw = fixedwide::wide::int128;
+    constexpr auto divisor = A::scale();
+    const std::array quotients{
+        Raw{0}, Raw{1}, Raw{-1}, Raw{INT64_MIN}, Raw{INT64_MAX}, Raw{INT64_MIN} - Raw{1}, Raw{INT64_MAX} + Raw{1}};
+    constexpr std::array factors{std::int64_t{0},   std::int64_t{1}, std::int64_t{-1}, std::int64_t{2},
+                                 std::int64_t{-37}, INT64_MIN,       INT64_MAX};
+    for (auto quotient : quotients) {
+        const auto exact = quotient * divisor;
+        for (int offset : {-1, 0, 1})
+            for (auto factor : factors) {
+                const auto a = A::from_raw(exact + Raw{offset});
+                const auto b = B::from_raw(factor);
+                multiply_pair<Dest>(a, b);
+                // Valid reconstructed quotients can still overflow a narrower
+                // destination; inexact misses must keep overflow precedence.
+                multiply_pair<fixedwide::Fixed8<0>>(a, b);
+            }
+    }
+    std::mt19937_64 rng(0xE7AC7000 + Gap);
+    for (unsigned i = 0; i < 400; ++i) {
+        const auto factor = B::from_raw(std::bit_cast<std::int64_t>(rng()));
+        multiply_pair<Dest>(A::from_raw(Raw{rng(), rng()}), factor);
+        const auto quotient = Raw{std::bit_cast<std::int64_t>(rng())};
+        multiply_pair<Dest>(A::from_raw(quotient * divisor), factor);
+    }
+}
+
+void check_exact_multiplication() {
+    exact_scaled_products<1>();
+    exact_scaled_products<10>();
+    exact_scaled_products<19>();
+    using Money = fixedwide::Fixed128<12>;
+    using Price = fixedwide::Fixed64<10>;
+    using Raw = fixedwide::wide::int128;
+    constexpr std::int64_t scale = 10'000'000'000;
+    constexpr auto exact = Rounding::exact;
+    // The numerator alone is inexact, but factors from the other operand
+    // cancel the denominator. A failed reconstruction cannot report inexact.
+    for (auto a : {Raw{1}, Raw{-1}, Raw{scale / 2}, Raw{-scale / 2}})
+        for (auto b : {std::int64_t{2}, std::int64_t{-2}, scale, -scale})
+            multiply_pair<Money>(Money::from_raw(a), Price::from_raw(b));
+    const auto cancelled = fixedwide::mul_to<Money>(Money::from_raw(scale / 2), Price::from_raw(2), exact);
+    CHECK(cancelled && cancelled->raw() == Raw{1});
+    // Signed minima require no negation in the successful quotient path, and
+    // the full signed128 minimum must continue to work through the fallback.
+    for (auto money : {Money::min(), Money::max()})
+        for (auto factor : {Price::min(), Price::max(), Price{}, Price::from_raw(scale), Price::from_raw(-scale)})
+            multiply_pair<Money>(money, factor);
+    const auto minimum = fixedwide::mul_to<Money>(Money::min(), Price::from_raw(scale), exact);
+    CHECK(minimum && *minimum == Money::min());
+    const auto negated_minimum = fixedwide::mul_to<Money>(Money::min(), Price::from_raw(-scale), exact);
+    CHECK(!negated_minimum && negated_minimum.error() == fixedwide::ArithmeticError::overflow);
+
+    using Narrow = fixedwide::Fixed8<0>;
+    using Scaled = fixedwide::Fixed128<10>;
+    using Integer = fixedwide::Fixed64<0>;
+    const auto overflow =
+        fixedwide::mul_to<Narrow>(Scaled::from_raw(Raw{128} * Raw{scale} + Raw{1}), Integer::from_raw(1), exact);
+    CHECK(!overflow && overflow.error() == fixedwide::ArithmeticError::overflow);
+    const auto inexact =
+        fixedwide::mul_to<Narrow>(Scaled::from_raw(Raw{127} * Raw{scale} + Raw{1}), Integer::from_raw(1), exact);
+    CHECK(!inexact && inexact.error() == fixedwide::ArithmeticError::inexact);
+    // An excluded scale gap keeps the same general path and rounding policy.
+    multiply_pair<fixedwide::Fixed128<0>>(fixedwide::Fixed128<20>::from_raw(Raw{1}), Integer::from_raw(7));
+    const auto simple = fixedwide::mul_to<Money>(Money::from_raw(Raw{7} * Raw{scale}), Price::from_raw(-37), exact);
+    CHECK(simple && simple->raw() == Raw{-259});
+}
+
 } // namespace
 
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+template<std::uint64_t Divisor>
+void check_exact_divisor() {
+    using namespace detail::mixed_native;
+    constexpr auto divisor = static_cast<i128>(Divisor);
+    constexpr auto lo64 = static_cast<i128>(INT64_MIN), hi64 = static_cast<i128>(INT64_MAX);
+    const auto verify = [](i128 value) {
+        std::int64_t quotient;
+        const bool accepted = exact_quotient_i64<Divisor>(value, quotient);
+        // Ordinary signed128 division is independent of the inverse and the
+        // reconstruction multiply used by the implementation.
+        const auto reference = value / divisor;
+        CHECK(accepted == (value % divisor == 0 && reference >= lo64 && reference <= hi64));
+        if (accepted) CHECK(static_cast<i128>(quotient) == reference);
+    };
+    constexpr auto lo128 = std::bit_cast<i128>(u128{1} << 127);
+    constexpr auto hi128 = std::bit_cast<i128>((u128{1} << 127) - 1);
+    for (i128 quotient : {i128{0}, i128{1}, i128{-1}, lo64, hi64, lo64 - 1, hi64 + 1}) {
+        if (quotient < lo128 / divisor || quotient > hi128 / divisor) continue;
+        const auto product = quotient * divisor;
+        for (int delta : {-1, 0, 1}) {
+            if ((delta < 0 && product == lo128) || (delta > 0 && product == hi128)) continue;
+            verify(product + delta);
+        }
+    }
+    verify(std::bit_cast<i128>(u128{1} << 127));
+    verify(std::bit_cast<i128>((u128{1} << 127) - 1));
+    std::mt19937_64 rng(0xD171D3 + Divisor);
+    for (unsigned i = 0; i < 1000; ++i) {
+        verify(std::bit_cast<i128>((static_cast<u128>(rng()) << 64) | rng()));
+        verify(static_cast<i128>(std::bit_cast<std::int64_t>(rng())) * divisor);
+    }
+}
+
+template<std::size_t... Gap>
+void check_exact_quotients(std::index_sequence<Gap...>) {
+    (check_exact_divisor<static_cast<std::uint64_t>(detail::mixed_native::pow10_v<Gap + 1>)>(), ...);
+    check_exact_divisor<1>();
+    check_exact_divisor<UINT64_MAX>();
+    static_assert([] {
+        std::int64_t quotient;
+        return detail::mixed_native::exact_quotient_i64<10'000'000'000>(-370'000'000'000, quotient) && quotient == -37;
+    }());
+    static_assert(!detail::mixed_native::try_mul<12, 10, 128, 12>(fixedwide::wide::int128{70'000'000'000LL},
+                                                                  std::int64_t{-37}, Rounding::exact));
+}
+
 // divide_magnitude has a hardware path for a divisor that fits 64 bits, and
 // divq faults rather than wraps when its quotient does not fit one limb. Sweep
 // every magnitude and divisor width against the compiler's own division.
@@ -119,6 +253,10 @@ void check_divide_magnitude() {}
 
 int main() {
     check_divide_magnitude();
+#if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+    check_exact_quotients(std::make_index_sequence<19>{});
+#endif
+    check_exact_multiplication();
     using Price = fixedwide::Fixed64<8>;
     using Rate = fixedwide::Fixed64<12>;
     using Money = fixedwide::Fixed128<12>;

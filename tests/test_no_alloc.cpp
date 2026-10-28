@@ -125,6 +125,23 @@ int main() {
     ones.fill(Money{"1"});
     const auto batch_sum = batch::reduce_add(std::span{ones});
     if (!batch_sum || *batch_sum != Money{"9"}) return 1;
+    const auto exact_plan = batch::prepare_mul_to<Money>(Fixed64<10>::from_raw(37), Rounding::exact);
+    if (!batch::transform<4>(std::span{converted}, exact_plan, std::span{ones})) return 1;
+    Money total{};
+    const auto committed = batch::for_each<4>(
+        ones.size(), exact_plan,
+        [&total](std::size_t, Money value) noexcept -> std::expected<void, ArithmeticError> {
+            const auto next = add(total, value);
+            if (!next) return std::unexpected(next.error());
+            total = *next;
+            return {};
+        },
+        std::span{ones});
+    if (!committed || total != Money::from_raw(wide::int128{33'300})) return 1;
+    ones[2] = Money::from_raw(wide::int128{1});
+    const auto simd_failure = batch::transform<4>(std::span{converted}, exact_plan, std::span{ones});
+    if (simd_failure || simd_failure.error().index != 2 || simd_failure.error().error != ArithmeticError::inexact)
+        return 1;
 
     // Assert that NO allocations occurred
     int total_allocations = g_alloc_count.load();

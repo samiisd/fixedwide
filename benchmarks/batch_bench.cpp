@@ -95,7 +95,7 @@ void require_equal(const std::string& workload, const Status& reference, const S
     validated_rows += actual.size();
 }
 
-// A classification of the old scalar multiply's native attempt, determined
+// A classification of the unscaled raw product, determined
 // outside timing. It is not a hardware counter or instrumentation of the new
 // implementation. The 128 x <=128 raw product always fits signed 256 bits.
 template<class B>
@@ -107,7 +107,7 @@ bool product_outside_i128(Money a, B b) {
 
 // Untimed dispatch classification for this benchmark's Money x {Price,Money}
 // -> Money products. This counts which required-prefix lanes delegate to the
-// unchanged scalar API; it does not insert counters into the measured kernel.
+// scalar API; it does not insert counters into the measured kernel.
 // A prepared broadcast can cancel decimal factors before testing limb width.
 template<bool Broadcast, class B>
 bool delegates_scalar_multiply(Money a, B b) {
@@ -128,6 +128,43 @@ bool delegates_scalar_multiply(Money a, B b) {
 #endif
 }
 
+template<class B>
+bool requires_general_multiply(Money a, B b, fw::Rounding rounding) {
+#if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+    return !fw::detail::mixed_native::try_mul<Money::fractional_digits, B::fractional_digits, Money::bits,
+                                              Money::fractional_digits>(a.raw(), b.raw(), rounding);
+#else
+    (void)a;
+    (void)b;
+    (void)rounding;
+    return true;
+#endif
+}
+
+// Independent, untimed classification of lanes accepted by the four-row SIMD
+// certificate. The timed kernel contains no instrumentation. A failed narrow
+// certificate always means scalar fallback, never an arithmetic refusal.
+template<class B>
+bool simd_coefficient_fits(Money value, B factor) {
+#if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+    if constexpr (B::bits <= 64 && B::fractional_digits > 0 && B::fractional_digits <= 19) {
+        using I = __int128;
+        constexpr I denominator = fw::detail::mixed_native::pow10_v<B::fractional_digits>;
+        const I raw = static_cast<I>(value.raw());
+        const I q = raw / denominator;
+        if (q * denominator != raw) return false;
+        if constexpr (B::fractional_digits == 10) {
+            if (factor.raw() >= INT32_MIN && factor.raw() <= INT32_MAX) return q >= INT32_MIN && q <= INT32_MAX;
+        }
+        return q >= -I{UINT32_MAX} && q <= I{UINT32_MAX};
+    }
+#else
+    (void)value;
+    (void)factor;
+#endif
+    return false;
+}
+
 struct Counts {
     std::size_t input_rows{};
     std::size_t completed_rows{};
@@ -138,6 +175,8 @@ struct Counts {
     std::size_t positions{};
     std::size_t classified_product_rows{};
     std::size_t delegated_product_rows{};
+    std::size_t general_scalar_products{};
+    std::size_t simd_product_rows{};
 };
 
 void counters(benchmark::State& state, Counts counts, Implementation implementation) {
@@ -165,18 +204,20 @@ void counters(benchmark::State& state, Counts counts, Implementation implementat
         // wider than one limb, hence an overflowing signed128 intermediate.
         // The scalar baseline has its own one-limb/intermediate successes.
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
-        const auto general = implementation == Implementation::scalar ? counts.outside_i128_products : delegated;
+        const auto general = implementation == Implementation::scalar ? counts.general_scalar_products : delegated;
 #else
         const auto general = delegated;
 #endif
         state.counters["general_product_rows"] = static_cast<double>(general);
+        state.counters["simd_product_rows"] =
+            implementation == Implementation::batch4 ? static_cast<double>(counts.simd_product_rows) : 0.0;
     }
     state.counters["modeled_bytes"] = static_cast<double>(counts.modeled_bytes);
     state.counters["extra_array_passes"] = 0.0;
     state.counters["heap_scratch_bytes"] = 0.0;
     state.counters["block_lanes"] = implementation == Implementation::batch4 ? 4.0 : 1.0;
-    // The only lane storage in the batch scheduler is automatic, bounded by
-    // BlockSize. This is its result storage, not a measured stack-frame size.
+    // Upper bound for the generic scheduler's lane results, not a measured
+    // stack frame. SIMD can store directly or retain only four int64 products.
     state.counters["lane_result_bytes"] =
         implementation == Implementation::scalar
             ? 0.0
@@ -302,11 +343,22 @@ void register_products(const std::string& workload, Products<B> data, bool expec
     const std::size_t attempted = completed + static_cast<std::size_t>(!reference);
     std::size_t wide_products = 0;
     std::size_t delegated_products = 0;
+    std::size_t general_products = 0;
+    std::size_t simd_products = 0;
+    using Plan = decltype(fw::batch::prepare_mul_to<Money>(input->broadcast, input->rounding));
+    using Simd = fw::detail::batch::simd_dispatch<Plan, std::span<const Money>>;
+    bool simd_enabled = false;
+    if constexpr (Broadcast && Simd::available)
+        simd_enabled = Simd::can_run(fw::batch::prepare_mul_to<Money>(input->broadcast, input->rounding), count);
     for (std::size_t i = 0; i < attempted; ++i) {
         wide_products += static_cast<std::size_t>(
             product_outside_i128(input->left[i], Broadcast ? input->broadcast : input->right[i]));
         delegated_products += static_cast<std::size_t>(
             delegates_scalar_multiply<Broadcast>(input->left[i], Broadcast ? input->broadcast : input->right[i]));
+        general_products += static_cast<std::size_t>(
+            requires_general_multiply(input->left[i], Broadcast ? input->broadcast : input->right[i], input->rounding));
+        if (simd_enabled && i < count - count % 4)
+            simd_products += static_cast<std::size_t>(simd_coefficient_fits(input->left[i], input->broadcast));
     }
     const Counts counts{count,
                         completed,
@@ -316,7 +368,9 @@ void register_products(const std::string& workload, Products<B> data, bool expec
                         static_cast<std::size_t>(!reference),
                         0,
                         attempted,
-                        delegated_products};
+                        delegated_products,
+                        general_products,
+                        simd_products};
     for (const auto implementation : implementations) {
         dispatch(implementation, [&]<Implementation Impl>() {
             std::vector<Money> actual(count, sentinel);
@@ -685,6 +739,22 @@ void register_fixtures() {
         }
         register_products<true>("mul_price.broadcast_exact", price);
         register_products<false>("mul_price.varying_exact", price);
+        auto wide_price = price;
+        wide_price.broadcast = Price::from_raw((std::int64_t{1} << 43) + 17);
+        register_products<true>("mul_price.grid32_wide_factor", std::move(wide_price));
+        auto wide_coefficient = price;
+        for (std::size_t row = 0; row < count; ++row) {
+            const Raw coefficient = (Raw{1} << 50) + Raw{row & 1023U};
+            const Raw raw = coefficient * Raw{10'000'000'000ULL};
+            wide_coefficient.left[row] = Money::from_raw((row & 1U) != 0 ? -raw : raw);
+        }
+        register_products<true>("mul_price.grid64_scalar_fallback", wide_coefficient);
+        for (std::size_t row = 0; row < count; ++row) {
+            const Raw coefficient = (Raw{1} << 90) + Raw{row & 1023U};
+            const Raw raw = coefficient * Raw{10'000'000'000ULL};
+            wide_coefficient.left[row] = Money::from_raw((row & 1U) != 0 ? -raw : raw);
+        }
+        register_products<true>("mul_price.wide_coefficient_fallback", std::move(wide_coefficient));
         register_products<true>("mul_fx.broadcast_nearest", fx);
         register_products<false>("mul_fx.varying_nearest", fx);
 
@@ -720,6 +790,13 @@ void register_fixtures() {
 
         register_sweep<false>("delta.unique.holes0", make_sweep(count, false, false, rng));
         register_sweep<false>("delta.duplicates.holes5", make_sweep(count, true, true, rng));
+        auto mixed_sweep = make_sweep(count, true, true, rng);
+        for (std::size_t row = 1; row < count; row += 20) {
+            const Raw coefficient = (Raw{1} << 90) + Raw{row & 1023U};
+            const Raw raw = coefficient * Raw{10'000'000'000ULL};
+            mixed_sweep.slope[row] = Money::from_raw((row & 2U) != 0 ? -raw : raw);
+        }
+        register_sweep<false>("delta.mixed5pct_wide.duplicates.holes5", std::move(mixed_sweep));
         auto grid_sweep = make_sweep(count, true, true, rng);
         grid_sweep.dx = Price{"0.0001"};
         register_sweep<false>("delta.grid.duplicates.holes5", std::move(grid_sweep));
@@ -751,7 +828,7 @@ int main(int argc, char** argv) {
     benchmark::AddCustomContext("compiler", __VERSION__);
     benchmark::AddCustomContext("backend", backend);
     benchmark::AddCustomContext("seed", "0xB47C2026");
-    benchmark::AddCustomContext("baseline", "unchanged public fixedwide v0.6.10 scalar operations");
+    benchmark::AddCustomContext("baseline", "public scalar operations from the same source revision");
     benchmark::AddCustomContext(
         "model", "complete arithmetic loops; modeled bytes exclude cache effects and speculative failed-block lanes");
 #if defined(FIXEDWIDE_GOOGLE_BENCHMARK_VERSION)

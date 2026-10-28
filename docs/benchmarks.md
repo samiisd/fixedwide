@@ -18,7 +18,9 @@ executes exactly the same number of them.
 The opt-in `fixedwide_batch_bench` target uses the existing pinned Google
 Benchmark dependency. It compares scalar loops with batch sizes 1 and 4 over
 identical retained SoA inputs, with vectorization enabled, strict floating-point
-flags and no `-march=native`.
+flags and no `-march=native`. The scalar baseline is the public API from the
+same revision. The four-row exact broadcast path dispatches to AVX2 on capable
+x86-64 CPUs; its fallback and the one-row path need no AVX2 support.
 
 ```bash
 # Build and verify every fixture, without running a timing workload.
@@ -39,14 +41,22 @@ coordinate with other workloads and avoid concurrent builds or timing runs.
 Fixtures cover 64 and 125,000 rows: vector/broadcast products, exact refusals,
 wide scalar fallbacks, delta updates with duplicate destinations and sink holes,
 anchored FX with wide replacement, cancellation, and per-position publication.
+Exact broadcast cases include 32-bit coefficients with small and wide factors,
+64-bit and wider coefficients that reject the SIMD certificate, and complete
+delta updates with 5% wide-coefficient fallback lanes.
 Each fixture verifies outputs and accepted-prefix errors before timing.
 Repeated quote fixtures alternate bounded marks/deltas without timed resets.
 
 JSON counters `seconds_per_row` and `seconds_per_op` use CPU time; multiply by
 `1e9` for nanoseconds. Refused rows are excluded from completed work.
 `mapped_rows` includes speculative lanes; `scalar_api_product_rows` and
-`general_product_rows` classify the required prefix outside timing. Modeled
+`general_product_rows` classify the required prefix outside timing.
+`simd_product_rows` counts successful SIMD coefficient certificates in that
+prefix; it is zero for one-row or unsupported configurations. Classification
+is untimed and does not insert hardware counters into the loop. Modeled
 bytes and lane-result storage are estimates, not measured hardware traffic.
+`lane_result_bytes` is the generic scheduler's storage bound; the SIMD path can
+use less storage or write a fully accepted tile directly to the output.
 
 `benchmarks/batch_codegen.cpp` provides matching probes for assembly and
 vectorization diagnostics (`-S`, GCC's `-fopt-info-vec-all`, or Clang's

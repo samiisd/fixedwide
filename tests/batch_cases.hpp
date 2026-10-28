@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <limits>
 #include <expected>
 #include <random>
 #include <span>
@@ -125,6 +126,29 @@ inline void test_multiply_domains() {
             product<fw::Fixed128<0>>(raw<fw::Fixed128<1>>(q * 10 + 5 + offset), raw<fw::Fixed64<0>>(1));
     for (auto a : {1271, 1275, 1279, 1281, -1281, -1285, -1289, -1291})
         product<fw::Fixed8<0>>(raw<fw::Fixed128<1>>(a), raw<fw::Fixed64<0>>(1));
+
+    // Exact coefficient certificates still require a destination range check
+    // in both the binary and same-scale prepared multiplication paths.
+    for (auto a : {-1290, -1280, -1270, 0, 1260, 1270, 1280, 1290}) {
+        using Dest = fw::Fixed8<0>;
+        const auto lhs = raw<fw::Fixed128<1>>(a);
+        const auto rhs = raw<fw::Fixed64<0>>(1);
+        const auto prepared_lhs = raw<fw::Fixed128<0>>(a);
+        const auto prepared_rhs = raw<fw::Fixed64<1>>(1);
+        const auto binary = batch::mul_to<Dest>(fw::Rounding::exact)(lhs, rhs);
+        const auto prepared = batch::prepare_mul_to<Dest>(prepared_rhs, fw::Rounding::exact)(prepared_lhs);
+        same(binary, fw::mul_to<Dest>(lhs, rhs, fw::Rounding::exact));
+        same(prepared, fw::mul_to<Dest>(prepared_lhs, prepared_rhs, fw::Rounding::exact));
+        for (const auto& result : {binary, prepared}) {
+            if (a >= -1280 && a <= 1270) {
+                CHECK(result);
+                CHECK(*result == raw<Dest>(a / 10));
+            } else {
+                CHECK(!result);
+                CHECK(result.error() == Error::overflow);
+            }
+        }
+    }
 
     // Gaps at and beyond the native power-of-ten limits must use a valid
     // scalar fallback, never instantiate an overflowing native constant.
@@ -814,6 +838,302 @@ inline void test_generic_conversion_and_comparison() {
     }
 }
 
+template<class Dest, std::size_t Out, class A, std::size_t In, class B>
+batch::Result scalar_broadcast(std::span<Dest, Out> output, std::span<const A, In> input, B factor,
+                               fw::Rounding mode = fw::Rounding::exact) {
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        const auto value = fw::mul_to<Dest>(input[i], factor, mode);
+        if (!value) return std::unexpected(batch::Error{i, value.error()});
+        output[i] = *value;
+    }
+    return {};
+}
+
+// A block-capable prepared map must preserve the same public contract on both
+// vector-capable machines and portable/scalar builds. The intentionally offset
+// fields require only Money's ordinary alignment, never 16/32-byte alignment.
+template<std::size_t BlockSize>
+void check_prepared_blocks() {
+    constexpr Raw scale{10'000'000'000LL};
+    constexpr std::array<std::int64_t, 13> coefficients{0,
+                                                        1,
+                                                        -1,
+                                                        INT32_MIN,
+                                                        INT32_MAX,
+                                                        std::int64_t{INT32_MIN} - 1,
+                                                        std::int64_t{INT32_MAX} + 1,
+                                                        std::int64_t{UINT32_MAX} - 1,
+                                                        UINT32_MAX,
+                                                        -std::int64_t{UINT32_MAX},
+                                                        std::int64_t{UINT32_MAX} + 1,
+                                                        INT64_MIN,
+                                                        INT64_MAX};
+    struct alignas(32) Storage {
+        std::uint64_t guard = 0x13579bdf;
+        std::array<Money, 40> values{};
+    } input, output;
+    static_assert(offsetof(Storage, values) == 8);
+    CHECK(reinterpret_cast<std::uintptr_t>(input.values.data()) % 32 == 8);
+    CHECK(reinterpret_cast<std::uintptr_t>(output.values.data()) % 32 == 8);
+    for (std::size_t i = 0; i < input.values.size(); ++i)
+        input.values[i] = Money::from_raw(Raw{coefficients[i % coefficients.size()]} * scale);
+    const auto sentinel = Money::from_raw(Raw{77});
+    for (const auto length : std::array<std::size_t, 13>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 17, 31, 39}) {
+        for (const auto p : std::array<std::int64_t, 8>{0, 37, -37, INT32_MIN, INT32_MAX, (std::int64_t{1} << 43) + 17,
+                                                        INT64_MIN, INT64_MAX}) {
+            output.values.fill(sentinel);
+            auto expected = output.values;
+            const auto factor = Price::from_raw(p);
+            const std::span<const Money> source{input.values.data(), length};
+            const auto reference = scalar_broadcast(std::span{expected}.first(length), source, factor);
+            const auto result =
+                batch::transform<BlockSize>(std::span{output.values}.first(length),
+                                            batch::prepare_mul_to<Money>(factor, fw::Rounding::exact), source);
+            CHECK(result == reference);
+            CHECK(output.values == expected);
+            CHECK(input.guard == 0x13579bdf && output.guard == 0x13579bdf);
+        }
+    }
+
+    // Every physical position, including the tail, can be the first failure.
+    // Oversized quotients must report overflow before checking exactness.
+    for (const bool overflow : {false, true}) {
+        for (std::size_t failed = 0; failed < 9; ++failed) {
+            std::array<Money, 9> source;
+            source.fill(Money::from_raw(scale));
+            source[failed] = overflow ? Money::max() : Money::from_raw(1);
+            const auto factor = Price::from_raw(overflow ? 20'000'000'001LL : 37);
+            std::array<Money, 9> actual;
+            actual.fill(sentinel);
+            auto expected = actual;
+            const auto reference = scalar_broadcast(std::span{expected}, std::span<const Money>{source}, factor);
+            const auto result = batch::transform<BlockSize>(
+                std::span{actual}, batch::prepare_mul_to<Money>(factor, fw::Rounding::exact), std::span{source});
+            CHECK(!reference);
+            CHECK(reference.error().index == failed);
+            CHECK(reference.error().error == (overflow ? Error::overflow : Error::inexact));
+            CHECK(result == reference);
+            CHECK(actual == expected);
+        }
+    }
+
+    // In-place input/output aliases are exact, even when their common address
+    // is offset within an allocation. This is not shifted input/output overlap.
+    for (std::size_t offset : {0, 1}) {
+        for (std::size_t length : {3, 4, 5, 8, 9}) {
+            input.values.fill(Money::from_raw(scale));
+            input.values[offset + length - 1] = Money::from_raw(1);
+            auto expected = input.values;
+            const auto original = input.values;
+            const auto factor = Price::from_raw(37);
+            const auto reference = scalar_broadcast(std::span{expected}.subspan(offset, length),
+                                                    std::span<const Money>{original}.subspan(offset, length), factor);
+            const auto in_place = std::span{input.values}.subspan(offset, length);
+            const auto result = batch::transform<BlockSize>(
+                in_place, batch::prepare_mul_to<Money>(factor, fw::Rounding::exact), in_place);
+            CHECK(result == reference);
+            CHECK(input.values == expected);
+        }
+    }
+}
+
+template<unsigned Gap>
+void check_prepared_scale_gap() {
+    using A = fw::Fixed128<Gap>;
+    using Dest = fw::Fixed128<0>;
+    using Factor = fw::Fixed64<0>;
+    const Raw scale = fw::compute_pow10<Raw>(Gap);
+    const Raw half = scale >> 1;
+    std::array<A, 12> source{A::from_raw(scale),
+                             A::from_raw(-scale),
+                             A::from_raw(Raw{INT32_MIN} * scale),
+                             A::from_raw(Raw{UINT32_MAX} * scale),
+                             A::from_raw(-Raw{UINT32_MAX} * scale),
+                             A::from_raw((Raw{UINT32_MAX} + Raw{1}) * scale),
+                             A::from_raw(half),
+                             A::from_raw(-half),
+                             A::from_raw(scale + half),
+                             A::from_raw(1),
+                             A::max(),
+                             A::min()};
+    std::array<Dest, 12> actual;
+    for (const auto mode : modes) {
+        for (const auto p : std::array<std::int64_t, 6>{1, 2, -3, INT32_MIN, INT64_MIN, INT64_MAX}) {
+            actual.fill(Dest::from_raw(77));
+            auto expected = actual;
+            const auto factor = Factor::from_raw(p);
+            const auto reference = scalar_broadcast(std::span{expected}, std::span<const A>{source}, factor, mode);
+            const auto result = batch::transform<4>(std::span{actual}, batch::prepare_mul_to<Dest>(factor, mode),
+                                                    std::span<const A>{source});
+            CHECK(result == reference);
+            CHECK(actual == expected);
+        }
+    }
+    // A failed grid certificate must fall back, not report inexact: the
+    // broadcast factor can cancel the source's otherwise nonzero remainder.
+    source.fill(A::from_raw(half));
+    CHECK(batch::transform<4>(std::span{actual}, batch::prepare_mul_to<Dest>(Factor::from_raw(2), fw::Rounding::exact),
+                              std::span{source}));
+    for (const auto value : actual) CHECK(value == Dest::from_raw(1));
+}
+
+template<std::size_t BlockSize>
+void check_prepared_ordered_commit() {
+    constexpr Raw scale{10'000'000'000LL};
+    std::array<Money, 9> slope;
+    slope.fill(Money::from_raw(scale));
+    slope[2] = Money::from_raw(1); // later map refusal must not outrank commit(1)
+    std::array<Money, 9> values{};
+    Money total = Money::from_raw(Money::max().raw() - Raw{1});
+    std::size_t calls = 0;
+    const auto result = batch::for_each<BlockSize>(
+        slope.size(), batch::prepare_mul_to<Money>(Price::from_raw(1), fw::Rounding::exact),
+        [&](std::size_t row, Money contribution) noexcept -> std::expected<void, Error> {
+            CHECK(row == calls++);
+            const auto next_value = fw::add(values[row], contribution);
+            if (!next_value) return std::unexpected(next_value.error());
+            const auto next_total = fw::add(total, contribution);
+            if (!next_total) return std::unexpected(next_total.error());
+            values[row] = *next_value;
+            total = *next_total;
+            return {};
+        },
+        std::span{slope});
+    CHECK(!result && result.error() == batch::Error{1, Error::overflow});
+    CHECK(calls == 2);
+    CHECK(total == Money::max());
+    CHECK(values[0] == Money::from_raw(1));
+    for (std::size_t i = 1; i < values.size(); ++i) CHECK(values[i] == Money{});
+
+    constexpr std::array<std::size_t, 9> balance{0, 1, 0, 2, 1, 0, 2, 3, 0};
+    constexpr std::array<std::int64_t, 9> q{1, -2, 3, 4, -5, -6, 7, 0, 8};
+    for (std::size_t i = 0; i < slope.size(); ++i) slope[i] = Money::from_raw(Raw{q[i]} * scale);
+    values.fill(Money{});
+    std::array<Money, 4> totals{};
+    std::array<Money, 4> expected{};
+    const auto factor = Price::from_raw(37);
+    for (std::size_t i = 0; i < slope.size(); ++i) {
+        const auto value = fw::mul_to<Money>(slope[i], factor, fw::Rounding::exact);
+        CHECK(value);
+        expected[balance[i]] = *fw::add(expected[balance[i]], *value);
+    }
+    calls = 0;
+    CHECK(batch::for_each<BlockSize>(
+        slope.size(), batch::prepare_mul_to<Money>(factor, fw::Rounding::exact),
+        [&](std::size_t row, Money value) noexcept -> std::expected<void, Error> {
+            CHECK(row == calls++);
+            const auto sum = fw::add(totals[balance[row]], value);
+            if (!sum) return std::unexpected(sum.error());
+            values[row] = value;
+            totals[balance[row]] = *sum;
+            return {};
+        },
+        std::span{slope}));
+    CHECK(calls == slope.size());
+    CHECK(totals == expected);
+    CHECK(totals[3] == Money{}); // zero hole targets the sink
+}
+
+template<unsigned Gap>
+void check_prepared_commit_scale_gap() {
+    using A = fw::Fixed128<Gap>;
+    using Dest = fw::Fixed128<0>;
+    using Factor = fw::Fixed64<0>;
+    const Raw scale = fw::compute_pow10<Raw>(Gap);
+    constexpr std::array<std::size_t, 9> balance{0, 1, 0, 1, 0, 1, 0, 2, 1};
+    for (const bool partial : {false, true}) {
+        for (const bool commit_fails : {false, true}) {
+            for (const auto p : std::array<std::int64_t, 3>{37, (std::int64_t{1} << 43) + 18, INT64_MIN}) {
+                std::array<A, 9> source;
+                for (std::size_t row = 0; row < source.size(); ++row)
+                    source[row] = A::from_raw(Raw{static_cast<std::int64_t>(row + 1)} * scale);
+                source[7] = A{};
+                if (partial) {
+                    source[3] = A::from_raw((Raw{UINT32_MAX} + Raw{1}) * scale);
+                    source[4] = A::from_raw(scale >> 1);
+                }
+                std::array<Dest, 9> values{}, expected_values{};
+                std::array<Dest, 3> totals{};
+                if (commit_fails) totals[0] = Dest::from_raw((p < 0 ? Dest::min().raw() : Dest::max().raw()) - Raw{p});
+                auto expected_totals = totals;
+                const auto commit_to = [&](auto& rows, auto& sums, std::size_t row,
+                                           Dest contribution) -> std::expected<void, Error> {
+                    const auto value = fw::add(rows[row], contribution);
+                    if (!value) return std::unexpected(value.error());
+                    const auto total = fw::add(sums[balance[row]], contribution);
+                    if (!total) return std::unexpected(total.error());
+                    rows[row] = *value;
+                    sums[balance[row]] = *total;
+                    return {};
+                };
+                const auto factor = Factor::from_raw(p);
+                batch::Result reference;
+                std::size_t expected_calls = 0;
+                for (std::size_t row = 0; row < source.size(); ++row) {
+                    const auto value = fw::mul_to<Dest>(source[row], factor, fw::Rounding::exact);
+                    if (!value) {
+                        reference = std::unexpected(batch::Error{row, value.error()});
+                        break;
+                    }
+                    ++expected_calls;
+                    const auto committed = commit_to(expected_values, expected_totals, row, *value);
+                    if (!committed) {
+                        reference = std::unexpected(batch::Error{row, committed.error()});
+                        break;
+                    }
+                }
+                std::size_t calls = 0;
+                const auto result = batch::for_each<8>(
+                    source.size(), batch::prepare_mul_to<Dest>(factor, fw::Rounding::exact),
+                    [&](std::size_t row, const Dest& value) noexcept -> std::expected<void, Error> {
+                        CHECK(row == calls++);
+                        return commit_to(values, totals, row, value);
+                    },
+                    std::span<const A>{source});
+                CHECK(result == reference);
+                CHECK(calls == expected_calls);
+                CHECK(values == expected_values);
+                CHECK(totals == expected_totals);
+                CHECK(totals[2] == Dest{});
+                if (commit_fails) CHECK(!result && result.error() == batch::Error{2, Error::overflow});
+            }
+        }
+    }
+}
+
+inline void test_prepared_callback_exceptions() {
+    constexpr Raw scale{10'000'000'000LL};
+    std::array<Money, 5> input;
+    input.fill(Money::from_raw(scale));
+    const auto map = batch::prepare_mul_to<Money>(Price::from_raw(1), fw::Rounding::exact);
+    const auto nonthrowing = [](std::size_t, Money) noexcept -> std::expected<void, Error> { return {}; };
+    const auto throwing_signature = [](std::size_t, Money) -> std::expected<void, Error> { return {}; };
+    static_assert(noexcept(batch::for_each<4>(input.size(), map, nonthrowing, std::span{input})));
+    static_assert(!noexcept(batch::for_each<4>(input.size(), map, throwing_signature, std::span{input})));
+    CHECK(batch::for_each<4>(input.size(), map, throwing_signature, std::span{input}));
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+    struct CallbackFailure {};
+    std::size_t calls = 0;
+    bool caught = false;
+    try {
+        const auto result = batch::for_each<4>(
+            input.size(), map,
+            [&](std::size_t row, Money value) -> std::expected<void, Error> {
+                CHECK(row == calls++);
+                CHECK(value == Money::from_raw(1));
+                if (row == 2) throw CallbackFailure{};
+                return {};
+            },
+            std::span{input});
+        (void)result;
+    } catch (const CallbackFailure&) {
+        caught = true;
+    }
+    CHECK(caught);
+    CHECK(calls == 3);
+#endif
+}
+
 inline void run() {
     test_multiply_domains();
     check_transform_contract<1>();
@@ -833,6 +1153,18 @@ inline void run() {
     test_wide_preparation();
     test_cold_division_boundaries();
     test_generic_conversion_and_comparison();
+    check_prepared_blocks<4>();
+    check_prepared_blocks<5>();
+    check_prepared_blocks<8>();
+    check_prepared_scale_gap<1>();
+    check_prepared_scale_gap<9>();
+    check_prepared_scale_gap<10>();
+    check_prepared_scale_gap<19>();
+    check_prepared_ordered_commit<4>();
+    check_prepared_ordered_commit<8>();
+    check_prepared_commit_scale_gap<1>();
+    check_prepared_commit_scale_gap<19>();
+    test_prepared_callback_exceptions();
 }
 
 } // namespace batch_test
