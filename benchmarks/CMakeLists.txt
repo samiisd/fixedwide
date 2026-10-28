@@ -30,9 +30,11 @@ option(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK
     "Build the Google Benchmark runtime-narrow comparison" OFF)
 option(FIXEDWIDE_BUILD_BATCH_BENCHMARK
     "Build the Google Benchmark SoA batch comparison" OFF)
-if(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK OR FIXEDWIDE_BUILD_BATCH_BENCHMARK)
+option(FIXEDWIDE_BUILD_ZEN5_BENCHMARK
+    "Build the forced-backend exact arithmetic investigation" OFF)
+if(FIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK OR FIXEDWIDE_BUILD_BATCH_BENCHMARK OR FIXEDWIDE_BUILD_ZEN5_BENCHMARK)
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" OR MSVC)
-        message(FATAL_ERROR "The runtime-narrow and batch benchmarks currently require GCC or Clang")
+        message(FATAL_ERROR "The runtime-narrow, batch and Zen 5 benchmarks currently require GCC or Clang")
     endif()
     find_package(benchmark 1.9.4 CONFIG QUIET)
     if(NOT benchmark_FOUND)
@@ -74,6 +76,16 @@ if(FIXEDWIDE_BUILD_BATCH_BENCHMARK)
     # Let the compiler vectorize it, without changing the consumer ISA or FP
     # contract. No -march=native and no forced vectorization-disable flags.
     target_compile_options(fixedwide_batch_bench PRIVATE -ffp-contract=off -fno-fast-math)
+endif()
+
+if(FIXEDWIDE_BUILD_ZEN5_BENCHMARK)
+    add_executable(fixedwide_zen5_bench zen5_bench.cpp)
+    target_link_libraries(fixedwide_zen5_bench PRIVATE fixedwide::fixedwide benchmark::benchmark)
+    target_compile_definitions(fixedwide_zen5_bench PRIVATE
+        FIXEDWIDE_GOOGLE_BENCHMARK_VERSION="${_fixedwide_google_benchmark_version}")
+    # Baseline-compatible callers plus separately targeted complete kernels.
+    # Let ordinary scalar loops vectorize; do not manufacture an ISA advantage.
+    target_compile_options(fixedwide_zen5_bench PRIVATE -ffp-contract=off -fno-fast-math)
 endif()
 
 find_package(Boost)
