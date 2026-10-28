@@ -114,6 +114,25 @@ struct Divided {
     return {quotient, magnitude - quotient * denominator};
 }
 
+template<unsigned Scale>
+struct constant_divisor {
+    static_assert(Scale <= 19);
+    static constexpr auto denominator = static_cast<std::uint64_t>(pow10_v<Scale>);
+
+    [[nodiscard]] static constexpr std::uint64_t value() noexcept { return denominator; }
+
+    [[nodiscard]] constexpr Divided operator()(u128 value) const noexcept {
+        if constexpr (Scale == 0) return {value, 0};
+        // Keep one-limb division visibly constant so the compiler uses its
+        // ordinary multiply/shift sequence instead of a 128-bit divide call.
+        if ((value >> 64) == 0) {
+            const auto low = static_cast<std::uint64_t>(value);
+            return {low / denominator, low % denominator};
+        }
+        return divide_magnitude(value, denominator);
+    }
+};
+
 // Divide and round to the requested mode, with the destination's range applied
 // in the SAME ORDER as round_magnitude: the range test comes before the rounding
 // decision, so a result that cannot be represented is an overflow whatever the
@@ -444,6 +463,124 @@ template<std::uint64_t Denominator>
     quotient = std::bit_cast<std::int64_t>(candidate);
     // signed64 x unsigned64 fits signed128, including the signed minimum.
     return static_cast<i128>(quotient) * static_cast<i128>(Denominator) == value;
+}
+
+// The same inverse idea also recovers coefficients larger than signed64.
+// For D=2^s*odd and an input with its low s bits clear, let n=value/2^s.
+// q=n/odd is recovered modulo 2^128. Accept only q in the signed interval
+// [INT128_MIN/D, INT128_MAX/D]: both q*odd and n then lie in the signed128
+// interval (a smaller interval when s!=0). Congruence therefore proves their
+// equality, without a reconstruction product or a division at runtime.
+//
+// This is a certificate, not an arithmetic result: a rejected off-grid input
+// may still multiply exactly when the other operand cancels the denominator.
+template<std::uint64_t Denominator>
+[[nodiscard]] constexpr bool exact_quotient_i128(i128 value, i128& quotient) noexcept {
+    static_assert(Denominator != 0);
+    constexpr unsigned shift = std::countr_zero(Denominator);
+    constexpr u128 inverse = [] {
+        constexpr u128 odd = Denominator >> shift;
+        u128 result = odd;
+        for (unsigned i = 0; i < 6; ++i) result *= 2 - odd * result;
+        return result;
+    }();
+    if ((static_cast<u128>(value) & ((u128{1} << shift) - 1)) != 0) return false;
+    const u128 candidate = static_cast<u128>(value >> shift) * inverse;
+    constexpr i128 lower = dest_min<128>() / static_cast<i128>(Denominator);
+    constexpr i128 upper = dest_max<128>() / static_cast<i128>(Denominator);
+    // Unsigned subtraction performs one interval test, including negative q.
+    if (candidate - static_cast<u128>(lower) > static_cast<u128>(upper) - static_cast<u128>(lower)) return false;
+    quotient = std::bit_cast<i128>(candidate);
+    return true;
+}
+
+// q is at most the magnitude of a signed128 value, and factor is a uint64.
+// The upper partial product plus the low carry fits unsigned128; a nonzero
+// third limb proves that the complete product does not fit unsigned128.
+[[nodiscard]] constexpr bool multiply_limb(u128 q, std::uint64_t factor, u128& product) noexcept {
+    const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+    const u128 upper = static_cast<u128>(static_cast<std::uint64_t>(q >> 64)) * factor + (low >> 64);
+    if ((upper >> 64) != 0) return false;
+    product = (upper << 64) | static_cast<std::uint64_t>(low);
+    return true;
+}
+
+template<typename Dest>
+#if defined(__clang__)
+[[gnu::always_inline]]
+#endif
+[[nodiscard]] constexpr std::expected<Dest, ArithmeticError>
+finish(u128 quotient, u128 remainder, std::uint64_t denominator, bool negative, Rounding rounding) noexcept {
+    const auto limit = limit_magnitude_u128<Dest::bits>(negative);
+    if (quotient > limit) return std::unexpected(ArithmeticError::overflow);
+    if (remainder != 0) {
+        if (rounding == Rounding::exact) return std::unexpected(ArithmeticError::inexact);
+        bool increment = false;
+        switch (rounding) {
+        case Rounding::toward_zero: break;
+        case Rounding::floor: increment = negative; break;
+        case Rounding::ceil: increment = !negative; break;
+        case Rounding::nearest_even:
+            increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+            break;
+        case Rounding::nearest_away: increment = remainder * 2 >= denominator; break;
+        case Rounding::exact: break;
+        }
+        if (increment && quotient == limit) return std::unexpected(ArithmeticError::overflow);
+        quotient += static_cast<u128>(increment);
+    }
+    const auto raw = static_cast<i128>(negative ? u128{0} - quotient : quotient);
+    return Dest::from_raw(static_cast<typename Dest::raw_type>(raw));
+}
+
+// a = q*d+r, hence floor(a*b/d) = q*b+floor(r*b/d). All terms
+// are nonnegative. An overflowing quotient product cannot be cancelled, and
+// the remainder product fits unsigned128 because r and b each fit uint64.
+// This covers the full signed128 x signed64 domain without constructing a
+// 192-bit product. Exact scale-certified inputs have r==0, so there is only
+// one rescale before the multiply and no rounding work afterwards.
+template<typename Dest, typename Divider>
+#if defined(__clang__)
+// Keep the prepared divisor and constant rounding mode in the row kernel.
+// Outlining this boundary materializes expected and reloads the plan per row.
+[[gnu::always_inline]]
+#endif
+[[nodiscard]] constexpr std::expected<Dest, ArithmeticError>
+multiply_split(u128 a, std::uint64_t b, bool negative, Rounding rounding, const Divider& divide) noexcept {
+    // Two one-limb magnitudes have an exact unsigned128 product, even when
+    // that product exceeds signed128. Rounded products need only one divide;
+    // splitting first would add a quotient multiply and a second rescale.
+    // Exact scale-certified slopes keep the division-before-multiply path.
+    if (rounding != Rounding::exact && (a >> 64) == 0) {
+        const auto product = static_cast<u128>(static_cast<std::uint64_t>(a)) * b;
+        const auto divided = divide(product);
+        return finish<Dest>(divided.quotient, divided.remainder, divide.value(), negative, rounding);
+    }
+    const auto divided = divide(a);
+    const auto limit = limit_magnitude_u128<Dest::bits>(negative);
+    u128 quotient;
+    if (!multiply_limb(divided.quotient, b, quotient) || quotient > limit)
+        return std::unexpected(ArithmeticError::overflow);
+    if (divided.remainder == 0) return finish<Dest>(quotient, 0, divide.value(), negative, rounding);
+    const auto tail = divide(divided.remainder * b);
+    if (tail.quotient > limit - quotient) return std::unexpected(ArithmeticError::overflow);
+    return finish<Dest>(quotient + tail.quotient, tail.remainder, divide.value(), negative, rounding);
+}
+
+// A full-width coefficient times signed64 may need 191 magnitude bits.
+// Explicit unsigned limbs avoid GCC's general signed128 overflow expansion;
+// the final sign-specific bound also admits INT128_MIN without signed negation.
+[[nodiscard]] constexpr bool try_coefficient_product(i128 coefficient, std::int64_t factor, i128& product) noexcept {
+    const u128 coefficient_bits = static_cast<u128>(coefficient);
+    const u128 magnitude = coefficient < 0 ? u128{0} - coefficient_bits : coefficient_bits;
+    const auto factor_bits = static_cast<std::uint64_t>(factor);
+    const auto factor_magnitude = factor < 0 ? std::uint64_t{0} - factor_bits : factor_bits;
+    const bool negative = (coefficient < 0) != (factor < 0);
+    u128 result;
+    if (!multiply_limb(magnitude, factor_magnitude, result) || result > limit_magnitude_u128<128>(negative))
+        return false;
+    product = std::bit_cast<i128>(negative ? u128{0} - result : result);
+    return true;
 }
 
 // Keep Clang's optional/expected producer visible to its immediate consumer;

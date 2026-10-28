@@ -143,6 +143,32 @@ int main() {
     if (simd_failure || simd_failure.error().index != 2 || simd_failure.error().error != ArithmeticError::inexact)
         return 1;
 
+    // Wide-grid products, including AVX2 rejection, prepared fallback and
+    // public scalar recovery, must not introduce a persistent coefficient copy
+    // or heap scratch. Keep the quote runtime-dependent in optimized builds.
+    volatile std::int64_t quote_raw = 37;
+    const auto quote = Fixed64<10>::from_raw(quote_raw);
+    const wide::int128 coefficient = (wide::int128{1} << 90) + wide::int128{1};
+    ones.fill(Money::from_raw(coefficient * wide::int128{10'000'000'000ULL}));
+    const auto full_plan = batch::prepare_mul_to<Money>(quote, Rounding::exact);
+    if (!batch::transform<4>(std::span{converted}, full_plan, std::span{ones})) return 1;
+    const auto expected_wide = Money::from_raw(coefficient * wide::int128{quote.raw()});
+    for (const auto value : converted)
+        if (value != expected_wide) return 1;
+    const auto full_scalar = mul_to<Money>(ones[0], quote, Rounding::exact);
+    if (!full_scalar || *full_scalar != expected_wide) return 1;
+    const auto off_grid = Money::from_raw(ones[0].raw() + wide::int128{1024});
+    const auto rounded_scalar = mul_to<Money>(off_grid, quote, Rounding::nearest_even);
+    if (!rounded_scalar || *rounded_scalar != expected_wide) return 1;
+    const auto inexact_scalar = mul_to<Money>(off_grid, quote, Rounding::exact);
+    if (inexact_scalar || inexact_scalar.error() != ArithmeticError::inexact) return 1;
+    const auto restored_scalar = mul_to<Money>(off_grid, Fixed64<10>{"1"}, Rounding::exact);
+    if (!restored_scalar || *restored_scalar != off_grid) return 1;
+    const wide::int128 largest_coefficient = Money::max().raw() / 10'000'000'000ULL;
+    const auto largest_grid = Money::from_raw(largest_coefficient * wide::int128{10'000'000'000ULL});
+    const auto wide_overflow = mul_to<Money>(largest_grid, Fixed64<10>{"2"}, Rounding::exact);
+    if (wide_overflow || wide_overflow.error() != ArithmeticError::overflow) return 1;
+
     // Assert that NO allocations occurred
     int total_allocations = g_alloc_count.load();
     std::cout << "Total heap allocations during fixedwide operations: " << total_allocations << "\n";

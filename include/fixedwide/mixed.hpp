@@ -195,8 +195,9 @@ template<typename Dest, std::size_t BitsA, unsigned Da>
     return detail::from_int256_raw<Dest>(*res);
 }
 
-#if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+#if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
 namespace detail {
+#if defined(__clang__)
 // Keep the general kernel's argument/return storage out of the native attempt.
 // Clang otherwise gives the rejected fast path a large frame and extra saved
 // registers. This adapter lets it tail-call the unchanged general calculation.
@@ -207,9 +208,50 @@ template<typename Dest, bool Subtract, typename A, typename B>
     if (!res) return std::unexpected(res.error());
     return from_int256_raw<Dest>(*res);
 }
+#endif
 
 template<typename Dest, typename A, typename B>
 [[gnu::noinline]] std::expected<Dest, ArithmeticError> runtime_mul_fallback(A a, B b, Rounding rounding) noexcept {
+    // Only a rejected native multiply reaches this boundary. Keep the wider
+    // arithmetic out of the common scalar/prepared row loop. For an eligible
+    // 128x64 product the shared quotient/remainder split covers every rounding
+    // mode, even when the unscaled product does not fit native signed128.
+    constexpr unsigned product_scale = A::fractional_digits + B::fractional_digits;
+    if constexpr (Dest::bits <= 128 && product_scale > Dest::fractional_digits &&
+                  product_scale - Dest::fractional_digits <= 19 &&
+                  ((A::bits > 64 && A::bits <= 128 && B::bits <= 64) ||
+                   (B::bits > 64 && B::bits <= 128 && A::bits <= 64))) {
+        constexpr unsigned gap = product_scale - Dest::fractional_digits;
+        constexpr auto divisor = static_cast<std::uint64_t>(mixed_native::pow10_v<gap>);
+        const auto source = [&] {
+            if constexpr (A::bits > 64)
+                return static_cast<mixed_native::i128>(a.raw());
+            else
+                return static_cast<mixed_native::i128>(b.raw());
+        }();
+        const auto factor = [&] {
+            if constexpr (A::bits > 64)
+                return static_cast<std::int64_t>(b.raw());
+            else
+                return static_cast<std::int64_t>(a.raw());
+        }();
+        if (rounding == Rounding::exact) {
+            mixed_native::i128 coefficient, product;
+            if (mixed_native::exact_quotient_i128<divisor>(source, coefficient)) {
+                if (!mixed_native::try_coefficient_product(coefficient, factor, product))
+                    return std::unexpected(ArithmeticError::overflow);
+                const auto checked = mixed_native::check_range<Dest::bits>(product);
+                if (!checked) return std::unexpected(checked.error());
+                return Dest::from_raw(static_cast<typename Dest::raw_type>(product));
+            }
+        }
+        const auto source_bits = static_cast<mixed_native::u128>(source);
+        const auto magnitude = source < 0 ? mixed_native::u128{0} - source_bits : source_bits;
+        const auto factor_bits = static_cast<std::uint64_t>(factor);
+        const auto factor_magnitude = factor < 0 ? std::uint64_t{0} - factor_bits : factor_bits;
+        return mixed_native::multiply_split<Dest>(magnitude, factor_magnitude, (source < 0) != (factor < 0), rounding,
+                                                  mixed_native::constant_divisor<gap>{});
+    }
     auto res = mixed_mul_kernel(to_int256_raw(a.raw()), A::fractional_digits, to_int256_raw(b.raw()),
                                 B::fractional_digits, Dest::fractional_digits, rounding, Dest::bits);
     if (!res) return std::unexpected(res.error());
@@ -324,6 +366,10 @@ template<typename Dest, std::size_t BitsA, unsigned Da, std::size_t BitsB, unsig
 #endif
 #if defined(__clang__) && defined(FIXEDWIDE_HAS_MIXED_NATIVE)
     if constexpr (BitsA <= 128 && BitsB <= 128 && Dest::bits <= 128)
+        return detail::runtime_mul_fallback<Dest>(a, b, rounding);
+#elif defined(FIXEDWIDE_HAS_MIXED_NATIVE)
+    if constexpr (Dest::bits <= 128 && Da + Db > Dest::fractional_digits && Da + Db - Dest::fractional_digits <= 19 &&
+                  ((BitsA > 64 && BitsA <= 128 && BitsB <= 64) || (BitsB > 64 && BitsB <= 128 && BitsA <= 64)))
         return detail::runtime_mul_fallback<Dest>(a, b, rounding);
 #endif
     auto res = detail::mixed_mul_kernel(detail::to_int256_raw(a.raw()), Da, detail::to_int256_raw(b.raw()), Db,
