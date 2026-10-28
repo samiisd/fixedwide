@@ -171,6 +171,53 @@ void runtime_narrow_paths() {
         }
 }
 
+template<unsigned Gap>
+void exact_quotient_products() {
+    using A = Fixed128<Gap>;
+    using B = Fixed64<0>;
+    using Dest = Fixed128<0>;
+    const cpp_int denominator = power10(Gap), p63 = cpp_int{1} << 63, p127 = cpp_int{1} << 127;
+    const std::vector<cpp_int> quotients{0, 1, -1, p63 - 1, -p63, p63, -p63 - 1};
+    const std::vector<cpp_int> factors{0, 1, -1, 2, -37, p63 - 1, -p63};
+    const auto verify = [&](const cpp_int& x, const cpp_int& y) {
+        const auto a = A::from_raw(from_integer<typename A::raw_type>(x));
+        const auto b = B::from_raw(from_integer<typename B::raw_type>(y));
+        CHECK(integer(a.raw()) == x);
+        CHECK(integer(b.raw()) == y);
+        for (auto mode : modes) {
+            const auto expected = rounded(x * y, denominator, mode, 128);
+            agrees(mul_to<Dest>(a, b, mode), expected);
+            agrees(mul_to<Dest>(b, a, mode), expected);
+            const auto narrow = rounded(x * y, denominator, mode, 8);
+            agrees(mul_to<Fixed8<0>>(a, b, mode), narrow);
+            agrees(mul_to<Fixed8<0>>(b, a, mode), narrow);
+        }
+    };
+    for (const auto& quotient : quotients)
+        for (int remainder : {-1, 0, 1})
+            for (const auto& factor : factors) verify(quotient * denominator + remainder, factor);
+    for (const auto& factor : factors) {
+        verify(p127 - 1, factor);
+        verify(-p127, factor);
+    }
+    // Reconstructing the coefficient alone must miss here, although the
+    // other operand cancels its remaining factor. The oracle is independent
+    // of both the native shortcut and the general fixedwide kernel.
+    verify(denominator / 2, 2);
+    verify(-denominator / 2, -2);
+    std::mt19937_64 rng(0xE7AC7100 + Gap);
+    const auto signed_bits = [&](unsigned width) {
+        cpp_int value = random_bits(rng, width);
+        if ((value & (cpp_int{1} << (width - 1))) != 0) value -= cpp_int{1} << width;
+        return value;
+    };
+    for (unsigned i = 0; i < 200; ++i) {
+        const cpp_int quotient = signed_bits(64), factor = signed_bits(64);
+        verify(quotient * denominator, factor);
+        verify(signed_bits(128), factor);
+    }
+}
+
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
 // Calling through a volatile pointer intentionally checks the implementations
 // of the bound predicates, which ordinary arithmetic evaluates at compile time.
@@ -237,6 +284,9 @@ void native_bounds() {
 void run_coverage_mixed() {
     comparison_reference();
     runtime_narrow_paths();
+    exact_quotient_products<1>();
+    exact_quotient_products<10>();
+    exact_quotient_products<19>();
     // The denominator needs the 1024-bit tier; directed rounding still has a representable result.
     const auto x = Fixed256<0>::from_raw(from_integer<i256>(power10(76)));
     const auto z = Fixed256<76>::from_raw(from_integer<i256>(power10(76)));

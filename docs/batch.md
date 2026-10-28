@@ -5,13 +5,12 @@ argument broadcasts; a span supplies one value per row. The API does not change
 the stored representation, allocate, start threads, or require SIMD alignment.
 It is also included by `<fixedwide/all.hpp>`.
 
-The implementation first improves the arithmetic: prepared broadcasts cancel
-decimal factors once and reuse exact division setup. Optional small blocks expose
-independent calculations to the compiler while commits retain physical row
-order. The default maps and commits one row at a time. Larger blocks increase
-live intermediate state and should be selected using complete-loop measurements.
-Explicit ISA-specific SIMD and approximate
-floating arithmetic are not part of this implementation.
+The implementation first improves the arithmetic: exact products can recover a
+smaller coefficient without division, and prepared broadcasts cancel decimal
+factors once and reuse division setup. Optional blocks of at least four rows
+also enable a checked AVX2 path for supported exact broadcasts. Commits retain
+physical row order. The default maps and commits one row at a time; select
+larger blocks using complete-loop measurements.
 
 ## Array operations
 
@@ -86,6 +85,67 @@ The prepared multiplier owns the broadcast value and rounding mode and can be
 reused for several spans. Its preparation cost is paid once. For very short
 spans, ordinary scalar calls can be cheaper; do not rebuild a plan for every
 row when its operand is invariant.
+
+## Four-row SIMD without changing storage
+
+For an exact broadcast, select a block of at least four rows explicitly:
+
+```cpp
+const auto multiply = fw::batch::prepare_mul_to<Decimal>(dx, fw::Rounding::exact);
+auto result = fw::batch::transform<4>(output, multiply, slopes);
+// The same map works with for_each<4>(count, multiply, commit, slopes)
+// when the contributions feed ordered updates to duplicate destinations.
+```
+
+On GCC/Clang x86-64 native builds, a runtime CPU check selects AVX2 once per
+invocation. The library and caller need no global `-mavx2` or `-march=native`.
+Other CPUs, portable builds, other rounding modes, unsupported types and short
+spans retain the scalar implementation. The supported shape is a built-in
+prepared broadcast, one input span of `Fixed128`, a `Fixed128` destination,
+a factor of at most 64 bits, and a decimal scale reduction from 1 through 19.
+An arbitrary user lambda is still evaluated through the generic scheduler.
+
+Four existing 128-bit values are transposed into low/high limb vectors in
+registers. For `d = 10^k`, the kernel recovers a candidate coefficient modulo
+`2^32` by shifting out `2^k` and multiplying by the modular inverse of `5^k`.
+It reconstructs the **entire 128-bit input** as `q*d` and compares both limbs.
+Only a matching lane uses the packed multiply. A failed match invokes the
+ordinary prepared multiplier for that lane; it is not an arithmetic error.
+In particular, a non-grid input can still produce an exact result through
+cancellation by the broadcast factor.
+
+The general vector path admits coefficient magnitudes through `UINT32_MAX`
+and full signed64 factors. Their product fits 128 bits. For a scale reduction
+of ten and a signed32 factor, a shorter signed32-coefficient path produces a
+signed64 product and sign-extends it into the full 128-bit result. Other
+coefficients use scalar fallback. These are checks of each actual value,
+not restrictions on the API's supported range.
+
+Successful maps are committed in order, including duplicate destinations.
+An earlier commit error still outranks a later lane's arithmetic error. The
+transform writes only the successful prefix, supports exact in-place use,
+and requires only ordinary type alignment. There is no allocation, extra
+array pass, persistent packed copy, or floating-point approximation.
+
+SIMD is not uniformly faster: wide or non-grid coefficients can reject every
+candidate, and dependent checked additions may dominate a complete update.
+Use block size 1 for those workloads when measurement favors it.
+
+### When the caller can choose a primary coefficient representation
+
+A cent-grid `Fixed128<12>` slope has `raw = q * 10^10`. If that grid is an
+invariant of the field, storing the slope directly as `Fixed128<2>` makes
+`Fixed128<2> * Fixed64<10> -> Fixed128<12>` require no decimal rescale.
+This uses the same 16 bytes per input and can represent every cent-grid value
+of the original type. Preparation belongs where the coefficient changes,
+and conversion failure needs the caller's ordinary wide/non-grid path.
+
+`Fixed32<2>` reduces input bandwidth further and exposes ordinary packed
+integer multiplication when the factor also fits signed32. It requires a
+separately checked range contract; a general cent-grid coefficient from the
+original type needs up to 95 signed bits. Changing the primary field is a
+caller design choice. Converting a complete array on every quote adds a pass
+and scratch traffic, and can cost more than the arithmetic it removes.
 
 ## Composing a row kernel without an array temporary
 
@@ -234,6 +294,15 @@ wrapper through its existing API; the stored fields need no conversion pass.
 
 ## Native multiplication algorithm and fallback scope
 
+The scalar `mul_to` and batch multiplier first attempt a division-free exact
+shortcut for a 128-bit operand and an operand of at most 64 bits. With
+`d = 10^k`, `k` in 1 through 19, they recover a signed64 candidate using the
+inverse of `5^k` modulo `2^64`, then check `candidate*d == original_raw` in
+signed128. This proves both divisibility and coefficient range. Multiplying
+two signed64 values then fits signed128, followed by the destination's range
+check. A failed certificate falls through to the complete arithmetic path.
+Rounded operations and constant evaluation keep their existing dispatch.
+
 For signed input magnitudes `a`, `b` and a decimal rescale divisor `d`, write
 `a = q*d + r`. Then the exact magnitude is
 
@@ -259,7 +328,8 @@ the remaining divisor. A one-limb numerator uses a multiply-high reciprocal
 with one exact correction; a wider numerator retains exact limb division.
 Certified two-decimal `Fixed128<12>` slopes have no remainder when divided by
 `10^10`; the exact delta case consequently avoids a wide pre-rescale product.
-No such certification is trusted by the API: the remainder is always checked.
+No caller certification is trusted by the API: exactness is checked either by
+reconstruction or by the exact remainder.
 
 Prepared cancellation applies when both input types and the destination have at
 most 128 bits, the varying input's scale equals the destination scale, and the
@@ -268,7 +338,7 @@ combinations use the binary multiplier's checked dispatch and scalar fallback.
 
 | Workload | Coverage and optimized scope |
 |---|---|
-| `128/12 * 64/10 -> 128/12` | Full scalar domain; exact split or direct unsigned product, prepared broadcast when shared |
+| `128/12 * 64/10 -> 128/12` | Full scalar domain; certified exact coefficient, split or direct unsigned product; optional AVX2 exact broadcast tiles |
 | `128/12 * 128/12 -> 128/12` | Native when one actual magnitude fits unsigned64; broadcast cancellation can make its factor fit |
 | Other products with both inputs and destination at most 128 bits | Native for nonnegative scale gap up to 19 and an actual unsigned64 operand magnitude |
 | Wide products, scale expansion, larger gaps | Existing checked scalar multiplication, exposed through the same batch interface |
@@ -278,8 +348,8 @@ combinations use the binary multiplier's checked dispatch and scalar fallback.
 | Comparisons, select and floating conversions | Generic transform of the unchanged scalar operations |
 | `FIXEDWIDE_FORCE_PORTABLE` | Same API and results, existing portable scalar arithmetic; no native reciprocal/assembly path |
 
-Explicit multi-limb SIMD, specialized segmented kernels, general 256-bit batch
-division and new floating conversion algorithms are deferred. This API is
-useful without those additions; performance is workload- and compiler-dependent.
+General full-width SIMD multiplication/division, specialized segmented kernels,
+256-bit batch division and new floating conversion algorithms are deferred.
+Performance is workload- and compiler-dependent.
 See [the executable example](../examples/11_batch_soa.cpp) and
 [benchmark reproduction instructions](benchmarks.md#soa-batch-benchmark).

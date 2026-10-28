@@ -12,6 +12,7 @@
 #include <random>
 #include <span>
 #include <type_traits>
+#include <vector>
 
 namespace fw = fixedwide;
 namespace batch = fw::batch;
@@ -252,12 +253,124 @@ void prepared_divisor_high_boundaries() {
 #endif
 }
 
+template<class T>
+T raw128(cpp_int value) {
+    static_assert(T::bits == 128);
+    CHECK(value >= -(cpp_int{1} << 127) && value < (cpp_int{1} << 127));
+    if (value < 0) value += cpp_int{1} << 128;
+    const cpp_int mask = (cpp_int{1} << 64) - 1;
+    return T::from_raw(
+        fw::wide::int128{static_cast<std::uint64_t>(value & mask), static_cast<std::uint64_t>(value >> 64)});
+}
+
+template<std::size_t BlockSize, class Dest, class A, class B>
+void check_prepared_array(std::span<const A> input, B factor, fw::Rounding mode = fw::Rounding::exact) {
+    const Dest sentinel = Dest::from_raw(77);
+    std::vector<Dest> output(input.size(), sentinel);
+    const auto result =
+        batch::transform<BlockSize>(std::span{output}, batch::prepare_mul_to<Dest>(factor, mode), input);
+    std::size_t first_error = input.size();
+    for (std::size_t row = 0; row < input.size(); ++row) {
+        const auto expected = multiply<Dest>(input[row], factor, mode);
+        if (!expected.ok) {
+            first_error = row;
+            CHECK(!result);
+            CHECK(result.error().index == row);
+            CHECK(result.error().error == expected.error);
+            break;
+        }
+        CHECK(raw_integer(output[row]) == expected.value);
+    }
+    if (first_error == input.size()) CHECK(result);
+    for (std::size_t row = first_error; row < output.size(); ++row) CHECK(output[row] == sentinel);
+}
+
+template<unsigned Gap>
+void prepared_array_scale_gap() {
+    using A = fw::Fixed128<Gap>;
+    using Dest = fw::Fixed128<0>;
+    using Factor = fw::Fixed64<0>;
+    const cpp_int denominator = power_of_ten(Gap);
+    const cpp_int upper = (cpp_int{1} << 127) - 1;
+    const cpp_int lower = -(cpp_int{1} << 127);
+    const cpp_int signed32 = cpp_int{1} << 31;
+    const cpp_int unsigned32 = (cpp_int{1} << 32) - 1;
+    const cpp_int largest_grid = upper / denominator;
+    std::vector<A> aligned;
+    const auto append = [&](const cpp_int& q) {
+        const cpp_int value = q * denominator;
+        if (value >= lower && value <= upper) aligned.push_back(raw128<A>(value));
+    };
+    for (const cpp_int& q : std::array<cpp_int, 20>{0,
+                                                    1,
+                                                    -1,
+                                                    -signed32 - 1,
+                                                    -signed32,
+                                                    -signed32 + 1,
+                                                    signed32 - 1,
+                                                    signed32,
+                                                    unsigned32 - 1,
+                                                    unsigned32,
+                                                    unsigned32 + 1,
+                                                    -unsigned32,
+                                                    -unsigned32 - 1,
+                                                    cpp_int{1} << 40,
+                                                    -(cpp_int{1} << 40),
+                                                    (cpp_int{1} << 63) - 1,
+                                                    -(cpp_int{1} << 63),
+                                                    largest_grid - 1,
+                                                    largest_grid,
+                                                    -largest_grid})
+        append(q);
+    // Reconstruction of q * 10^gap must carry between64-bit limbs correctly.
+    // Include the neighbouring exact values on both sides of that carry.
+    const cpp_int carry = (cpp_int{1} << 64) / denominator;
+    if (carry <= unsigned32) {
+        for (int offset : {-2, -1, 0, 1, 2}) {
+            append(carry + offset);
+            append(-carry + offset);
+        }
+    }
+    constexpr std::array<std::int64_t, 12> factors{
+        0, 1, -1, 2, -3, 37, -37, INT32_MIN, INT32_MAX, (std::int64_t{1} << 43) + 17, INT64_MIN, INT64_MAX};
+    for (const auto p : factors) {
+        const auto factor = Factor::from_raw(p);
+        check_prepared_array<4, Dest>(std::span<const A>{aligned}, factor);
+        check_prepared_array<8, Dest>(std::span<const A>{aligned}, factor);
+    }
+
+    // These values cannot all use a compact grid quotient. Some products are
+    // nevertheless exact after factor cancellation; others round or overflow.
+    // Move each value through every SIMD lane so early failures cannot hide it.
+    for (const cpp_int& value : std::array<cpp_int, 9>{1, -1, denominator / 2, -denominator / 2, denominator / 2 - 1,
+                                                       denominator / 5, denominator + denominator / 2, upper, lower}) {
+        for (std::size_t lane = 0; lane < 4; ++lane) {
+            std::array<A, 4> input;
+            input.fill(raw128<A>(denominator));
+            input[lane] = raw128<A>(value);
+            for (auto mode : modes)
+                for (const auto p : std::array<std::int64_t, 4>{2, 5, -37, INT64_MIN})
+                    check_prepared_array<4, Dest>(std::span<const A>{input}, Factor::from_raw(p), mode);
+        }
+    }
+}
+
+template<std::size_t... Index>
+void prepared_array_all_scales(std::index_sequence<Index...>) {
+    (prepared_array_scale_gap<static_cast<unsigned>(Index + 1)>(), ...);
+}
+
 } // namespace
 
 int main() {
     exact_delta_and_fx();
     prepared_divisor_boundaries();
     prepared_divisor_high_boundaries();
+    prepared_array_all_scales(std::make_index_sequence<19>{});
+    // The same public blocked call must retain scalar behaviour outside the
+    // SIMD scale window; these are compile-time fallback configurations.
+    prepared_array_scale_gap<0>();
+    prepared_array_scale_gap<20>();
     sample<Money, Money, Price>(1200, 1);
     sample<Money, Price, Money>(300, 2);
     sample<Money, Money, Money>(900, 3);
