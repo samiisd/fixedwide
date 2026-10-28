@@ -1,0 +1,152 @@
+name: Zen 5 SIMD Benchmarks
+
+# Manual dispatch for Zen 5 (Ryzen 9 9950X3D) SIMD & batch architecture benchmarks.
+# Distinguishes cache-rich CCD0 (96MB 3D V-Cache) and frequency-oriented CCD1 (32MB L3).
+on:
+  workflow_dispatch:
+    inputs:
+      ccd:
+        description: 'Target CCD / Core Pinning'
+        required: true
+        default: 'vcache'
+        type: choice
+        options:
+          - 'vcache'    # CCD0: physical cores 1-7 (96MB 3D V-Cache)
+          - 'frequency' # CCD1: physical cores 9-15 (32MB High-Boost)
+          - 'all'       # Unpinned
+      compiler:
+        description: 'Compiler'
+        required: true
+        default: 'clang'
+        type: choice
+        options:
+          - 'clang'
+          - 'gcc'
+      extra_flags:
+        description: 'Extra CXX Flags (architecture / tuning)'
+        required: false
+        default: '-march=znver5 -O3'
+        type: string
+      benchmark_filter:
+        description: 'Google Benchmark filter (--benchmark_filter)'
+        required: false
+        default: '.*'
+        type: string
+      repetitions:
+        description: 'Repetitions (--benchmark_repetitions)'
+        required: false
+        default: '5'
+        type: string
+      min_time:
+        description: 'Min time per benchmark (--benchmark_min_time)'
+        required: false
+        default: '0.2s'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zen5-benchmarks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: zen5 batch bench (${{ inputs.ccd || 'vcache' }}, ${{ inputs.compiler || 'clang' }})
+    runs-on: [self-hosted, ryzen-9950x3d]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: System & CPU Topology Diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== CPU Hardware ==="
+          lscpu | grep -E "Model name|Flags|CPU\(s\):|Thread|Core"
+          echo "=== L3 Cache Topology ==="
+          for c in /sys/devices/system/cpu/cpu*/cache/index3/shared_cpu_list; do
+            echo "$c: $(cat $c)"
+          done | sort -u
+
+          # AMD Ryzen 9 9950X3D core mapping:
+          #   CCD0: Cores 0-7  (SMT 16-23) -> 96MB 3D V-Cache
+          #   CCD1: Cores 8-15 (SMT 24-31) -> 32MB Frequency Boost
+          # Pin to physical cores, skipping core 0 to avoid OS interrupt jitter.
+          CCD_SELECTION="${{ inputs.ccd || 'vcache' }}"
+          if [ "$CCD_SELECTION" = "vcache" ]; then
+            echo "PIN_AFFINITY=1-7" >> "$GITHUB_ENV"
+            echo "Pinned to CCD0 (96MB 3D V-Cache, cores 1-7)"
+          elif [ "$CCD_SELECTION" = "frequency" ]; then
+            echo "PIN_AFFINITY=9-15" >> "$GITHUB_ENV"
+            echo "Pinned to CCD1 (Frequency CCD, cores 9-15)"
+          else
+            echo "PIN_AFFINITY=" >> "$GITHUB_ENV"
+            echo "Unpinned execution"
+          fi
+
+      - name: Configure and build benchmarks
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMPILER="${{ inputs.compiler || 'clang' }}"
+          if [ "$COMPILER" = "clang" ]; then
+            export CXX=clang++ CC=clang
+          else
+            export CXX=g++ CC=gcc
+          fi
+
+          echo "Using CXX: $CXX ($($CXX --version | head -n1))"
+
+          cmake -B build-zen5 -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER="$CXX" \
+            -DCMAKE_CXX_FLAGS="${{ inputs.extra_flags || '-march=znver5 -O3' }}" \
+            -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
+            -DFIXEDWIDE_BUILD_BATCH_BENCHMARK=ON \
+            -DFIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK=ON \
+            -DFIXEDWIDE_BUILD_TESTS=OFF \
+            -DFIXEDWIDE_BUILD_EXAMPLES=OFF
+
+          cmake --build build-zen5 --target fixedwide_batch_bench fixedwide_runtime_narrow_bench
+
+      - name: Validate batch fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          build-zen5/benchmarks/fixedwide_batch_bench --validate-only 2>&1 | tee batch-validation.log
+
+      - name: Run Zen 5 Batch Benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          TASKSET_CMD=""
+          if [ -n "$PIN_AFFINITY" ]; then
+            TASKSET_CMD="taskset -c $PIN_AFFINITY"
+          fi
+
+          FILTER="${{ inputs.benchmark_filter || '.*' }}"
+          REPS="${{ inputs.repetitions || '5' }}"
+          MIN_TIME="${{ inputs.min_time || '0.2s' }}"
+
+          echo "Executing: $TASKSET_CMD ./build-zen5/benchmarks/fixedwide_batch_bench"
+          $TASKSET_CMD ./build-zen5/benchmarks/fixedwide_batch_bench \
+            --benchmark_filter="$FILTER" \
+            --benchmark_repetitions="$REPS" \
+            --benchmark_min_time="$MIN_TIME" \
+            --benchmark_enable_random_interleaving=true \
+            --benchmark_out=zen5-batch-benchmark.json \
+            --benchmark_out_format=json \
+            2>&1 | tee zen5-batch-benchmark.log
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: zen5-bench-${{ inputs.ccd || 'vcache' }}-${{ inputs.compiler || 'clang' }}-${{ github.sha }}
+          if-no-files-found: warn
+          path: |
+            batch-validation.log
+            zen5-batch-benchmark.log
+            zen5-batch-benchmark.json
