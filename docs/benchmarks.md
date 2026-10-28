@@ -63,6 +63,57 @@ vectorization diagnostics (`-S`, GCC's `-fopt-info-vec-all`, or Clang's
 `-Rpass` / `-Rpass-missed`). Measure complete application loops separately from
 these library fixtures.
 
+## Manual Zen 5 workstation measurements
+
+The `Zen 5 SIMD Benchmarks` workflow (`zen5-benchmarks.yml`) is manually
+dispatched on a reviewed branch in this repository. Its runner labels are
+`self-hosted` and `ryzen-9950x3d`; fork pull requests never trigger it. The
+workflow uses read-only repository permissions and does not persist checkout
+credentials. Review the selected branch before dispatching it on the personal
+workstation.
+
+`ccd=vcache` and `ccd=frequency` discover the larger and smaller L3 cache
+groups from sysfs, then pin to one allowed logical CPU on a physical core in
+that group. CPU numbering, cache indices and SMT offsets are not assumed.
+`ccd=all` is an unpinned diagnostic, not a multicore scaling experiment. The
+shared Actions concurrency group serializes these jobs across branches and
+compiler choices. It does not exclude unrelated workstation workloads; load
+and frequency observations accompany the results, and no global power, SMT or
+process settings are changed.
+
+| Input | Purpose |
+|---|---|
+| `compiler` | Use the installed `clang++` or `g++`; record its actual version and standard library. |
+| `extra_flags` | Default `-O3 -march=x86-64`; strict FP flags are always appended. |
+| `suite` | `batch`, `runtime`, or the opt-in `zen5` candidate comparison executable. |
+| `benchmark_filter` | Select a bounded group of cases; an empty selection fails. |
+| `repetitions`, `min_time` | Retain every repetition; defaults are 5 and `0.2s`. |
+| `baseline_sha` | Optional immutable commit from `main` history. Blank measures candidate backends in one executable. |
+
+Compare baseline-compatible builds under matching flags. A separate
+`-O3 -march=znver5` run measures a deliberately machine-specific build;
+it does not establish fallback compatibility on older processors. Compiler
+and standard-library requirements are the same as the library's normal build.
+Do not install or upgrade dependencies as part of a timing run.
+
+`scripts/zen5_bench.py` builds each revision in a fresh temporary directory,
+checks the exact checkout SHA, validates the fixtures, and finishes all
+compilation before timing. A five-second stabilization period precedes the
+first measurement, with 0.05 seconds of Google Benchmark warm-up per case.
+Candidate-only runs interleave benchmark repetitions. Cross-revision runs
+alternate baseline/candidate and candidate/baseline order; their filters must
+select identical case names. Use `suite=zen5` with no baseline SHA for new
+candidate-only fixtures that do not exist in an older revision.
+
+Actions artifacts contain the raw JSON repetitions, build and validation logs,
+topology, CPUID/XCR0 and affinity observations, run IDs and SHAs, compile
+commands, and Release binaries for inspection of the actual timed code.
+The job summary separates CPU and wall time, reports medians and repetition
+ranges, and uses completed rows rather than the full input length after a
+refusal. These ranges are not per-quote latency percentiles. Check the run
+conclusion and `completion.json`; partial artifacts from a failed run are not
+successful qualification. Keep generated evidence out of the source diff.
+
 ## The regression gate
 
 ```bash

@@ -47,8 +47,10 @@ class TopologyTests(unittest.TestCase):
             info = bench.topology(root, {17, 21, 25, 30})
             self.assertEqual(bench.select_cpu(info, "vcache"), 25)
             self.assertEqual(bench.select_cpu(info, "frequency"), 30)
+            restricted = bench.topology(root, {17, 25})
+            self.assertEqual(bench.select_cpu(restricted, "vcache"), 25)
             with self.assertRaises(ValueError):
-                bench.select_cpu(bench.topology(root, {17, 25}), "vcache")
+                bench.select_cpu(restricted, "frequency")
             with self.assertRaises(ValueError):
                 bench.topology(root, {99})
 

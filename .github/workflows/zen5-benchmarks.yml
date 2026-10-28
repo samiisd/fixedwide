@@ -65,6 +65,7 @@ jobs:
     runs-on: [self-hosted, ryzen-9950x3d]
     timeout-minutes: 180
     env:
+      PYTHONDONTWRITEBYTECODE: '1'
       ZEN5_CCD: ${{ inputs.ccd }}
       ZEN5_COMPILER: ${{ inputs.compiler }}
       ZEN5_FLAGS: ${{ inputs.extra_flags }}
@@ -73,12 +74,17 @@ jobs:
       ZEN5_MIN_TIME: ${{ inputs.min_time }}
       ZEN5_BASELINE_SHA: ${{ inputs.baseline_sha }}
       ZEN5_SUITE: ${{ inputs.suite }}
-      ZEN5_OUTPUT: ${{ runner.temp }}/fixedwide-zen5-results-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Initialize evidence path
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'ZEN5_OUTPUT=%s/fixedwide-zen5-results-%s-%s\n' \
+            "$RUNNER_TEMP" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
       - name: Test measurement controls
         shell: bash
         run: |

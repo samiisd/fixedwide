@@ -86,16 +86,18 @@ def select_cpu(info, ccd):
     groups = {}
     for cpu in info["cpus"]:
         for cache in cpu["caches"]:
-            if cache["level"] == 3 and allowed.intersection(cache["shared_cpus"]):
+            if cache["level"] == 3:
                 groups[tuple(cache["shared_cpus"])] = cache["size_bytes"]
     sizes = set(groups.values())
     if len(sizes) < 2:
-        raise ValueError("Cannot distinguish both CCDs from accessible L3 cache sizes")
+        raise ValueError("Cannot distinguish both CCDs from discovered L3 cache sizes")
     wanted = max(sizes) if ccd == "vcache" else min(sizes)
     eligible = sorted(key for key, size in groups.items() if size == wanted)
     if len(eligible) != 1:
         raise ValueError("Ambiguous CCD topology: expected one L3 group of each size")
     members = allowed.intersection(eligible[0])
+    if not members:
+        raise ValueError(f"No allowed CPU belongs to the requested {ccd} CCD")
     physical = {}
     for cpu in info["cpus"]:
         if cpu["cpu"] in members:
@@ -169,6 +171,8 @@ def observations(cpu):
               "loadavg": read("/proc/loadavg"), "proc_stat": read("/proc/stat"),
               "controller_affinity": sorted(os.sched_getaffinity(0)), "sensors": {}}
     paths = list(Path("/sys/class/hwmon").glob("hwmon*/temp*_input"))
+    paths += list(Path("/sys/class/hwmon").glob("hwmon*/temp*_label"))
+    paths += list(Path("/sys/class/hwmon").glob("hwmon*/name"))
     paths += list(Path("/sys/class/powercap").glob("*/energy_uj"))
     if cpu is not None:
         paths += list(Path(f"/sys/devices/system/cpu/cpu{cpu}/cpufreq").glob("*freq"))
@@ -182,9 +186,22 @@ def observations(cpu):
 
 CPU_PROBE = r'''
 #include <cstdio>
+#include <expected>
 #include <version>
 #include <cpuid.h>
+#include <sched.h>
 int main() {
+    // Fail before any benchmark build if this compiler/stdlib combination
+    // cannot provide the library's required C++23 expected type.
+    const std::expected<int, int> language_check{1};
+    if (!language_check || *language_check != 1) return 1;
+    cpu_set_t affinity;
+    CPU_ZERO(&affinity);
+    if (sched_getaffinity(0, sizeof(affinity), &affinity) != 0) return 1;
+    std::printf("probe_cpu=%d affinity=", sched_getcpu());
+    for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu)
+        if (CPU_ISSET(cpu, &affinity)) std::printf("%d,", cpu);
+    std::printf("\n");
     unsigned a, b, c, d;
     __cpuid(1, a, b, c, d);
     std::printf("cpuid.1: eax=%08x ebx=%08x ecx=%08x edx=%08x\n", a, b, c, d);
@@ -276,8 +293,10 @@ def summary(results, config, metadata):
 
 
 def main():
-    output = Path(os.environ.get("ZEN5_OUTPUT", "zen5-results")).resolve()
+    fallback = Path(tempfile.gettempdir()) / f"fixedwide-zen5-results-{os.getpid()}"
+    output = Path(os.environ.get("ZEN5_OUTPUT", str(fallback))).resolve()
     output.mkdir(parents=True, exist_ok=False)
+    print(f"Evidence directory: {output}", flush=True)
     source = Path(__file__).resolve().parent.parent
     config = settings(os.environ)
     info = topology()
@@ -294,6 +313,8 @@ def main():
                 "proc_cpuinfo": read("/proc/cpuinfo"), "settings": config, "topology": info}
     write_json(output / "environment.json", metadata)
     print(json.dumps(metadata, indent=2), flush=True)
+    if os.environ.get("GITHUB_ACTIONS") == "true" and "9950X3D" not in (metadata["proc_cpuinfo"] or ""):
+        raise ValueError("Runner CPU is not the intended Ryzen 9 9950X3D")
     if config["baseline_sha"]:
         # Accept only exact baseline commits from reviewed main history, never
         # a remote URL or pull-request ref supplied by an untrusted fork.
@@ -309,6 +330,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="fixedwide-zen5-", dir=os.environ.get("RUNNER_TEMP")) as temporary:
         root = Path(temporary)
         (root / "cpu_probe.cpp").write_text(CPU_PROBE)
+        (output / "cpu_probe.cpp").write_text(CPU_PROBE)
         probe_flags = [flag for flag in shlex.split(config["flags"]) if flag.startswith("-stdlib=")]
         run([cxx, "-std=c++23", "-O2", "-march=x86-64", *probe_flags,
              str(root / "cpu_probe.cpp"), "-o", str(root / "cpu_probe")], output / "cpu-probe-build.txt")
@@ -392,4 +414,7 @@ if __name__ == "__main__":
         main()
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Zen 5 qualification failed: {error}", file=sys.stderr)
+        output = os.environ.get("ZEN5_OUTPUT")
+        if output and Path(output).is_dir():
+            write_json(Path(output) / "failure.json", {"status": "failed", "reason": str(error)})
         sys.exit(1)
