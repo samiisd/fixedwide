@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.11] - 2026-10-28
+
+### Added
+- Add `<fixedwide/batch.hpp>` for checked arithmetic directly over typed spans,
+  including vector-vector operands and copied scalar broadcasts.
+- Add `prepare_mul_to`, row `transform`, ordered `for_each` commits, and
+  prefix-preserving reductions for Structure-of-Arrays (SoA) kernels.
+- Exact quotient/remainder decomposition and prepared reciprocal division
+  for native multiplication paths.
+- Executable SoA example, independent rational-oracle tests, and Google
+  Benchmark fixtures.
+
 ## [0.6.10] - 2026-10-27
 
 ### Changed

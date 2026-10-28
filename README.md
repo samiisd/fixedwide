@@ -214,13 +214,13 @@ The instruction-count CI gate checks core workloads against its committed baseli
 
 ## Install
 
-The current stable release is `v0.6.6`, including the checked and unchecked APIs.
+The current stable release is `v0.6.11`, including the checked and unchecked APIs.
 
 ```cmake
 include(FetchContent)
 FetchContent_Declare(fixedwide
     GIT_REPOSITORY https://github.com/samiisd/fixedwide.git
-    GIT_TAG        v0.6.6)
+    GIT_TAG        v0.6.11)
 FetchContent_MakeAvailable(fixedwide)
 target_link_libraries(app PRIVATE fixedwide::fixedwide)
 ```
