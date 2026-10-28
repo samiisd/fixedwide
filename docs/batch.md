@@ -281,6 +281,5 @@ combinations use the binary multiplier's checked dispatch and scalar fallback.
 Explicit multi-limb SIMD, specialized segmented kernels, general 256-bit batch
 division and new floating conversion algorithms are deferred. This API is
 useful without those additions; performance is workload- and compiler-dependent.
-See [the executable example](../examples/11_batch_soa.cpp),
-[benchmark instructions](benchmarks.md#soa-batch-benchmark), and the retained
-[measurement report](../reports/batch/README.md).
+See [the executable example](../examples/11_batch_soa.cpp) and
+[benchmark reproduction instructions](benchmarks.md#soa-batch-benchmark).

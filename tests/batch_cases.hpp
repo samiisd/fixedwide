@@ -208,8 +208,11 @@ inline void test_in_place() {
     CHECK(plan(Money{"4"}) == Expected<Money>{Money{"8"}});
     CHECK(copy(Money{"4"}) == Expected<Money>{Money{"8"}});
 
-    std::array exact_values{Money{"0.01"}, Money{"0.005"}, Money{"1"}, Money{"2"}, Money{"3"}};
-    const auto original = exact_values;
+    // MSVC rejects consteval literal temporaries inside non-constexpr local
+    // aggregates. Keep literal tables constexpr and copy them when mutable
+    // inputs are needed; the arithmetic under test still executes at runtime.
+    constexpr std::array original{Money{"0.01"}, Money{"0.005"}, Money{"1"}, Money{"2"}, Money{"3"}};
+    auto exact_values = original;
     const auto failed =
         batch::mul_to<Money>(std::span{exact_values}, std::span{exact_values}, Price::from_raw(1), fw::Rounding::exact);
     CHECK(!failed);
@@ -228,9 +231,9 @@ inline void test_aggregate_map() {
     struct Update {
         Money value, total;
     };
-    const std::array slopes{Money{"1"}, Money{"2"}, Money{"100000000000000000000000000"}, Money{"3"}};
-    const std::array values{Money{"10"}, Money{"20"}, Money::max(), Money{"30"}};
-    const std::array totals{Money{"100"}, Money{"200"}, Money{}, Money{"300"}};
+    constexpr std::array slopes{Money{"1"}, Money{"2"}, Money{"100000000000000000000000000"}, Money{"3"}};
+    constexpr std::array values{Money{"10"}, Money{"20"}, Money::max(), Money{"30"}};
+    constexpr std::array totals{Money{"100"}, Money{"200"}, Money{}, Money{"300"}};
     const auto multiplier = batch::prepare_mul_to<Money>(Price{"1"}, fw::Rounding::exact);
     const auto map = [multiplier](Money slope, Money value, Money total) noexcept -> Expected<Update> {
         const auto delta = multiplier(slope);
@@ -254,9 +257,9 @@ inline void test_aggregate_map() {
 }
 
 inline void test_operation_wrappers() {
-    const std::array a{Money{"1.25"}, Money{"-2.5"}, Money{"0"}, Money{"100000000000000000000"}};
-    const std::array b{Price{"2"}, Price{"-0.5"}, Price{"3.25"}, Price{"0.1"}};
-    const std::array c{Money{"2"}, Money{"0.5"}, Money{"1"}, Money{"100"}};
+    constexpr std::array a{Money{"1.25"}, Money{"-2.5"}, Money{"0"}, Money{"100000000000000000000"}};
+    constexpr std::array b{Price{"2"}, Price{"-0.5"}, Price{"3.25"}, Price{"0.1"}};
+    constexpr std::array c{Money{"2"}, Money{"0.5"}, Money{"1"}, Money{"100"}};
     std::array<Money, 4> output{};
     for (auto mode : modes) {
         const auto verify = [&](auto batch_operation, auto scalar_operation) {
@@ -289,7 +292,7 @@ inline void test_operation_wrappers() {
         verify([&] { return batch::fixed_cast<Money>(std::span{output}, std::span{b}, mode); },
                [&](std::size_t i) { return fw::fixed_cast<Money>(b[i], mode); });
     }
-    const std::array denominator{Money{"1"}, Money{"0"}, Money{"1"}, Money{"1"}};
+    constexpr std::array denominator{Money{"1"}, Money{"0"}, Money{"1"}, Money{"1"}};
     output.fill(raw<Money>(77));
     const auto divided = batch::div_to<Money>(std::span{output}, std::span{a}, std::span{denominator});
     CHECK(!divided);
@@ -374,7 +377,7 @@ inline void test_scatter_delta() {
 
     // A later inexact multiply must not hide an earlier balance overflow, and
     // the failing row must not update its individual value first.
-    std::array slopes{Money{"0.01"}, Money{"0.01"}, Money{"0.005"}, Money{"0.01"}};
+    constexpr std::array slopes{Money{"0.01"}, Money{"0.01"}, Money{"0.005"}, Money{"0.01"}};
     std::array<Money, 4> values{};
     Money total = Money::max();
     const auto map = batch::prepare_mul_to<Money>(Price::from_raw(1), fw::Rounding::exact);
@@ -451,13 +454,16 @@ inline void test_maintenance_in_place() {
                                    Axes{Price::from_raw(1), Price::from_raw(3), Money{"1.2345"}, Money{"0.9"}},
                                    Axes{Price{"-1"}, Price{"-1"}, Money{"1"}, Money{"1"}}};
     constexpr std::array<std::uint32_t, 9> balance{1, 2, 1, 3, 1, 2, 0, 3, 2};
+    constexpr std::array initial_slopes{Money{"2"},  Money{"-1"}, Money{"0.005"}, Money{"100000"}, Money{"0.01"},
+                                        Money{"-2"}, Money{},     Money{"1"},     Money{"3"}};
+    constexpr std::array initial_values{Money{"10"}, Money{"100"}, Money{"-3"}, Money{"100"}, Money{"0.01"},
+                                        Money{"1"},  Money{},      Money{"7"},  Money{"-4"}};
+    constexpr std::array initial_totals{Money{}, Money{"1000"}, Money{"2000"}, Money{"3000"}};
     for (std::size_t scenario = 0; scenario < scenarios.size(); ++scenario) {
         const auto axes = scenarios[scenario];
-        std::array slopes{Money{"2"},  Money{"-1"}, Money{"0.005"}, Money{"100000"}, Money{"0.01"},
-                          Money{"-2"}, Money{},     Money{"1"},     Money{"3"}};
-        std::array values{Money{"10"}, Money{"100"}, Money{"-3"}, Money{"100"}, Money{"0.01"},
-                          Money{"1"},  Money{},      Money{"7"},  Money{"-4"}};
-        std::array totals{Money{}, Money{"1000"}, Money{"2000"}, Money{"3000"}};
+        auto slopes = initial_slopes;
+        auto values = initial_values;
+        auto totals = initial_totals;
         if (scenario == 2) {
             // The removed subtotal is 2e26, but the final per-row value fits.
             slopes[4] = Money{"100000000000000000000000000"};
@@ -541,9 +547,9 @@ inline Expected<Money> anchored(Money slope, Money residual, Price anchor, Price
 }
 
 inline void test_anchored_boundaries() {
-    const std::array slopes{Money{"1"}, Money{"2"}, Money{"-0.005"}, Money{"100000"}, Money{"0"}};
-    const std::array residuals{Money{"1"}, Money{"-2"}, Money::from_raw(1), Money{"100"}, Money{"-0.25"}};
-    const std::array anchors{Price{"100"}, Price{"100"}, Price{"99.9999999999"}, Price{"-100"}, Price{"0"}};
+    constexpr std::array slopes{Money{"1"}, Money{"2"}, Money{"-0.005"}, Money{"100000"}, Money{"0"}};
+    constexpr std::array residuals{Money{"1"}, Money{"-2"}, Money::from_raw(1), Money{"100"}, Money{"-0.25"}};
+    constexpr std::array anchors{Price{"100"}, Price{"100"}, Price{"99.9999999999"}, Price{"-100"}, Price{"0"}};
     std::array<Money, 5> output{};
     constexpr Price mark{"100"};
     constexpr Money fx{"1.2345"};
@@ -568,10 +574,11 @@ inline void test_anchored_boundaries() {
     // Neither a cancelling residual nor a small FX rate rescues the explicit
     // out-of-range product boundary in the scalar financial expression.
     constexpr Money huge{"170100000000000000000000000"};
-    const std::array huge_slopes{huge, huge, Money{"1"}};
+    constexpr std::array huge_slopes{huge, huge, Money{"1"}};
     const std::array huge_residuals{Money{}, Money::from_raw(-huge.raw()), Money{}};
-    const std::array huge_anchors{Price{"1"}, Price{"0"}, Price{"0"}};
-    std::array<Money, 3> huge_output{Money{"-7"}, Money{"-7"}, Money{"-7"}};
+    constexpr std::array huge_anchors{Price{"1"}, Price{"0"}, Price{"0"}};
+    constexpr Money sentinel{"-7"};
+    std::array<Money, 3> huge_output{sentinel, sentinel, sentinel};
     const auto result = batch::transform(std::span{huge_output}, anchored, std::span{huge_slopes},
                                          std::span{huge_residuals}, std::span{huge_anchors}, Price{"2"}, Money{"0.1"});
     CHECK(!result);
@@ -594,7 +601,7 @@ inline void test_ordered_reductions() {
     CHECK(sum.error().index == 1);
     CHECK(sum.error().error == Error::overflow);
 
-    const std::array slopes{Money{"0.005"}, Money{"0.005"}};
+    constexpr std::array slopes{Money{"0.005"}, Money{"0.005"}};
     const auto per_entry = batch::prepare_mul_to<Money>(Price::from_raw(1), fw::Rounding::nearest_even);
     const auto rounded_sum = batch::transform_reduce(slopes.size(), Money{}, per_entry, std::span{slopes});
     CHECK(rounded_sum);
@@ -603,8 +610,9 @@ inline void test_ordered_reductions() {
         fw::mul_to<Money>(*fw::add(slopes[0], slopes[1]), Price::from_raw(1), fw::Rounding::nearest_even);
     CHECK(combined && combined->raw() == Raw{1});
 
-    const std::array entry_slopes{Money{"1"}, Money{"2"}, Money{"0.005"}, Money{"0.005"}, Money{"-1"}};
-    const std::array execution{Price{"99"}, Price{"101"}, Price{"99.9999999999"}, Price{"99.9999999999"}, Price{"99"}};
+    constexpr std::array entry_slopes{Money{"1"}, Money{"2"}, Money{"0.005"}, Money{"0.005"}, Money{"-1"}};
+    constexpr std::array execution{Price{"99"}, Price{"101"}, Price{"99.9999999999"}, Price{"99.9999999999"},
+                                   Price{"99"}};
     constexpr std::array<std::size_t, 4> boundaries{0, 2, 4, 5};
     const auto entry = [](Money slope, Price execution_price) noexcept -> Expected<Money> {
         return fw::mul_to<Money>(slope, Price::from_raw(Price{"100"}.raw() - execution_price.raw()),
@@ -656,10 +664,11 @@ inline void test_wide_preparation() {
         if (!product_value) return std::unexpected(product_value.error());
         return fw::mul_div_to<Money>(*product_value, conversion, denominator, fw::Rounding::nearest_even);
     };
-    const std::array volumes{Money{"0.5"}, Money{"0.5"}, Money{"0.5"}, Money{"0.5"}};
-    const std::array numerators{Money{"1"}, Money{"-1"}, Money{"1"}, Money{"1"}};
-    const std::array denominators{Money{"1"}, Money{"2"}, Money{}, Money{"1"}};
-    std::array<Money, 4> output{Money{"-7"}, Money{"-7"}, Money{"-7"}, Money{"-7"}};
+    constexpr std::array volumes{Money{"0.5"}, Money{"0.5"}, Money{"0.5"}, Money{"0.5"}};
+    constexpr std::array numerators{Money{"1"}, Money{"-1"}, Money{"1"}, Money{"1"}};
+    constexpr std::array denominators{Money{"1"}, Money{"2"}, Money{}, Money{"1"}};
+    constexpr Money sentinel{"-7"};
+    std::array<Money, 4> output{sentinel, sentinel, sentinel, sentinel};
     const auto result = batch::transform(std::span{output}, slope, std::span{volumes}, Money{"100000"},
                                          std::span{numerators}, Money{"1.234"}, std::span{denominators});
     CHECK(!result);
@@ -674,11 +683,11 @@ inline void test_wide_preparation() {
     // an explicitly out-of-range Product36 intermediate. That earlier row
     // also outranks a following row's speculative zero-divisor failure.
     constexpr Money large{"100000000000000000000"};
-    const std::array large_volumes{large, large, Money{"1"}};
-    const std::array large_contracts{Money{"1"}, large, Money{"1"}};
-    const std::array large_numerators{Money{"1"}, Money{"10"}, Money{"1"}};
-    const std::array large_denominators{Money{"1"}, large, Money{}};
-    std::array<Money, 3> large_output{Money{"-7"}, Money{"-7"}, Money{"-7"}};
+    constexpr std::array large_volumes{large, large, Money{"1"}};
+    constexpr std::array large_contracts{Money{"1"}, large, Money{"1"}};
+    constexpr std::array large_numerators{Money{"1"}, Money{"10"}, Money{"1"}};
+    constexpr std::array large_denominators{Money{"1"}, large, Money{}};
+    std::array<Money, 3> large_output{sentinel, sentinel, sentinel};
     const auto large_result =
         batch::transform<3>(std::span{large_output}, slope, std::span{large_volumes}, std::span{large_contracts},
                             std::span{large_numerators}, Money{"0.000000000001"}, std::span{large_denominators});
@@ -761,10 +770,10 @@ inline void test_cold_division_boundaries() {
     // The first two displacements do not fit Price, but adding their anchors
     // while still wide produces valid final roots. The third root overflows;
     // the fourth row's zero divisor must not change that first failure.
-    const std::array residuals{WideMoney{"1000000000"}, WideMoney{"-1000000000"}, WideMoney{"1000000000"},
-                               WideMoney{"1"}};
-    const std::array divisors{Money{"1"}, Money{"1"}, Money{"1"}, Money{}};
-    const std::array anchors{Price{"-100000000"}, Price{"100000000"}, Price{}, Price{}};
+    constexpr std::array residuals{WideMoney{"1000000000"}, WideMoney{"-1000000000"}, WideMoney{"1000000000"},
+                                   WideMoney{"1"}};
+    constexpr std::array divisors{Money{"1"}, Money{"1"}, Money{"1"}, Money{}};
+    constexpr std::array anchors{Price{"-100000000"}, Price{"100000000"}, Price{}, Price{}};
     const Price sentinel{"7"};
     std::array<Price, 4> output{sentinel, sentinel, sentinel, sentinel};
     const auto result =
@@ -779,7 +788,7 @@ inline void test_cold_division_boundaries() {
 }
 
 inline void test_generic_conversion_and_comparison() {
-    const std::array values{Money{"1.25"}, Money{"-0.1"}, Money::max(), Money::min(), Money{}};
+    constexpr std::array values{Money{"1.25"}, Money{"-0.1"}, Money::max(), Money::min(), Money{}};
     std::array<double, 5> converted{};
     CHECK(batch::transform(
         std::span{converted}, [](Money value) noexcept { return fw::to_double(value); }, std::span{values}));

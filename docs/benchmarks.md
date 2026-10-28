@@ -15,61 +15,43 @@ executes exactly the same number of them.
 
 ## SoA batch benchmark
 
-The opt-in `fixedwide_batch_bench` target uses the same pinned Google Benchmark
-dependency as the runtime-narrow target. It compares the unchanged public scalar
-loop, optimized arithmetic with block size 1, and block size 4 over identical
-retained SoA inputs. Compiler vectorization remains enabled; the target uses
-strict floating-point flags and does not add `-march=native`.
+The opt-in `fixedwide_batch_bench` target uses the existing pinned Google
+Benchmark dependency. It compares scalar loops with batch sizes 1 and 4 over
+identical retained SoA inputs, with vectorization enabled, strict floating-point
+flags and no `-march=native`.
 
 ```bash
 # Build and verify every fixture, without running a timing workload.
 scripts/bench_batch.sh --validate-only reports/batch-local
 
-# After reserving a CPU, run one bounded comparison pinned to that CPU.
-# CPU names the caller's available/reserved physical CPU.
+# CPU is an available physical CPU reserved for this measurement.
 CXX=g++ BATCH_FILTER='delta.*|anchored_replace.*|publication.*' \
   scripts/bench_batch.sh --cpu "$CPU" reports/batch-local
 ```
 
-Without `--cpu` or `BATCH_CPU`, the script only builds and validates. Affinity is
-not CPU reservation: coordinate with other workloads on a shared host. Do not
-run compiler jobs, another benchmark or a consumer owner timing workload at the
-same time. `BATCH_BACKEND=portable` selects one portable run; the script does not
-launch an ISA/backend/owner-count campaign. `GOOGLE_BENCHMARK_SOURCE` names an
-offline checkout of the existing pinned dependency when needed.
+The script generates logs and Google Benchmark JSON locally in the specified
+output directory; `reports/batch-local` is ignored by Git. Without `--cpu` or
+`BATCH_CPU`, it only builds and validates. CPU affinity does not reserve a core:
+coordinate with other workloads and avoid concurrent builds or timing runs.
+`BATCH_BACKEND=portable` selects the portable backend, and
+`GOOGLE_BENCHMARK_SOURCE` can name an offline checkout of the pinned dependency.
 
-The suite covers 64 and 125,000 rows, vector/broadcast price and FX products,
-refused exact lanes, successful wide products (including large FX operands that
-still require the general scalar fallback), complete delta updates including
-duplicate destinations and sink holes, anchored valuation plus FX and wide
-replacement, wide cancellation, and segmented publication. Products round per
-entry before ordered summation and per-position FX. Repeated quote fixtures
-alternate bounded marks/deltas instead of adding a timed array-reset pass.
+Fixtures cover 64 and 125,000 rows: vector/broadcast products, exact refusals,
+wide scalar fallbacks, delta updates with duplicate destinations and sink holes,
+anchored FX with wide replacement, cancellation, and per-position publication.
+Each fixture verifies outputs and accepted-prefix errors before timing.
+Repeated quote fixtures alternate bounded marks/deltas without timed resets.
 
-Every fixture compares outputs and first-error/accepted-prefix behavior before
-timing. The library's separate tests use an independent Boost rational oracle.
-Google Benchmark supplies repetitions, warm-up, random interleaving and timing.
-The JSON includes complete-array CPU and real time, work counts, and
-`seconds_per_row` / `seconds_per_op` counters. Multiply these counters by `1e9`
-for nanoseconds; they use CPU time. A refused row does not count as a completed
-row. Modeled bytes, speculative mapped rows, logical lane-result storage and
-extra array passes are reported separately from measured hardware traffic.
-`raw_products_outside_i128` is an untimed classification of baseline native
-fallback pressure, not instrumentation of the optimized kernel. Product cases
-also report `scalar_api_product_rows` and `general_product_rows`, classified
-outside timing for the required prefix (`classified_product_rows`). The first
-counts delegation to the unchanged scalar multiply; the second counts calls
-that need its general rational path. Speculative failed-block lanes are shown
-by `mapped_rows` but excluded from these classification counters. Complete
-chains retain their arithmetic operation counts instead of extrapolating one
-product's fallback classification to the whole chain.
+JSON counters `seconds_per_row` and `seconds_per_op` use CPU time; multiply by
+`1e9` for nanoseconds. Refused rows are excluded from completed work.
+`mapped_rows` includes speculative lanes; `scalar_api_product_rows` and
+`general_product_rows` classify the required prefix outside timing. Modeled
+bytes and lane-result storage are estimates, not measured hardware traffic.
 
-The script retains the environment, commands, validation, raw repetitions and
-statistics. See [the retained batch report](../reports/batch/README.md) for the
-measured scope and compiler evidence. `benchmarks/batch_codegen.cpp` provides
-small matching probes for `-S`, `-fopt-info-vec-all` (GCC) and
-`-Rpass/-Rpass-missed` (Clang). A library loop speedup does not establish a
-complete HFT-owner throughput improvement.
+`benchmarks/batch_codegen.cpp` provides matching probes for assembly and
+vectorization diagnostics (`-S`, GCC's `-fopt-info-vec-all`, or Clang's
+`-Rpass` / `-Rpass-missed`). Measure complete application loops separately from
+these library fixtures.
 
 ## The regression gate
 

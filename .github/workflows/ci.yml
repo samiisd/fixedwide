@@ -392,6 +392,7 @@ jobs:
             ${{ matrix.backend == 'portable' && '-DFIXEDWIDE_FORCE_PORTABLE=ON' || '' }}
           cmake --build build-runtime --target fixedwide_runtime_narrow_bench fixedwide_batch_bench
       - name: Validate fixtures and exercise Google Benchmark
+        shell: bash
         run: |
           build-runtime/benchmarks/fixedwide_runtime_narrow_bench \
             --benchmark_min_time=0.001s --benchmark_repetitions=1 \
@@ -400,8 +401,7 @@ jobs:
             2> runtime-validation.txt
           cat runtime-validation.txt
           build-runtime/benchmarks/fixedwide_batch_bench --validate-only \
-            2> batch-validation.txt
-          cat batch-validation.txt
+            2>&1 | tee batch-validation.txt
       - uses: actions/upload-artifact@v7
         if: always()
         with:

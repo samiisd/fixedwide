@@ -20,7 +20,7 @@ static std::expected<Money, fw::ArithmeticError> replace(Money total, Money prev
 }
 
 int main() {
-    std::array<Money, 5> slopes{Money{"1"}, Money{"100"}, Money{"-0.01"}, Money{"0"}, Money{"2"}};
+    constexpr std::array<Money, 5> slopes{Money{"1"}, Money{"100"}, Money{"-0.01"}, Money{"0"}, Money{"2"}};
     std::array<Money, 5> values{};
     std::array<Money, 3> totals{};
     const std::array<std::size_t, 5> balance{0, 1, 0, 2, 1}; // duplicate destinations; row 3 is a zero hole
@@ -44,9 +44,9 @@ int main() {
 
     // Every boundary is checked separately in a fused row kernel. There is no
     // array-sized intermediate and no change to the two rounding boundaries.
-    const std::array<Money, 2> slope{Money{"1"}, Money{"2"}};
-    const std::array<Money, 2> residual{Money{"0.1"}, Money{"-0.1"}};
-    const std::array<Price, 2> anchors{Price{"99"}, Price{"101"}};
+    constexpr std::array<Money, 2> slope{Money{"1"}, Money{"2"}};
+    constexpr std::array<Money, 2> residual{Money{"0.1"}, Money{"-0.1"}};
+    constexpr std::array<Price, 2> anchors{Price{"99"}, Price{"101"}};
     std::array<Money, 2> next{};
     const Price mark{"100"}; // prices already validated to make subtraction safe
     const auto multiply = fw::batch::mul_to<Money>(fw::Rounding::nearest_even);
@@ -69,7 +69,7 @@ int main() {
     if (!replacement || *replacement != h) return 3;
 
     // Publication: round each entry, sum in entry order, then apply position FX.
-    const std::array<Money, 2> tiny{Money{"0.005"}, Money{"0.005"}};
+    constexpr std::array<Money, 2> tiny{Money{"0.005"}, Money{"0.005"}};
     const auto sum = fw::batch::transform_reduce(
         tiny.size(), Money{}, fw::batch::prepare_mul_to<Money>(Price{"0.0000000001"}, fw::Rounding::nearest_even),
         std::span{tiny});
