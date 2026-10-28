@@ -107,6 +107,25 @@ int main() {
     const auto later = checked.div(a, failed);
     if (later != Fixed64<12>{} || checked.result(later).error() != ArithmeticError::overflow) return 1;
 
+    // 8. Batch planning, independent blocks, a wide fallback and an accepted
+    // prefix failure all retain the allocation-free arithmetic contract.
+    using Money = Fixed128<12>;
+    std::array<Money, 9> amounts{};
+    amounts.fill(Money::max());
+    std::array<Money, 9> converted{};
+    const auto multiplier = batch::prepare_mul_to<Money>(Money{"0.1"}, Rounding::nearest_even);
+    if (!batch::transform(std::span{converted}, multiplier, std::span{amounts})) return 1;
+    std::array<Fixed256<24>, 9> wide_products{};
+    if (!batch::mul_to<Fixed256<24>>(std::span{wide_products}, std::span{amounts}, Money{"100"}, Rounding::exact))
+        return 1;
+    const auto batch_failure = batch::add(std::span{converted}, std::span{amounts}, Money::from_raw(1));
+    if (batch_failure || batch_failure.error().index != 0 || batch_failure.error().error != ArithmeticError::overflow)
+        return 1;
+    std::array<Money, 9> ones{};
+    ones.fill(Money{"1"});
+    const auto batch_sum = batch::reduce_add(std::span{ones});
+    if (!batch_sum || *batch_sum != Money{"9"}) return 1;
+
     // Assert that NO allocations occurred
     int total_allocations = g_alloc_count.load();
     std::cout << "Total heap allocations during fixedwide operations: " << total_allocations << "\n";

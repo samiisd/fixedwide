@@ -387,9 +387,10 @@ jobs:
             -DCMAKE_CXX_COMPILER=g++-14 \
             -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
             -DFIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK=ON \
+            -DFIXEDWIDE_BUILD_BATCH_BENCHMARK=ON \
             -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF \
             ${{ matrix.backend == 'portable' && '-DFIXEDWIDE_FORCE_PORTABLE=ON' || '' }}
-          cmake --build build-runtime --target fixedwide_runtime_narrow_bench
+          cmake --build build-runtime --target fixedwide_runtime_narrow_bench fixedwide_batch_bench
       - name: Validate fixtures and exercise Google Benchmark
         run: |
           build-runtime/benchmarks/fixedwide_runtime_narrow_bench \
@@ -398,6 +399,9 @@ jobs:
             --benchmark_out=runtime-benchmark.json --benchmark_out_format=json \
             2> runtime-validation.txt
           cat runtime-validation.txt
+          build-runtime/benchmarks/fixedwide_batch_bench --validate-only \
+            2> batch-validation.txt
+          cat batch-validation.txt
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -405,6 +409,7 @@ jobs:
           path: |
             runtime-benchmark.json
             runtime-validation.txt
+            batch-validation.txt
 
   fuzz:
     name: fuzz smoke

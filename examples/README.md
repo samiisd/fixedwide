@@ -1,7 +1,7 @@
 # Examples
 
-Nine short programs, each one file, each about a single idea. Every one of them
-is a `ctest` test: after building, `ctest -R fixedwide.example` runs all nine, and
+Eleven short programs, each one file, each about a single idea. Every one of them
+is a `ctest` test: after building, `ctest -R fixedwide.example` runs all eleven, and
 each checks its own output before printing `OK`. An example that stops being
 correct fails the build, so nothing here can drift away from the library.
 
@@ -26,6 +26,8 @@ Read them in order; each assumes the one before it.
 | 07 | [`07_money_ledger.cpp`](07_money_ledger.cpp) | An invoice with tax, computed twice — in `double` and in `Fixed64<2>` — so the drift is visible | [Primary types](../docs/api_reference.md#primary-types) |
 | 08 | [`08_constexpr.cpp`](08_constexpr.cpp) | Typed string initializers, direct function arguments and comparisons, checked compile-time arithmetic | [Compile-time constants](../docs/api_reference.md#compile-time-constants) |
 | 09 | [`09_bounded_arithmetic.cpp`](09_bounded_arithmetic.cpp) | Checked input and domain bounds, followed by ordinary unchecked arithmetic on the same type | [Checked or unchecked](../docs/unchecked.md) |
+| 10 | [`10_checked_chain.cpp`](10_checked_chain.cpp) | Accumulated checked arithmetic with a sticky first error and one final test | [Accumulated checks](../docs/api_reference.md#accumulated-checks) |
+| 11 | [`11_batch_soa.cpp`](11_batch_soa.cpp) | Prepared broadcasts, ordered balance updates, anchored FX, wide replacement and per-entry rounding over typed spans | [Checked batches](../docs/batch.md) |
 
 ## `consumer/`
 

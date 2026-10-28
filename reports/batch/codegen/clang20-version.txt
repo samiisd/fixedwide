@@ -1,0 +1,4 @@
+Ubuntu clang version 20.1.2 (0ubuntu1~24.04.3)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-20/bin

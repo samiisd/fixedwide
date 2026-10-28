@@ -1,0 +1,1100 @@
+benchmarks/batch_codegen.cpp:32:13: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+   32 |         if (!product) return std::unexpected(fw::batch::Error{row, product.error()});
+      |             ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+In file included from include/fixedwide/mixed.hpp:14:
+include/fixedwide/detail/mixed_native.hpp:103:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  103 |             __asm__("divq %[divisor]"
+      |             ^
+benchmarks/batch_codegen.cpp:30:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+   30 |     for (std::size_t row = 0; row < count; ++row) {
+      |     ^
+benchmarks/batch_codegen.cpp:30:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+benchmarks/batch_codegen.cpp:30:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+In file included from include/fixedwide/mixed.hpp:14:
+include/fixedwide/detail/mixed_native.hpp:413:33: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  413 |     const u128 product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                                 ^
+include/fixedwide/detail/mixed_native.hpp:408:27: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  408 |         if ((cross >> 64) != 0) return false;
+      |                           ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  100 |     while (b != 0) {
+      |     ^
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:69:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   69 |             __asm__("divq %[divisor]"
+      |             ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+include/fixedwide/batch.hpp:195:29: remark: loop not vectorized: unsafe dependent memory operations in loop. Use #pragma clang loop distribute(enable) to allow loop distribution to attempt to isolate the offending operations into a separate loop
+Unknown data dependence. Memory location is the same as accessed at include/fixedwide/batch.hpp:195:29 [-Rpass-analysis=loop-vectorize]
+  195 |                 output[row] = value;
+      |                             ^
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+benchmarks/batch_codegen.cpp:39:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   39 | Status prepared_scalar_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:39:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   39 | Status prepared_scalar_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:39:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:39:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   39 | Status prepared_scalar_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:39:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   39 | Status prepared_scalar_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:39:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   39 | Status prepared_scalar_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:39:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:39:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   39 | Status prepared_scalar_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:39:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  100 |     while (b != 0) {
+      |     ^
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+include/fixedwide/batch.hpp:195:29: remark: loop not vectorized: unsafe dependent memory operations in loop. Use #pragma clang loop distribute(enable) to allow loop distribution to attempt to isolate the offending operations into a separate loop
+Unknown data dependence. Memory location is the same as accessed at include/fixedwide/batch.hpp:195:29 [-Rpass-analysis=loop-vectorize]
+  195 |                 output[row] = value;
+      |                             ^
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:69:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   69 |             __asm__("divq %[divisor]"
+      |             ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  156 |     for (; first < count; ++first) {
+      |     ^
+include/fixedwide/batch.hpp:195:29: remark: loop not vectorized: unsafe dependent memory operations in loop. Use #pragma clang loop distribute(enable) to allow loop distribution to attempt to isolate the offending operations into a separate loop
+Unknown data dependence. Memory location is the same as accessed at include/fixedwide/batch.hpp:195:29 [-Rpass-analysis=loop-vectorize]
+  195 |                 output[row] = value;
+      |                             ^
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+  156 |     for (; first < count; ++first) {
+      |     ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:45:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:45:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:45:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:45:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:45:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   45 | Status blocked_multiply(Money* output, const Money* slope, std::size_t count, Price dx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+benchmarks/batch_codegen.cpp:45:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+benchmarks/batch_codegen.cpp:57:13: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+   57 |         if (!result) return std::unexpected(fw::batch::Error{row, result.error()});
+      |             ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+In file included from include/fixedwide/mixed.hpp:14:
+include/fixedwide/detail/mixed_native.hpp:103:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  103 |             __asm__("divq %[divisor]"
+      |             ^
+benchmarks/batch_codegen.cpp:55:5: remark: loop not vectorized: Cannot vectorize early exit loop [-Rpass-analysis=loop-vectorize]
+   55 |     for (std::size_t row = 0; row < count; ++row) {
+      |     ^
+benchmarks/batch_codegen.cpp:55:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+benchmarks/batch_codegen.cpp:55:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+In file included from include/fixedwide/mixed.hpp:14:
+include/fixedwide/detail/mixed_native.hpp:413:33: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  413 |     const u128 product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                                 ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  100 |     while (b != 0) {
+      |     ^
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:149:17: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  149 |             if (!block[lane]) [[unlikely]]
+      |                 ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+include/fixedwide/mixed.hpp:327:16: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  327 |         return detail::runtime_mul_fallback<Dest>(a, b, rounding);
+      |                ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+In file included from include/fixedwide/mixed.hpp:14:
+include/fixedwide/detail/mixed_native.hpp:103:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  103 |             __asm__("divq %[divisor]"
+      |             ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:69:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   69 |             __asm__("divq %[divisor]"
+      |             ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:136:86: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                                      ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:64:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   64 | Status prepared_scalar_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:64:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:64:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   64 | Status prepared_scalar_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:64:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:136:86: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                                      ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:64:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   64 | Status prepared_scalar_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:64:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   64 | Status prepared_scalar_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:64:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:64:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   64 | Status prepared_scalar_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:64:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   64 | Status prepared_scalar_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:64:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   64 | Status prepared_scalar_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:64:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:64:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   64 | Status prepared_scalar_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:64:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   64 | Status prepared_scalar_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:64:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  100 |     while (b != 0) {
+      |     ^
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:205:5: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  205 |     return fixedwide::mul_to<Dest>(a, b, rounding);
+      |     ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+include/fixedwide/mixed.hpp:327:16: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  327 |         return detail::runtime_mul_fallback<Dest>(a, b, rounding);
+      |                ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+include/fixedwide/batch.hpp:158:13: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  158 |         if (!value) [[unlikely]]
+      |             ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+include/fixedwide/mixed.hpp:327:16: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  327 |         return detail::runtime_mul_fallback<Dest>(a, b, rounding);
+      |                ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  156 |     for (; first < count; ++first) {
+      |     ^
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+In file included from include/fixedwide/mixed.hpp:14:
+include/fixedwide/detail/mixed_native.hpp:103:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  103 |             __asm__("divq %[divisor]"
+      |             ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  156 |     for (; first < count; ++first) {
+      |     ^
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:69:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   69 |             __asm__("divq %[divisor]"
+      |             ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  156 |     for (; first < count; ++first) {
+      |     ^
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+benchmarks/batch_codegen.cpp:70:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:70:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+include/fixedwide/detail/batch_multiply.hpp:136:86: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                                      ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:136:86: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                                      ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:70:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:136:86: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                                      ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:136:86: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                                      ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:70:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:136:86: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                                      ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:136:86: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                                      ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:70:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:136:86: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                                      ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:136:86: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                                      ^
+include/fixedwide/detail/batch_multiply.hpp:136:71: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  136 |             increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:70:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:114:95: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  114 |     const u128 upper = static_cast<u128>(static_cast<std::uint64_t>(q >> 64)) * factor + (low >> 64);
+      |                                                                                               ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:114:95: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  114 |     const u128 upper = static_cast<u128>(static_cast<std::uint64_t>(q >> 64)) * factor + (low >> 64);
+      |                                                                                               ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:114:95: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  114 |     const u128 upper = static_cast<u128>(static_cast<std::uint64_t>(q >> 64)) * factor + (low >> 64);
+      |                                                                                               ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:114:95: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  114 |     const u128 upper = static_cast<u128>(static_cast<std::uint64_t>(q >> 64)) * factor + (low >> 64);
+      |                                                                                               ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   70 | Status blocked_fx(Money* output, const Money* amount, std::size_t count, Money fx) noexcept {
+      |        ^
+benchmarks/batch_codegen.cpp:70:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:149:17: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+  149 |             if (!block[lane]) [[unlikely]]
+      |                 ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+include/fixedwide/mixed.hpp:327:16: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  327 |         return detail::runtime_mul_fallback<Dest>(a, b, rounding);
+      |                ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+benchmarks/batch_codegen.cpp:76:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   76 | Status varying_fx(Money* output, const Money* amount, const Money* rate, std::size_t count) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:167:81: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  167 |         const auto product = static_cast<u128>(static_cast<std::uint64_t>(a)) * b;
+      |                                                                                 ^
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:86:37: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   86 |     FIXEDWIDE_BATCH_CALL return map(at(inputs, index)...);
+      |                                     ^
+benchmarks/batch_codegen.cpp:76:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   76 | Status varying_fx(Money* output, const Money* amount, const Money* rate, std::size_t count) noexcept {
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:21:18: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+   21 |     return value < 0 ? u128{0} - bits : bits;
+      |                  ^
+benchmarks/batch_codegen.cpp:90:13: remark: loop not vectorized: Control flow cannot be substituted for a select [-Rpass-analysis=loop-vectorize]
+   90 |         if (!contribution) return std::unexpected(fw::batch::Error{row, contribution.error()});
+      |             ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+In file included from include/fixedwide/mixed.hpp:14:
+include/fixedwide/detail/mixed_native.hpp:103:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+  103 |             __asm__("divq %[divisor]"
+      |             ^
+benchmarks/batch_codegen.cpp:88:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+   88 |     for (std::size_t row = 0; row < count; ++row) {
+      |     ^
+benchmarks/batch_codegen.cpp:88:5: remark: loop not vectorized: instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+benchmarks/batch_codegen.cpp:88:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:10:
+In file included from include/fixedwide/mixed.hpp:14:
+include/fixedwide/detail/mixed_native.hpp:413:33: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  413 |     const u128 product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                                 ^
+include/fixedwide/detail/mixed_native.hpp:408:27: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  408 |         if ((cross >> 64) != 0) return false;
+      |                           ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  100 |     while (b != 0) {
+      |     ^
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+benchmarks/batch_codegen.cpp:110:34: remark: loop not vectorized: cannot identify array bounds [-Rpass-analysis=loop-vectorize]
+  110 |         const auto sum = fw::add(total[destination], contribution);
+      |                                  ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:103:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  100 |     while (b != 0) {
+      |     ^
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: Cannot vectorize uncountable loop [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized: could not determine number of loop iterations [-Rpass-analysis=loop-vectorize]
+include/fixedwide/detail/batch_multiply.hpp:100:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: value that could not be identified as reduction is used outside the loop [-Rpass-analysis=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+benchmarks/batch_codegen.cpp:110:34: remark: loop not vectorized: cannot identify array bounds [-Rpass-analysis=loop-vectorize]
+  110 |         const auto sum = fw::add(total[destination], contribution);
+      |                                  ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:146:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+  146 |     for (; count - first >= BlockSize; first += BlockSize) {
+      |     ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:69:13: remark: loop not vectorized: call instruction cannot be vectorized [-Rpass-analysis=loop-vectorize]
+   69 |             __asm__("divq %[divisor]"
+      |             ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized: Cannot vectorize early exit loop with more than one early exit [-Rpass-analysis=loop-vectorize]
+  156 |     for (; first < count; ++first) {
+      |     ^
+benchmarks/batch_codegen.cpp:110:34: remark: loop not vectorized: cannot identify array bounds [-Rpass-analysis=loop-vectorize]
+  110 |         const auto sum = fw::add(total[destination], contribution);
+      |                                  ^
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:156:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]
+  156 |     for (; first < count; ++first) {
+      |     ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:103:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:93:60: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+   93 |     FIXEDWIDE_BATCH_CALL return commit(std::size_t{index}, value);
+      |                                                            ^
+include/fixedwide/batch.hpp:93:60: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+include/fixedwide/batch.hpp:93:60: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+include/fixedwide/batch.hpp:93:60: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:103:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:103:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:103:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:116:22: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  116 |     product = (upper << 64) | static_cast<std::uint64_t>(low);
+      |                      ^
+benchmarks/batch_codegen.cpp:103:8: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:11:
+include/fixedwide/detail/batch_multiply.hpp:113:71: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+  113 |     const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+      |                                                                       ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: note: could not determine the original source location for include/fixedwide/detail/batch_multiply.hpp:0:0
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  103 | Status prepared_delta(const Money* slope, Money* value, Money* total, const std::uint32_t* balance, std::size_t count,
+      |        ^
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+benchmarks/batch_codegen.cpp:103:8: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+In file included from benchmarks/batch_codegen.cpp:4:
+include/fixedwide/batch.hpp:186:9: remark: vectorized loop (vectorization width: 4, interleaved count: 2) [-Rpass=loop-vectorize]
+  186 |         for (std::size_t row = 0; row < output.size(); ++row) {
+      |         ^
+include/fixedwide/batch.hpp:186:9: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+include/fixedwide/batch.hpp:186:9: remark: List vectorization was possible but not beneficial with cost 0 >= 0 [-Rpass-missed=slp-vectorizer]
+include/fixedwide/batch.hpp:186:9: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-missed=loop-vectorize]
+include/fixedwide/batch.hpp:186:9: remark: the cost-model indicates that interleaving is not beneficial [-Rpass-missed=loop-vectorize]
+include/fixedwide/batch.hpp:187:36: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+  187 |             const auto value = map(detail::at(inputs, row)...);
+      |                                    ^
+include/fixedwide/batch.hpp:187:36: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+include/fixedwide/batch.hpp:187:36: remark: Cannot SLP vectorize list: vectorization was impossible with available vectorization factors [-Rpass-missed=slp-vectorizer]
+In file included from benchmarks/batch_codegen.cpp:4:
+In file included from include/fixedwide/batch.hpp:9:
+In file included from include/fixedwide/arithmetic.hpp:13:
+In file included from include/fixedwide/detail/constexpr_arith.hpp:7:
+/usr/lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/expected:453:4: remark: Stores SLP vectorized with cost -2 and with tree size 2 [-Rpass=slp-vectorizer]
+  453 |         : _M_val(std::forward<_Up>(__v)), _M_has_value(true)
+      |           ^
+/usr/lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/expected:453:4: remark: Stores SLP vectorized with cost -2 and with tree size 2 [-Rpass=slp-vectorizer]

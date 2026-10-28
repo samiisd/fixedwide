@@ -109,6 +109,29 @@ The caller guarantees representable rounded results, nonzero divisors, valid pre
 
 Use checked operations at uncertain boundaries, and ordinary arithmetic where domain bounds establish safety. Linear arithmetic and native narrow product/division paths remove overflow checks in release builds. Some portable/wide and mixed helpers retain checked numerical kernels: simpler call sites do not imply every internal check disappears. See the [full contract and performance scope](docs/unchecked.md) and the [executable bounded-input example](examples/09_bounded_arithmetic.cpp).
 
+## Checked batches over SoA fields
+
+`<fixedwide/batch.hpp>` provides checked arithmetic directly over typed spans,
+including vector-vector operands and copied scalar broadcasts:
+
+```cpp
+auto result = fixedwide::batch::mul_to<Decimal>(
+    std::span{output}, std::span{slopes}, price_delta, fixedwide::Rounding::exact);
+// On error: result.error().index identifies the first failing row;
+// result.error().error is its unchanged ArithmeticError.
+```
+
+Prepared broadcast multiplication reuses exact rescaling setup. `transform`
+composes independent row calculations, and `for_each` separates that calculation
+from ordered commits for duplicate destinations. No allocation, persistent
+packing, changed storage, or relaxed rounding is required. Every scalar width
+and rounding mode remains available through the checked fallback.
+
+The [batch contract and caller examples](docs/batch.md) explain accepted-prefix
+writes, exact in-place aliasing, rounding boundaries and ordered reductions.
+The [executable SoA example](examples/11_batch_soa.cpp) covers delta updates,
+anchored FX, wide replacement and per-entry publication rounding.
+
 ## Constants and runtime text
 
 String construction is available since v0.6.3; earlier releases use `literal<T>()`.

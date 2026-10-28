@@ -1,0 +1,18 @@
+validated 9956064 output rows (values, errors, prefix writes, repeated quotes, duplicate/sink balances)
+2026-10-28T02:38:35+02:00
+Running /workspace/scratch/2355ad37300f/fixedwide/build/review-native/benchmarks/fixedwide_batch_bench
+Run on (9 X 2793.44 MHz CPU s)
+CPU Caches:
+  L1 Data 48 KiB (x4)
+  L1 Instruction 32 KiB (x4)
+  L2 Unified 1280 KiB (x4)
+  L3 Unified 49152 KiB (x1)
+Load Average: 0.98, 1.83, 2.74
+backend: native
+baseline: unchanged public fixedwide v0.6.10 scalar operations
+compiler: 14.2.0
+google_benchmark: 1.9.4 (eddb0241389718a23a42db6af5f0164b6e0139af)
+model: complete arithmetic loops; modeled bytes exclude cache effects and speculative failed-block lanes
+seed: 0xB47C2026
+validated_output_rows: 9956064
+***WARNING*** ASLR is enabled, the results may have unreproducible noise in them.

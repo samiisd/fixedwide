@@ -10,6 +10,7 @@ void run_coverage_adapters();
 void run_coverage_format_adapters();
 void run_coverage_mixed();
 void run_coverage_checked();
+void run_coverage_batch();
 
 int main(int argc, char** argv) {
     CHECK(argc == 2);
@@ -28,6 +29,7 @@ int main(int argc, char** argv) {
     run("format_adapters", run_coverage_format_adapters);
     run("mixed", run_coverage_mixed);
     run("checked", run_coverage_checked);
+    run("batch", run_coverage_batch);
     CHECK(matched);
     std::printf("coverage suite %s passed; assertions=%llu\n", argv[1], static_cast<unsigned long long>(checks));
     return 0;

@@ -6,6 +6,7 @@ if(FIXEDWIDE_BUILD_TESTS)
         core
         unchecked
         checked
+        batch
         midpoint
         log10
         mixed
@@ -33,6 +34,7 @@ if(FIXEDWIDE_BUILD_TESTS)
 
     if(NOT MSVC)
         target_compile_options(test_checked PRIVATE -fno-exceptions)
+        target_compile_options(test_batch PRIVATE -fno-exceptions)
     endif()
 
     # Literal-only consumers need neither the compiled library nor exceptions.
@@ -215,6 +217,10 @@ if(FIXEDWIDE_BUILD_ORACLE_TESTS)
     target_link_libraries(test_oracle PRIVATE fixedwide::fixedwide)
     target_include_directories(test_oracle PRIVATE ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
     add_test(NAME fixedwide.oracle COMMAND test_oracle)
+    add_executable(test_batch_oracle test_batch_oracle.cpp)
+    target_link_libraries(test_batch_oracle PRIVATE fixedwide::fixedwide)
+    target_include_directories(test_batch_oracle PRIVATE ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME fixedwide.batch_oracle COMMAND test_batch_oracle)
 endif()
 
 # Independent, focused coverage regressions supplement the large differential
@@ -227,13 +233,14 @@ if(Boost_FOUND AND (FIXEDWIDE_BUILD_TESTS OR FIXEDWIDE_BUILD_ORACLE_TESTS))
         test_coverage_arithmetic.cpp
         test_coverage_adapters.cpp
         test_coverage_mixed.cpp
-        test_coverage_checked.cpp)
+        test_coverage_checked.cpp
+        test_coverage_batch.cpp)
     target_link_libraries(test_coverage PRIVATE fixedwide::fixedwide)
     target_include_directories(test_coverage PRIVATE ${CMAKE_SOURCE_DIR} ${Boost_INCLUDE_DIRS})
     # These tests share a source-coverage map. A single unity translation unit
     # avoids competing unused/instantiated mappings for the same header code.
     set_target_properties(test_coverage PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 0)
-    foreach(SUITE wide text arithmetic adapters format_adapters mixed checked)
+    foreach(SUITE wide text arithmetic adapters format_adapters mixed checked batch)
         add_test(NAME fixedwide.coverage_${SUITE} COMMAND test_coverage ${SUITE})
     endforeach()
     # The existing fixedwide.format test documents the libc++abi format_error

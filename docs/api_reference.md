@@ -11,6 +11,7 @@ where `clangd` looks.
 | `<fixedwide/arithmetic.hpp>` | Checked same-type arithmetic and the infallible midpoint overload |
 | `<fixedwide/mixed.hpp>` | Cross-width, cross-scale operations and comparison |
 | `<fixedwide/checked.hpp>` | `Checked`: accumulated checked arithmetic with a sticky first error |
+| `<fixedwide/batch.hpp>` | `batch`: checked typed-span operations, prepared broadcasts, transforms and ordered commits/reductions; [complete contract](batch.md) |
 | `<fixedwide/bigint.hpp>` | Checked unscaled wide-integer division and multiply/divide |
 | `<fixedwide/unchecked.hpp>` | Ordinary arithmetic operators and value-returning caller-responsibility functions |
 | `<fixedwide/chars.hpp>` | `parse`, `to_chars`, `from_chars`, `FormatOptions` |

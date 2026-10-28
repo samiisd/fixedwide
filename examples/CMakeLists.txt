@@ -12,6 +12,7 @@ set(EXAMPLE_NAMES
     08_constexpr
     09_bounded_arithmetic
     10_checked_chain
+    11_batch_soa
 )
 
 foreach(NAME ${EXAMPLE_NAMES})

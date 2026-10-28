@@ -1,0 +1,222 @@
+Batch sanitizer verification — 2026-10-28
+Compiler: Clang 20.1.2; C++23; Debug; native backend.
+Instrumentation: AddressSanitizer + UndefinedBehaviorSanitizer,
+  -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all.
+Scope: batch tests, independent multiplication oracle, allocation checks,
+       and the executable SoA example. No benchmark timing workload.
+
+Configure:
+cmake -S . -B build/review-sanitize -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DFIXEDWIDE_SANITIZE=ON -DFIXEDWIDE_BUILD_TESTS=ON -DFIXEDWIDE_BUILD_ORACLE_TESTS=ON -DFIXEDWIDE_BUILD_EXAMPLES=ON -DFIXEDWIDE_BUILD_BENCHMARKS=OFF
+
+Build:
+cmake --build build/review-sanitize --target test_batch test_batch_oracle test_no_alloc example_11_batch_soa -j2
+
+Focused test results follow after build completion.
+
+Build completed successfully (all four requested targets).
+
+Test command:
+ctest --test-dir build/review-sanitize -V -R ^fixedwide\.(batch|batch_oracle|no_alloc|example\.11_batch_soa)$ -j1
+
+Internal ctest changing into directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize
+UpdateCTestConfiguration  from :/workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/DartConfiguration.tcl
+UpdateCTestConfiguration  from :/workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/DartConfiguration.tcl
+Test project /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 7
+    Start  7: fixedwide.batch
+
+7: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests/test_batch
+7: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests
+7: Test timeout computed to be: 10000000
+7: ==7==LeakSanitizer has encountered a fatal error.
+7: ==7==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+7: ==7==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+1/4 Test  #7: fixedwide.batch ..................***Failed    1.51 sec
+test 15
+    Start 15: fixedwide.no_alloc
+
+15: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests/test_no_alloc
+15: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests
+15: Test timeout computed to be: 10000000
+15: ==10==Can't open /proc/9/task for reading.
+15: ==9==LeakSanitizer has encountered a fatal error.
+15: ==9==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+15: ==9==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+2/4 Test #15: fixedwide.no_alloc ...............***Failed    0.06 sec
+test 60
+    Start 60: fixedwide.batch_oracle
+
+60: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests/test_batch_oracle
+60: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests
+60: Test timeout computed to be: 10000000
+60: ==12==Can't open /proc/11/task for reading.
+60: ==11==LeakSanitizer has encountered a fatal error.
+60: ==11==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+60: ==11==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+3/4 Test #60: fixedwide.batch_oracle ...........***Failed   46.15 sec
+test 81
+    Start 81: fixedwide.example.11_batch_soa
+
+81: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/examples/example_11_batch_soa
+81: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/examples
+81: Test timeout computed to be: 10000000
+81: ==14==Can't open /proc/13/task for reading.
+81: ==13==LeakSanitizer has encountered a fatal error.
+81: ==13==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+81: ==13==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+4/4 Test #81: fixedwide.example.11_batch_soa ...***Failed  Required regular expression not found. Regex=[OK
+]  0.02 sec
+
+0% tests passed, 4 tests failed out of 4
+
+Total Test time (real) =  47.77 sec
+
+The following tests FAILED:
+	  7 - fixedwide.batch (Failed)
+	 15 - fixedwide.no_alloc (Failed)
+	 60 - fixedwide.batch_oracle (Failed)
+	 81 - fixedwide.example.11_batch_soa (Failed)
+Errors while running CTest
+Output from these tests are in: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/Testing/Temporary/LastTest.log
+Use "--rerun-failed --output-on-failure" to re-run the failed cases verbosely.
+
+CTest exit status: 8
+
+Rerun after environment limitation:
+The default LeakSanitizer exit check cannot inspect task state in this sandbox
+(/proc task-access / ptrace diagnostic). The preceding attempt is retained.
+Only leak detection is disabled below; address and undefined-behavior checks
+remain enabled, including non-recovering UBSan. The explicit no-allocation test
+is still included. This run does not establish leak-freedom.
+
+ASAN_OPTIONS=detect_leaks=0 ctest --test-dir build/review-sanitize -V -R '^fixedwide\.(batch|batch_oracle|no_alloc|example\.11_batch_soa)$' -j1
+
+Internal ctest changing into directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize
+UpdateCTestConfiguration  from :/workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/DartConfiguration.tcl
+UpdateCTestConfiguration  from :/workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/DartConfiguration.tcl
+Test project /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 7
+    Start  7: fixedwide.batch
+
+7: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests/test_batch
+7: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests
+7: Test timeout computed to be: 10000000
+7: batch: 155654 checks passed
+1/4 Test  #7: fixedwide.batch ..................   Passed    2.11 sec
+test 15
+    Start 15: fixedwide.no_alloc
+
+15: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests/test_no_alloc
+15: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests
+15: Test timeout computed to be: 10000000
+15: Total heap allocations during fixedwide operations: 0
+15: ZERO HEAP ALLOCATION VERIFIED!
+2/4 Test #15: fixedwide.no_alloc ...............   Passed    0.06 sec
+test 60
+    Start 60: fixedwide.batch_oracle
+
+60: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests/test_batch_oracle
+60: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests
+60: Test timeout computed to be: 10000000
+60: batch oracle: 4785728 checks passed
+3/4 Test #60: fixedwide.batch_oracle ...........   Passed   20.30 sec
+test 81
+    Start 81: fixedwide.example.11_batch_soa
+
+81: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/examples/example_11_batch_soa
+81: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/examples
+81: Test timeout computed to be: 10000000
+81: OK: batched SoA arithmetic preserves ordered checked boundaries
+4/4 Test #81: fixedwide.example.11_batch_soa ...   Passed    0.01 sec
+
+The following tests passed:
+	fixedwide.batch
+	fixedwide.no_alloc
+	fixedwide.batch_oracle
+	fixedwide.example.11_batch_soa
+
+100% tests passed, 0 tests failed out of 4
+
+Total Test time (real) =  22.50 sec
+
+Final CTest exit status: 0
+
+FINAL TUNED IMPLEMENTATION VERIFICATION — 2026-10-28
+This rerun includes the x86 prepared_divisor high<divisor shortcut and the
+updated independent oracle with added branch-boundary cases.
+All four requested sanitizer targets rebuilt successfully with:
+cmake --build build/review-sanitize --target test_batch test_batch_oracle test_no_alloc example_11_batch_soa -j2
+
+The same sandbox LeakSanitizer limitation above applies. AddressSanitizer and
+non-recovering UndefinedBehaviorSanitizer remain enabled; only leak detection
+is disabled. No benchmark timing workload was executed for this verification.
+
+ASAN_OPTIONS=detect_leaks=0 ctest --test-dir build/review-sanitize -V -R '^fixedwide\.(batch|batch_oracle|no_alloc|example\.11_batch_soa)$' -j1
+
+Internal ctest changing into directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize
+UpdateCTestConfiguration  from :/workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/DartConfiguration.tcl
+UpdateCTestConfiguration  from :/workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/DartConfiguration.tcl
+Test project /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 7
+    Start  7: fixedwide.batch
+
+7: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests/test_batch
+7: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests
+7: Test timeout computed to be: 10000000
+7: batch: 155654 checks passed
+1/4 Test  #7: fixedwide.batch ..................   Passed    0.35 sec
+test 15
+    Start 15: fixedwide.no_alloc
+
+15: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests/test_no_alloc
+15: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests
+15: Test timeout computed to be: 10000000
+15: Total heap allocations during fixedwide operations: 0
+15: ZERO HEAP ALLOCATION VERIFIED!
+2/4 Test #15: fixedwide.no_alloc ...............   Passed    0.01 sec
+test 60
+    Start 60: fixedwide.batch_oracle
+
+60: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests/test_batch_oracle
+60: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/tests
+60: Test timeout computed to be: 10000000
+60: batch oracle: 4785848 checks passed
+3/4 Test #60: fixedwide.batch_oracle ...........   Passed   14.13 sec
+test 81
+    Start 81: fixedwide.example.11_batch_soa
+
+81: Test command: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/examples/example_11_batch_soa
+81: Working Directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-sanitize/examples
+81: Test timeout computed to be: 10000000
+81: OK: batched SoA arithmetic preserves ordered checked boundaries
+4/4 Test #81: fixedwide.example.11_batch_soa ...   Passed    0.01 sec
+
+The following tests passed:
+	fixedwide.batch
+	fixedwide.no_alloc
+	fixedwide.batch_oracle
+	fixedwide.example.11_batch_soa
+
+100% tests passed, 0 tests failed out of 4
+
+Total Test time (real) =  14.53 sec
+
+Final tuned implementation CTest exit status: 0

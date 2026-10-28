@@ -1,0 +1,208 @@
+Internal ctest changing into directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-portable
+Test project /workspace/scratch/2355ad37300f/fixedwide/build/review-portable
+      Start  1: fixedwide.storage
+      Start  2: fixedwide.wide
+ 1/89 Test  #1: fixedwide.storage .................................   Passed    0.00 sec
+      Start  3: fixedwide.rounding
+ 2/89 Test  #3: fixedwide.rounding ................................   Passed    0.00 sec
+      Start  4: fixedwide.core
+ 3/89 Test  #4: fixedwide.core ....................................   Passed    0.00 sec
+      Start  5: fixedwide.unchecked
+ 4/89 Test  #2: fixedwide.wide ....................................   Passed    0.02 sec
+      Start  6: fixedwide.checked
+ 5/89 Test  #5: fixedwide.unchecked ...............................   Passed    0.02 sec
+      Start  7: fixedwide.batch
+ 6/89 Test  #6: fixedwide.checked .................................   Passed    0.04 sec
+      Start  8: fixedwide.midpoint
+ 7/89 Test  #8: fixedwide.midpoint ................................   Passed    0.05 sec
+      Start  9: fixedwide.log10
+ 8/89 Test  #7: fixedwide.batch ...................................   Passed    0.08 sec
+      Start 10: fixedwide.mixed
+ 9/89 Test #10: fixedwide.mixed ...................................   Passed    0.01 sec
+      Start 11: fixedwide.chars
+10/89 Test #11: fixedwide.chars ...................................   Passed    0.01 sec
+      Start 12: fixedwide.literal
+11/89 Test  #9: fixedwide.log10 ...................................   Passed    0.03 sec
+      Start 13: fixedwide.binary
+12/89 Test #13: fixedwide.binary ..................................   Passed    0.00 sec
+      Start 14: fixedwide.floating
+13/89 Test #12: fixedwide.literal .................................   Passed    0.02 sec
+      Start 15: fixedwide.no_alloc
+14/89 Test #15: fixedwide.no_alloc ................................   Passed    0.00 sec
+      Start 16: fixedwide.signed_min
+15/89 Test #16: fixedwide.signed_min ..............................   Passed    0.00 sec
+      Start 17: fixedwide.overflow
+16/89 Test #17: fixedwide.overflow ................................   Passed    0.84 sec
+      Start 18: fixedwide.constexpr
+17/89 Test #18: fixedwide.constexpr ...............................   Passed    0.25 sec
+      Start 19: fixedwide.mixed_native
+18/89 Test #19: fixedwide.mixed_native ............................   Passed    0.20 sec
+      Start 20: fixedwide.mixed_runtime
+19/89 Test #20: fixedwide.mixed_runtime ...........................   Passed    0.69 sec
+      Start 21: fixedwide.format
+20/89 Test #21: fixedwide.format ..................................   Passed    0.01 sec
+      Start 22: fixedwide.readme
+21/89 Test #22: fixedwide.readme ..................................   Passed    0.01 sec
+      Start 23: fixedwide.literal_header_only
+22/89 Test #23: fixedwide.literal_header_only .....................   Passed    0.00 sec
+      Start 24: fixedwide.floating_header_only
+23/89 Test #24: fixedwide.floating_header_only ....................   Passed    0.00 sec
+      Start 25: fixedwide.to_floating_header_only
+24/89 Test #25: fixedwide.to_floating_header_only .................   Passed    0.01 sec
+      Start 26: fixedwide.audit.audit_same_domain
+Process not started
+ /workspace/scratch/2355ad37300f/fixedwide/build/review-portable/tests/audit_same_domain
+[permission denied]
+25/89 Test #26: fixedwide.audit.audit_same_domain .................***Not Run   0.00 sec
+      Start 27: fixedwide.audit.audit_unchecked
+26/89 Test #14: fixedwide.floating ................................   Passed    2.41 sec
+      Start 28: fixedwide.audit.audit_midpoint
+27/89 Test #27: fixedwide.audit.audit_unchecked ...................   Passed    0.88 sec
+      Start 29: fixedwide.audit.audit_mixed
+28/89 Test #29: fixedwide.audit.audit_mixed .......................   Passed    2.10 sec
+      Start 30: fixedwide.audit.audit_known
+29/89 Test #30: fixedwide.audit.audit_known .......................   Passed    0.01 sec
+      Start 31: fixedwide.audit.audit_floating
+30/89 Test #31: fixedwide.audit.audit_floating ....................   Passed    0.01 sec
+      Start 32: fixedwide.audit.audit_io
+31/89 Test #32: fixedwide.audit.audit_io ..........................   Passed    0.13 sec
+      Start 33: fixedwide.audit.audit_text_targeted
+32/89 Test #33: fixedwide.audit.audit_text_targeted ...............   Passed    0.01 sec
+      Start 34: fixedwide.audit.audit_portable_edges
+33/89 Test #34: fixedwide.audit.audit_portable_edges ..............   Passed    0.01 sec
+      Start 35: fixedwide.audit.audit_portable_div128
+34/89 Test #35: fixedwide.audit.audit_portable_div128 .............   Passed    0.01 sec
+      Start 36: fixedwide.audit.audit_fastpath_rounding
+35/89 Test #36: fixedwide.audit.audit_fastpath_rounding ...........   Passed    0.12 sec
+      Start 37: fixedwide.negative.ambiguous_mixed_mul
+36/89 Test #37: fixedwide.negative.ambiguous_mixed_mul ............   Passed    0.72 sec
+      Start 38: fixedwide.negative.invalid_bits
+37/89 Test #38: fixedwide.negative.invalid_bits ...................   Passed    0.20 sec
+      Start 39: fixedwide.negative.invalid_scale
+38/89 Test #39: fixedwide.negative.invalid_scale ..................   Passed    0.19 sec
+      Start 40: fixedwide.negative.runtime_scale
+39/89 Test #40: fixedwide.negative.runtime_scale ..................   Passed    0.25 sec
+      Start 41: fixedwide.negative.literal_empty
+40/89 Test #41: fixedwide.negative.literal_empty ..................   Passed    0.66 sec
+      Start 42: fixedwide.negative.literal_invalid
+41/89 Test #42: fixedwide.negative.literal_invalid ................   Passed    0.57 sec
+      Start 43: fixedwide.negative.literal_too_precise
+42/89 Test #28: fixedwide.audit.audit_midpoint ....................   Passed    6.61 sec
+      Start 44: fixedwide.negative.literal_overflow
+43/89 Test #43: fixedwide.negative.literal_too_precise ............   Passed    1.12 sec
+      Start 45: fixedwide.negative.literal_embedded_nul
+44/89 Test #45: fixedwide.negative.literal_embedded_nul ...........   Passed    0.75 sec
+      Start 46: fixedwide.negative.literal_unterminated
+45/89 Test #44: fixedwide.negative.literal_overflow ...............   Passed    0.84 sec
+      Start 47: fixedwide.negative.literal_runtime
+46/89 Test #47: fixedwide.negative.literal_runtime ................   Passed    0.85 sec
+      Start 48: fixedwide.negative.constructor_empty
+47/89 Test #46: fixedwide.negative.literal_unterminated ...........   Passed    0.92 sec
+      Start 49: fixedwide.negative.constructor_invalid
+48/89 Test #48: fixedwide.negative.constructor_empty ..............   Passed    0.49 sec
+      Start 50: fixedwide.negative.constructor_too_precise
+49/89 Test #49: fixedwide.negative.constructor_invalid ............   Passed    2.24 sec
+      Start 51: fixedwide.negative.constructor_overflow
+50/89 Test #51: fixedwide.negative.constructor_overflow ...........   Passed    0.94 sec
+      Start 52: fixedwide.negative.constructor_embedded_nul
+51/89 Test #50: fixedwide.negative.constructor_too_precise ........   Passed    3.00 sec
+      Start 53: fixedwide.negative.constructor_unterminated
+52/89 Test #52: fixedwide.negative.constructor_embedded_nul .......   Passed    0.79 sec
+      Start 54: fixedwide.negative.constructor_runtime
+53/89 Test #53: fixedwide.negative.constructor_unterminated .......   Passed    0.66 sec
+      Start 55: fixedwide.negative.constructor_template_inexact
+54/89 Test #55: fixedwide.negative.constructor_template_inexact ...   Passed    1.17 sec
+      Start 56: fixedwide.negative.constructor_template_runtime
+55/89 Test #54: fixedwide.negative.constructor_runtime ............   Passed    1.80 sec
+      Start 57: fixedwide.negative.operator_runtime
+56/89 Test #56: fixedwide.negative.constructor_template_runtime ...   Passed    0.75 sec
+      Start 58: fixedwide.negative.operator_inexact
+57/89 Test #57: fixedwide.negative.operator_runtime ...............   Passed    0.65 sec
+      Start 59: fixedwide.oracle
+58/89 Test #59: fixedwide.oracle ..................................   Passed    0.08 sec
+      Start 60: fixedwide.batch_oracle
+59/89 Test #58: fixedwide.negative.operator_inexact ...............   Passed    0.63 sec
+      Start 61: fixedwide.coverage_wide
+60/89 Test #61: fixedwide.coverage_wide ...........................   Passed    0.18 sec
+      Start 62: fixedwide.coverage_text
+61/89 Test #62: fixedwide.coverage_text ...........................   Passed    0.21 sec
+      Start 63: fixedwide.coverage_arithmetic
+62/89 Test #60: fixedwide.batch_oracle ............................   Passed    0.77 sec
+      Start 64: fixedwide.coverage_adapters
+63/89 Test #64: fixedwide.coverage_adapters .......................   Passed    0.15 sec
+      Start 65: fixedwide.coverage_format_adapters
+64/89 Test #65: fixedwide.coverage_format_adapters ................   Passed    0.01 sec
+      Start 66: fixedwide.coverage_mixed
+65/89 Test #63: fixedwide.coverage_arithmetic .....................   Passed    1.59 sec
+      Start 67: fixedwide.coverage_checked
+66/89 Test #67: fixedwide.coverage_checked ........................   Passed    0.03 sec
+      Start 68: fixedwide.coverage_batch
+67/89 Test #68: fixedwide.coverage_batch ..........................   Passed    0.05 sec
+      Start 69: fixedwide.floating_formats
+68/89 Test #66: fixedwide.coverage_mixed ..........................   Passed    1.85 sec
+      Start 70: fixedwide.to_floating
+69/89 Test #70: fixedwide.to_floating .............................   Passed    0.77 sec
+      Start 71: fixedwide.floating_header_only_ld64
+70/89 Test #71: fixedwide.floating_header_only_ld64 ...............   Passed    0.01 sec
+      Start 72: fixedwide.to_floating_header_only_ld64
+71/89 Test #72: fixedwide.to_floating_header_only_ld64 ............   Passed    0.01 sec
+      Start 73: fixedwide.floating_formats_ld64
+72/89 Test #73: fixedwide.floating_formats_ld64 ...................   Passed    0.18 sec
+      Start 74: fixedwide.to_floating_ld64
+73/89 Test #69: fixedwide.floating_formats ........................   Passed    1.77 sec
+      Start 75: fixedwide.floating_header_only_ld128
+74/89 Test #75: fixedwide.floating_header_only_ld128 ..............   Passed    0.00 sec
+      Start 76: fixedwide.to_floating_header_only_ld128
+75/89 Test #76: fixedwide.to_floating_header_only_ld128 ...........   Passed    0.00 sec
+      Start 77: fixedwide.floating_formats_ld128
+76/89 Test #74: fixedwide.to_floating_ld64 ........................   Passed    0.46 sec
+      Start 78: fixedwide.to_floating_ld128
+77/89 Test #77: fixedwide.floating_formats_ld128 ..................   Passed    0.47 sec
+      Start 79: fixedwide.example.01_quick_start
+78/89 Test #79: fixedwide.example.01_quick_start ..................   Passed    0.00 sec
+      Start 80: fixedwide.example.02_rounding_modes
+79/89 Test #80: fixedwide.example.02_rounding_modes ...............   Passed    0.01 sec
+      Start 81: fixedwide.example.03_error_handling
+80/89 Test #81: fixedwide.example.03_error_handling ...............   Passed    0.01 sec
+      Start 82: fixedwide.example.04_mixed_scales
+81/89 Test #82: fixedwide.example.04_mixed_scales .................   Passed    0.01 sec
+      Start 83: fixedwide.example.05_text_io
+82/89 Test #83: fixedwide.example.05_text_io ......................   Passed    0.00 sec
+      Start 84: fixedwide.example.06_binary_roundtrip
+Process not started
+ /workspace/scratch/2355ad37300f/fixedwide/build/review-portable/examples/example_06_binary_roundtrip
+[permission denied]
+83/89 Test #84: fixedwide.example.06_binary_roundtrip .............***Not Run   0.00 sec
+      Start 85: fixedwide.example.07_money_ledger
+84/89 Test #85: fixedwide.example.07_money_ledger .................   Passed    0.01 sec
+      Start 86: fixedwide.example.08_constexpr
+85/89 Test #86: fixedwide.example.08_constexpr ....................   Passed    0.01 sec
+      Start 87: fixedwide.example.09_bounded_arithmetic
+86/89 Test #87: fixedwide.example.09_bounded_arithmetic ...........   Passed    0.00 sec
+      Start 88: fixedwide.example.10_checked_chain
+87/89 Test #88: fixedwide.example.10_checked_chain ................   Passed    0.01 sec
+      Start 89: fixedwide.example.11_batch_soa
+88/89 Test #89: fixedwide.example.11_batch_soa ....................   Passed    0.00 sec
+89/89 Test #78: fixedwide.to_floating_ld128 .......................   Passed    0.50 sec
+
+98% tests passed, 2 tests failed out of 89
+
+Total Test time (real) =  22.18 sec
+
+The following tests FAILED:
+	 26 - fixedwide.audit.audit_same_domain (BAD_COMMAND)
+	 84 - fixedwide.example.06_binary_roundtrip (BAD_COMMAND)
+Errors while running CTest
+
+The only initial failures were process-launch errors: two generated ELF files had lost execute permission. Restored their owner execute bits; no source changes. Re-running only those failed tests follows.
+
+Internal ctest changing into directory: /workspace/scratch/2355ad37300f/fixedwide/build/review-portable
+Test project /workspace/scratch/2355ad37300f/fixedwide/build/review-portable
+    Start 26: fixedwide.audit.audit_same_domain
+    Start 84: fixedwide.example.06_binary_roundtrip
+1/2 Test #84: fixedwide.example.06_binary_roundtrip ...   Passed    0.00 sec
+2/2 Test #26: fixedwide.audit.audit_same_domain .......   Passed    2.88 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Total Test time (real) =   2.89 sec

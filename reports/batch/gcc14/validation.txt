@@ -1,0 +1,1 @@
+validated 9956064 output rows (values, errors, prefix writes, repeated quotes, duplicate/sink balances)

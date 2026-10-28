@@ -2,6 +2,7 @@
 #include <fixedwide/binary.hpp>
 #include <fixedwide/chars.hpp>
 #include <fixedwide/hash.hpp>
+#include <fixedwide/literal.hpp>
 #include <fixedwide/string.hpp>
 #include <algorithm>
 #include <span>
@@ -30,13 +31,19 @@ std::string render(cpp_int raw, unsigned decimals, bool trim = false) {
 template<class T>
 void parse_result(const std::string& text, const cpp_int& n, const cpp_int& d, Rounding mode) {
     const auto expected = rounded(n, d, mode, T::bits);
-    const auto result = parse<T>(text, mode);
-    CHECK(result.has_value() == expected.has_value());
-    if (result)
-        CHECK(integer(result->raw()) == *expected);
-    else
-        CHECK(result.error() ==
-              (expected.error() == ArithmeticError::overflow ? ParseError::overflow : ParseError::too_precise));
+    const auto verify = [&](const auto& result) {
+        CHECK(result.has_value() == expected.has_value());
+        if (result)
+            CHECK(integer(result->raw()) == *expected);
+        else
+            CHECK(result.error() ==
+                  (expected.error() == ArithmeticError::overflow ? ParseError::overflow : ParseError::too_precise));
+    };
+    verify(parse<T>(text, mode));
+    // Source literals normally evaluate this helper only during translation.
+    // Exercise the same exact parser at runtime against the independent
+    // rational oracle; the public literal constructor remains consteval.
+    if (mode == Rounding::exact) verify(detail::parse_literal_exact<T>(text));
 }
 
 template<class T>
@@ -50,11 +57,15 @@ void decimals() {
         const auto value = T::from_raw(from_integer<typename T::raw_type>(raw));
         const auto canonical = render(raw, D);
         CHECK(parse<T>(canonical) == value);
+        CHECK(detail::parse_literal_exact<T>(canonical) == value);
         CHECK(parse<T>(canonical + "e0") == value);
+        CHECK(detail::parse_literal_exact<T>(canonical + "e0") == value);
         const auto scientific = raw.convert_to<std::string>() + "e-" + std::to_string(D);
         CHECK(parse<T>(scientific) == value);
+        CHECK(detail::parse_literal_exact<T>(scientific) == value);
         const auto plus = raw >= 0 ? "+" + canonical : canonical;
         CHECK(parse<T>(plus) == value);
+        CHECK(detail::parse_literal_exact<T>(plus) == value);
         CHECK(to_string(value).value() == canonical);
         for (unsigned d : std::array<unsigned, 3>{0, D / 2, D})
             for (auto mode : modes)
@@ -110,12 +121,16 @@ void decimals() {
         const auto r = parse<T>(invalid);
         CHECK(!r);
         CHECK(r.error() == (invalid.empty() ? ParseError::empty : ParseError::invalid));
+        CHECK(detail::parse_literal_exact<T>(invalid) == r);
     }
     CHECK(!parse<T>(std::string(4097, '0')));
+    CHECK(detail::parse_literal_exact<T>(std::string(4097, '0')).error() == ParseError::invalid);
     CHECK(parse<T>(std::string(4096, '0')) == T{});
+    CHECK(detail::parse_literal_exact<T>(std::string(4096, '0')) == T{});
     CHECK(parse<T>("0e999999999999999999999999999") == T{});
     CHECK(parse<T>("-0.000e-9999999999999999999999999") == T{});
     CHECK(!parse<T>("1e999999999999999999999999999"));
+    CHECK(detail::parse_literal_exact<T>("1e999999999999999999999999999").error() == ParseError::overflow);
     for (auto mode : modes)
         for (int sign : {-1, 1}) {
             const std::string prefix = sign < 0 ? "-" : "";
@@ -135,6 +150,7 @@ void decimals() {
     // Exercise iterator-boundary parsing, exponent padding and sticky tails.
     for (const std::string text : {"0", "1", "-1", "2e0", "1e-1", "7e3", "invalid"}) {
         const auto a = parse<T>(text), b = from_chars<T>(text.data(), text.data() + text.size());
+        CHECK(detail::parse_literal_exact<T>(text) == a);
         CHECK(a.has_value() == b.has_value());
         if (a)
             CHECK(*a == *b);
@@ -146,6 +162,13 @@ void decimals() {
         parse_result<T>(render(-limit - 1, D) + "e0", -limit - 1, 1, mode);
         for (int tail : {101, 149, 150, 151, 199}) parse_result<T>(render(cpp_int{tail}, D + 2), tail, 100, mode);
     }
+    // Both overflowing mantissa assembly and overflowing exponent padding are
+    // checked by the literal helper, independently of its early digit bound.
+    const cpp_int large = limit * 2 - 1;
+    parse_result<T>(render(large, D), large, 1, Rounding::exact);
+    const cpp_int padded = limit / 10 + 1;
+    parse_result<T>(padded.convert_to<std::string>() + "e" + std::to_string(1 - static_cast<int>(D)), padded * 10, 1,
+                    Rounding::exact);
     const auto zero = T{};
     CHECK(!to_string(zero, {.digits = D + 1, .explicit_digits = true}));
     char b[16]{};
