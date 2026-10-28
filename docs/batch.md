@@ -300,8 +300,28 @@ shortcut for a 128-bit operand and an operand of at most 64 bits. With
 inverse of `5^k` modulo `2^64`, then check `candidate*d == original_raw` in
 signed128. This proves both divisibility and coefficient range. Multiplying
 two signed64 values then fits signed128, followed by the destination's range
-check. A failed certificate falls through to the complete arithmetic path.
-Rounded operations and constant evaluation keep their existing dispatch.
+check. This small-coefficient attempt remains first.
+
+When public scalar multiplication rejects its native intermediate, its
+out-of-line fallback can recover a larger coefficient using the inverse of
+`5^k` modulo `2^128`. It requires the low `k` source bits to be zero and accepts
+the recovered signed candidate only in `[INT128_MIN/d, INT128_MAX/d]`, with
+integer division toward zero at the bounds. Both the reconstructed value and
+the shifted source then lie in the signed128 interval, so their congruence
+modulo `2^128` proves equality. This avoids general wide division for exact-grid
+values whose unscaled product was too wide. The larger certificate stays out
+of the common native and prepared batch paths.
+
+For `Fixed128<12> * Fixed64<10> -> Fixed128<12>`, an exact-grid coefficient
+needs up to 94 magnitude bits (signed95). Its product can need 157 magnitude
+bits: coefficient certification is not an output range guarantee. Two binary
+partial products retain the third limb, and the sign-specific destination
+bound is checked before returning a value. A failed grid certificate still
+allows the other factor to restore exactness. For a 128-bit source and a
+factor type of at most 64 bits, downscales of 1 through 19 now use the same
+quotient/remainder split as the prepared path after the native attempt
+declines. This includes off-grid values and every rounding mode; other shapes
+retain the general fallback. Constant evaluation keeps its existing path.
 
 For signed input magnitudes `a`, `b` and a decimal rescale divisor `d`, write
 `a = q*d + r`. Then the exact magnitude is
@@ -328,8 +348,8 @@ the remaining divisor. A one-limb numerator uses a multiply-high reciprocal
 with one exact correction; a wider numerator retains exact limb division.
 Certified two-decimal `Fixed128<12>` slopes have no remainder when divided by
 `10^10`; the exact delta case consequently avoids a wide pre-rescale product.
-No caller certification is trusted by the API: exactness is checked either by
-reconstruction or by the exact remainder.
+No caller certification is trusted by the API: exactness is checked by a
+complete certificate or by the exact remainder.
 
 Prepared cancellation applies when both input types and the destination have at
 most 128 bits, the varying input's scale equals the destination scale, and the

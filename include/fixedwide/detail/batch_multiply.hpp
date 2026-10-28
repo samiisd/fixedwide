@@ -77,24 +77,7 @@ public:
     }
 };
 
-template<unsigned Scale>
-struct constant_divisor {
-    static_assert(Scale <= 19);
-    static constexpr auto denominator = static_cast<std::uint64_t>(mixed_native::pow10_v<Scale>);
-
-    [[nodiscard]] static constexpr std::uint64_t value() noexcept { return denominator; }
-
-    [[nodiscard]] constexpr mixed_native::Divided operator()(u128 value) const noexcept {
-        if constexpr (Scale == 0) return {value, 0};
-        // Keep one-limb division visibly constant so the compiler uses its
-        // ordinary multiply/shift sequence instead of a 128-bit divide call.
-        if ((value >> 64) == 0) {
-            const auto low = static_cast<std::uint64_t>(value);
-            return {low / denominator, low % denominator};
-        }
-        return mixed_native::divide_magnitude(value, denominator);
-    }
-};
+using mixed_native::constant_divisor;
 
 [[nodiscard]] constexpr std::uint64_t gcd(std::uint64_t a, std::uint64_t b) noexcept {
     while (b != 0) {
@@ -105,79 +88,9 @@ struct constant_divisor {
     return a;
 }
 
-// q is a magnitude of a signed <=128-bit source divided by a positive
-// denominator. Its high limb is at most 2^63. Each cross product and their
-// addition therefore fits unsigned128; a nonzero third limb is a real output
-// overflow, not just an oversized pre-rescale intermediate.
-[[nodiscard]] constexpr bool multiply_limb(u128 q, std::uint64_t factor, u128& product) noexcept {
-    const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
-    const u128 upper = static_cast<u128>(static_cast<std::uint64_t>(q >> 64)) * factor + (low >> 64);
-    if ((upper >> 64) != 0) return false;
-    product = (upper << 64) | static_cast<std::uint64_t>(low);
-    return true;
-}
+using mixed_native::multiply_limb;
 
-template<typename Dest>
-#if defined(__clang__)
-[[gnu::always_inline]]
-#endif
-[[nodiscard]] constexpr std::expected<Dest, ArithmeticError>
-finish(u128 quotient, u128 remainder, std::uint64_t denominator, bool negative, Rounding rounding) noexcept {
-    const auto limit = mixed_native::limit_magnitude_u128<Dest::bits>(negative);
-    if (quotient > limit) return std::unexpected(ArithmeticError::overflow);
-    if (remainder != 0) {
-        if (rounding == Rounding::exact) return std::unexpected(ArithmeticError::inexact);
-        bool increment = false;
-        switch (rounding) {
-        case Rounding::toward_zero: break;
-        case Rounding::floor: increment = negative; break;
-        case Rounding::ceil: increment = !negative; break;
-        case Rounding::nearest_even:
-            increment = remainder * 2 > denominator || (remainder * 2 == denominator && (quotient & 1) != 0);
-            break;
-        case Rounding::nearest_away: increment = remainder * 2 >= denominator; break;
-        case Rounding::exact: break;
-        }
-        if (increment && quotient == limit) return std::unexpected(ArithmeticError::overflow);
-        quotient += static_cast<u128>(increment);
-    }
-    const auto raw = static_cast<i128>(negative ? u128{0} - quotient : quotient);
-    return Dest::from_raw(static_cast<typename Dest::raw_type>(raw));
-}
-
-// a = q*d+r, hence floor(a*b/d) = q*b+floor(r*b/d). All terms
-// are nonnegative. An overflowing quotient product cannot be cancelled, and
-// the remainder product fits unsigned128 because r and b each fit uint64.
-// This covers the full signed128 x signed64 domain without constructing a
-// 192-bit product. Exact scale-certified inputs have r==0, so there is only
-// one rescale before the multiply and no rounding work afterwards.
-template<typename Dest, typename Divider>
-#if defined(__clang__)
-// Keep the prepared divisor and constant rounding mode in the row kernel.
-// Outlining this boundary materializes expected and reloads the plan per row.
-[[gnu::always_inline]]
-#endif
-[[nodiscard]] constexpr std::expected<Dest, ArithmeticError>
-multiply_split(u128 a, std::uint64_t b, bool negative, Rounding rounding, const Divider& divide) noexcept {
-    // Two one-limb magnitudes have an exact unsigned128 product, even when
-    // that product exceeds signed128. Rounded products need only one divide;
-    // splitting first would add a quotient multiply and a second rescale.
-    // Exact scale-certified slopes keep the division-before-multiply path.
-    if (rounding != Rounding::exact && (a >> 64) == 0) {
-        const auto product = static_cast<u128>(static_cast<std::uint64_t>(a)) * b;
-        const auto divided = divide(product);
-        return finish<Dest>(divided.quotient, divided.remainder, divide.value(), negative, rounding);
-    }
-    const auto divided = divide(a);
-    const auto limit = mixed_native::limit_magnitude_u128<Dest::bits>(negative);
-    u128 quotient;
-    if (!multiply_limb(divided.quotient, b, quotient) || quotient > limit)
-        return std::unexpected(ArithmeticError::overflow);
-    if (divided.remainder == 0) return finish<Dest>(quotient, 0, divide.value(), negative, rounding);
-    const auto tail = divide(divided.remainder * b);
-    if (tail.quotient > limit - quotient) return std::unexpected(ArithmeticError::overflow);
-    return finish<Dest>(quotient + tail.quotient, tail.remainder, divide.value(), negative, rounding);
-}
+using mixed_native::multiply_split;
 
 // Certify a signed64 coefficient before multiplying. The reconstructed source
 // must match exactly; a failed certificate says nothing about the arithmetic
