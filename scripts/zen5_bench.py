@@ -264,8 +264,9 @@ def summary(results, config, metadata):
              f"Candidate: `{metadata['candidate_sha']}`; baseline: `{config['baseline_sha'] or 'same executable backends'}`.",
              f"CPU: `{metadata['selected_cpu']}`; CCD: `{config['ccd']}`; compiler: `{config['compiler']}`.",
              f"Flags: `{config['flags']}`. Run: `{metadata['run_id']}` attempt `{metadata['run_attempt']}`.", "",
-             "All compilation and fixture validation completed before timing. Five seconds of stabilization; "
-             "0.05 seconds of Google Benchmark warm-up per case. Raw repetitions, topology, XCR0, build "
+             "All builds and separate validation passes completed before a five-second stabilization pause. "
+             "Each benchmark process validates again before Google Benchmark's 0.05-second per-case warm-up. "
+             "Validation is outside measured time. Raw repetitions, topology, XCR0, build "
              "commands and pre/post load observations are in the artifact. Affinity does not reserve the "
              "core or its SMT sibling from unrelated workstation jobs.", ""]
     if config["ccd"] == "all":
@@ -375,8 +376,9 @@ def main():
             run(["ldd", str(binary)], evidence / "linked-libraries.txt")
         if len(selections) == 2 and selections["baseline"] != selections["candidate"]:
             raise ValueError("Cross-revision selections differ; choose a filter with identical workloads")
-        # No builds/correctness jobs after this point. Observations are outside
-        # timing; no competing background poll runs on the measured core.
+        # No builds or separate correctness jobs after this point. Each timed
+        # executable still validates fixtures before its per-case warm-up.
+        # Observations are outside timing; no background poll competes for CPU.
         write_json(output / "before-stabilization.json", observations(cpu))
         time.sleep(config["stabilization_seconds"])
         paired = len(binaries) == 2

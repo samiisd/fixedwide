@@ -98,8 +98,9 @@ Do not install or upgrade dependencies as part of a timing run.
 
 `scripts/zen5_bench.py` builds each revision in a fresh temporary directory,
 checks the exact checkout SHA, validates the fixtures, and finishes all
-compilation before timing. A five-second stabilization period precedes the
-first measurement, with 0.05 seconds of Google Benchmark warm-up per case.
+compilation before timing. A five-second stabilization pause follows the
+separate validation passes. Each benchmark process validates its fixtures
+again outside timing, then uses 0.05 seconds of Google Benchmark warm-up per case.
 Candidate-only runs interleave benchmark repetitions. Cross-revision runs
 alternate baseline/candidate and candidate/baseline order; their filters must
 select identical case names. Use `suite=zen5` with no baseline SHA for new
