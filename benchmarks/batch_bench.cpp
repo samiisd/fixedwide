@@ -71,7 +71,27 @@ bool same_status(const Status& left, const Status& right) {
 
 void require_equal(const std::string& workload, const Status& reference, const Status& result,
                    const std::vector<Money>& expected, const std::vector<Money>& actual) {
-    if (!same_status(reference, result) || expected != actual) fail(workload);
+    if (!same_status(reference, result)) {
+        if (!reference)
+            std::fprintf(stderr, "reference error: row %zu, cause %u\n", reference.error().index,
+                         static_cast<unsigned>(reference.error().error));
+        if (!result)
+            std::fprintf(stderr, "actual error: row %zu, cause %u\n", result.error().index,
+                         static_cast<unsigned>(result.error().error));
+        fail(workload + " status mismatch");
+    }
+    if (expected != actual) {
+        for (std::size_t row = 0; row < expected.size(); ++row) {
+            if (expected[row] == actual[row]) continue;
+            const auto wanted = expected[row].raw();
+            const auto received = actual[row].raw();
+            std::fprintf(stderr, "row %zu: expected raw 0x%016llx%016llx, actual raw 0x%016llx%016llx\n", row,
+                         static_cast<unsigned long long>(wanted.high), static_cast<unsigned long long>(wanted.low),
+                         static_cast<unsigned long long>(received.high), static_cast<unsigned long long>(received.low));
+            break;
+        }
+        fail(workload + " value mismatch");
+    }
     validated_rows += actual.size();
 }
 
@@ -195,6 +215,32 @@ void consume(const std::vector<T>& values) {
     benchmark::ClobberMemory();
 }
 
+// Keep invariant operands runtime-dependent. GCC can lose initialization when
+// Google Benchmark's mixed memory/register read-write constraint is inlined
+// through a fixed-point constructor. A single register alternative on primitive
+// raw words retains the intended barrier without changing the numerical value.
+// This target already requires GCC or Clang.
+template<class Word>
+void runtime_word(Word& word) noexcept {
+    __asm__ volatile("" : "+r"(word) : : "memory");
+}
+
+template<class Fixed>
+Fixed runtime_value(Fixed value) noexcept {
+    auto raw = value.raw();
+    if constexpr (Fixed::bits <= 64) {
+        runtime_word(raw);
+    } else {
+        static_assert(Fixed::bits == 128);
+        auto low = raw.low;
+        auto high = raw.high;
+        runtime_word(low);
+        runtime_word(high);
+        raw = typename Fixed::raw_type{low, high};
+    }
+    return Fixed::from_raw(raw);
+}
+
 ArithmeticResult<Money> replace(Money total, Money previous, Money next) noexcept {
     const auto removed = fw::sub_to<Wide>(total, previous, exact);
     if (!removed) return std::unexpected(removed.error());
@@ -215,7 +261,7 @@ template<Implementation Impl, bool Broadcast, class B>
 Status products(const Products<B>& data, std::span<Money> output) noexcept {
     const auto count = output.size();
     B factor = data.broadcast;
-    if constexpr (Broadcast) benchmark::DoNotOptimize(factor);
+    if constexpr (Broadcast) factor = runtime_value(factor);
     if constexpr (Impl == Implementation::scalar) {
         for (std::size_t i = 0; i < count; ++i) {
             const auto result = fw::mul_to<Money>(data.left[i], Broadcast ? factor : data.right[i], data.rounding);
@@ -275,7 +321,7 @@ void register_products(const std::string& workload, Products<B> data, bool expec
         dispatch(implementation, [&]<Implementation Impl>() {
             std::vector<Money> actual(count, sentinel);
             const auto result = products<Impl, Broadcast>(*input, actual);
-            require_equal(workload, reference, result, expected, actual);
+            require_equal(workload + "/" + name(Impl), reference, result, expected, actual);
             const std::string benchmark_name = workload + "/" + name(Impl) + "/" + std::to_string(count);
             benchmark::RegisterBenchmark(benchmark_name.c_str(), [input, counts](benchmark::State& state) {
                 std::vector<Money> output(input->left.size(), sentinel);
@@ -308,7 +354,7 @@ template<Implementation Impl>
 Status delta(const Sweep& data, SweepState& output, Price dx) noexcept {
     // Keep each quote's factor runtime-dependent, so setup cannot be hoisted
     // out of the timed loop merely because this bounded corpus alternates.
-    benchmark::DoNotOptimize(dx);
+    dx = runtime_value(dx);
     const auto commit = [&](std::size_t row, Money contribution) noexcept -> ArithmeticStatus {
         const auto after = fw::add(output.value[row], contribution);
         if (!after) return std::unexpected(after.error());
@@ -338,9 +384,8 @@ Status delta(const Sweep& data, SweepState& output, Price dx) noexcept {
 
 template<Implementation Impl>
 Status anchored(const Sweep& data, SweepState& output, Price mark) noexcept {
-    auto fx_factor = data.fx;
-    benchmark::DoNotOptimize(mark);
-    benchmark::DoNotOptimize(fx_factor);
+    auto fx_factor = runtime_value(data.fx);
+    mark = runtime_value(mark);
     const auto commit = [&](std::size_t row, Money next) noexcept -> ArithmeticStatus {
         const auto balance = data.balance[row];
         const auto total = replace(output.total[balance], output.value[row], next);
@@ -527,8 +572,7 @@ template<Implementation Impl>
 Status publication(const Publication& input, std::span<Money> output) noexcept {
     Money sum;
     std::size_t position = 0;
-    auto fx_factor = input.fx;
-    benchmark::DoNotOptimize(fx_factor);
+    auto fx_factor = runtime_value(input.fx);
     const auto fx = [fx_factor] {
         if constexpr (Impl == Implementation::scalar) {
             return [fx_factor](Money value) noexcept { return fw::mul_to<Money>(value, fx_factor, nearest); };
