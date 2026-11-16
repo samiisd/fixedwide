@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.12] - 2026-11-16
+
+### Added
+- Direct compile-time literal `0` comparison support (`==`, `!=`, `<`, `<=`,
+  `>`, `>=`, `<=>`, including symmetric `0 < x`, `0 == x`, etc.) on
+  `basic_fixed`, rejecting non-zero integers, floating-point values, booleans,
+  and runtime integer variables at compile time.
+
 ## [0.6.11] - 2026-10-28
 
 ### Added
