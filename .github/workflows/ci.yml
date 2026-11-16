@@ -58,6 +58,8 @@ jobs:
       # this script and every editor invoke it.
       - name: clang-format
         run: ./scripts/format.sh --check
+      - name: Benchmark measurement controls
+        run: python3 -m unittest discover -s scripts -p test_zen5_bench.py
       # Warnings are errors here and nowhere else, so a new warning fails a pull
       # request without making every other job brittle. Both backends, because
       # they compile different code.
@@ -325,7 +327,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 cmake ninja-build valgrind
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++-14 libboost-dev cmake ninja-build valgrind
       # Deterministic: the gate counts retired instructions under Valgrind, not
       # wall-clock, because a shared runner's timing noise is larger than the
       # regression worth catching. See docs/benchmarks.md.
@@ -357,6 +362,33 @@ jobs:
           cat current-clang.csv
       - name: Compare clang against its committed baseline
         run: python3 scripts/compare_icount.py benchmarks/baseline/x86_64-clang-20.csv current-clang.csv
+      # This records deterministic work counts on hosted CI. It does not
+      # establish native Zen 5 timing or change the regression thresholds.
+      - name: Compare wide scalar fallbacks against the PR base
+        id: fallback_counts
+        if: github.event_name == 'pull_request'
+        env:
+          BASELINE_SHA: ${{ github.event.pull_request.base.sha }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/compare_fallback_icount.py \
+            --baseline "$BASELINE_SHA" --candidate "$CANDIDATE_SHA" \
+            --compiler g++-14 --output "$RUNNER_TEMP/fixedwide-fallback-icount-gcc" --iterations 40
+          cat "$RUNNER_TEMP/fixedwide-fallback-icount-gcc/SUMMARY.md" >> "$GITHUB_STEP_SUMMARY"
+          python3 scripts/compare_fallback_icount.py \
+            --baseline "$BASELINE_SHA" --candidate "$CANDIDATE_SHA" \
+            --compiler clang++-20 --output "$RUNNER_TEMP/fixedwide-fallback-icount-clang" --iterations 40
+          cat "$RUNNER_TEMP/fixedwide-fallback-icount-clang/SUMMARY.md" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.fallback_counts.outcome != 'skipped'
+        with:
+          name: fallback-instruction-counts
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/fixedwide-fallback-icount-gcc/
+            ${{ runner.temp }}/fixedwide-fallback-icount-clang/
       - name: Decimal exponent versus libm (native and portable)
         env: { CXX: g++-14 }
         run: bash scripts/bench_log10.sh log10-report
@@ -388,9 +420,10 @@ jobs:
             -DFIXEDWIDE_BUILD_BENCHMARKS=ON \
             -DFIXEDWIDE_BUILD_RUNTIME_NARROW_BENCHMARK=ON \
             -DFIXEDWIDE_BUILD_BATCH_BENCHMARK=ON \
+            -DFIXEDWIDE_BUILD_ZEN5_BENCHMARK=ON \
             -DFIXEDWIDE_BUILD_TESTS=OFF -DFIXEDWIDE_BUILD_EXAMPLES=OFF \
             ${{ matrix.backend == 'portable' && '-DFIXEDWIDE_FORCE_PORTABLE=ON' || '' }}
-          cmake --build build-runtime --target fixedwide_runtime_narrow_bench fixedwide_batch_bench
+          cmake --build build-runtime --target fixedwide_runtime_narrow_bench fixedwide_batch_bench fixedwide_zen5_bench
       - name: Validate fixtures and exercise Google Benchmark
         shell: bash
         run: |
@@ -402,6 +435,8 @@ jobs:
           cat runtime-validation.txt
           build-runtime/benchmarks/fixedwide_batch_bench --validate-only \
             2>&1 | tee batch-validation.txt
+          build-runtime/benchmarks/fixedwide_zen5_bench --validate-only --sizes=0,1,4,8,64 \
+            2>&1 | tee zen5-validation.txt
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -410,6 +445,7 @@ jobs:
             runtime-benchmark.json
             runtime-validation.txt
             batch-validation.txt
+            zen5-validation.txt
 
   fuzz:
     name: fuzz smoke

@@ -129,7 +129,7 @@ bool delegates_scalar_multiply(Money a, B b) {
 }
 
 template<class B>
-bool requires_general_multiply(Money a, B b, fw::Rounding rounding) {
+bool native_multiply_refuses(Money a, B b, fw::Rounding rounding) {
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
     return !fw::detail::mixed_native::try_mul<Money::fractional_digits, B::fractional_digits, Money::bits,
                                               Money::fractional_digits>(a.raw(), b.raw(), rounding);
@@ -175,7 +175,7 @@ struct Counts {
     std::size_t positions{};
     std::size_t classified_product_rows{};
     std::size_t delegated_product_rows{};
-    std::size_t general_scalar_products{};
+    std::size_t native_refused_products{};
     std::size_t simd_product_rows{};
 };
 
@@ -200,15 +200,16 @@ void counters(benchmark::State& state, Counts counts, Implementation implementat
         const auto delegated =
             implementation == Implementation::scalar ? counts.classified_product_rows : counts.delegated_product_rows;
         state.counters["scalar_api_product_rows"] = static_cast<double>(delegated);
-        // For this corpus every delegated native product has both magnitudes
-        // wider than one limb, hence an overflowing signed128 intermediate.
-        // The scalar baseline has its own one-limb/intermediate successes.
+        // This classifies the original native attempt, not executed general
+        // kernel calls: the public fallback may finish with a coefficient
+        // certificate or quotient/remainder split. It remains comparable
+        // when this same fixture is compiled against an older revision.
 #if defined(FIXEDWIDE_HAS_MIXED_NATIVE)
-        const auto general = implementation == Implementation::scalar ? counts.general_scalar_products : delegated;
+        const auto refused = implementation == Implementation::scalar ? counts.native_refused_products : delegated;
 #else
-        const auto general = delegated;
+        const auto refused = delegated;
 #endif
-        state.counters["general_product_rows"] = static_cast<double>(general);
+        state.counters["classified_native_refused_rows"] = static_cast<double>(refused);
         state.counters["simd_product_rows"] =
             implementation == Implementation::batch4 ? static_cast<double>(counts.simd_product_rows) : 0.0;
     }
@@ -343,7 +344,7 @@ void register_products(const std::string& workload, Products<B> data, bool expec
     const std::size_t attempted = completed + static_cast<std::size_t>(!reference);
     std::size_t wide_products = 0;
     std::size_t delegated_products = 0;
-    std::size_t general_products = 0;
+    std::size_t native_refused_products = 0;
     std::size_t simd_products = 0;
     using Plan = decltype(fw::batch::prepare_mul_to<Money>(input->broadcast, input->rounding));
     using Simd = fw::detail::batch::simd_dispatch<Plan, std::span<const Money>>;
@@ -355,8 +356,8 @@ void register_products(const std::string& workload, Products<B> data, bool expec
             product_outside_i128(input->left[i], Broadcast ? input->broadcast : input->right[i]));
         delegated_products += static_cast<std::size_t>(
             delegates_scalar_multiply<Broadcast>(input->left[i], Broadcast ? input->broadcast : input->right[i]));
-        general_products += static_cast<std::size_t>(
-            requires_general_multiply(input->left[i], Broadcast ? input->broadcast : input->right[i], input->rounding));
+        native_refused_products += static_cast<std::size_t>(
+            native_multiply_refuses(input->left[i], Broadcast ? input->broadcast : input->right[i], input->rounding));
         if (simd_enabled && i < count - count % 4)
             simd_products += static_cast<std::size_t>(simd_coefficient_fits(input->left[i], input->broadcast));
     }
@@ -369,7 +370,7 @@ void register_products(const std::string& workload, Products<B> data, bool expec
                         0,
                         attempted,
                         delegated_products,
-                        general_products,
+                        native_refused_products,
                         simd_products};
     for (const auto implementation : implementations) {
         dispatch(implementation, [&]<Implementation Impl>() {
@@ -667,7 +668,17 @@ Status publication(const Publication& input, std::span<Money> output) noexcept {
     }
 }
 
-void register_publication(std::size_t count, std::mt19937_64& rng) {
+// A decimal-grid coefficient beyond signed64 plus a fractional remainder.
+// The raw product with the price corpus exceeds signed128, while the scaled
+// result and its independently rounded FX conversion remain representable.
+Money wide_rounded_slope(std::size_t row) {
+    const Raw coefficient = (Raw{1} << 90) + Raw{row & 1023U};
+    const Raw raw = coefficient * Raw{10'000'000'000ULL} + Raw{1};
+    return Money::from_raw((row & 1U) == 0 ? raw : -raw);
+}
+
+void register_publication(std::size_t count, std::mt19937_64& rng, bool wide = false) {
+    const std::string workload = wide ? "publication.wide_rounded" : "publication.segmented";
     Publication data;
     data.slope.resize(count);
     data.execution.resize(count);
@@ -676,6 +687,7 @@ void register_publication(std::size_t count, std::mt19937_64& rng) {
     for (std::size_t row = 0; row < count; ++row) {
         data.slope[row] =
             Money::from_raw(Raw{static_cast<std::int64_t>(rng() % 2'000'000'001) - 1'000'000'000} * Raw{1000});
+        if (wide) data.slope[row] = wide_rounded_slope(row);
         data.execution[row] = Price::from_raw(data.mark.raw() + static_cast<std::int64_t>(rng() % 200'001) - 100'000);
         --remaining;
         if (remaining == 0 || row + 1 == count) {
@@ -701,9 +713,8 @@ void register_publication(std::size_t count, std::mt19937_64& rng) {
         dispatch(implementation, [&]<Implementation Impl>() {
             std::vector<Money> actual(input->positions, sentinel);
             const auto result = publication<Impl>(*input, actual);
-            require_equal("publication.segmented", reference, result, expected, actual);
-            const std::string benchmark_name =
-                std::string("publication.segmented/") + name(Impl) + "/" + std::to_string(count);
+            require_equal(workload, reference, result, expected, actual);
+            const std::string benchmark_name = workload + "/" + name(Impl) + "/" + std::to_string(count);
             benchmark::RegisterBenchmark(benchmark_name.c_str(), [input, counts](benchmark::State& state) {
                 std::vector<Money> output(input->positions, sentinel);
                 for (auto _ : state) {
@@ -719,6 +730,8 @@ void register_publication(std::size_t count, std::mt19937_64& rng) {
 
 void register_fixtures() {
     std::mt19937_64 rng(0xB47C'2026);
+    // Extra cases must not change the established controls' retained corpus.
+    std::mt19937_64 wide_rng(0xB47C'1286);
     for (const auto count : sizes) {
         Products<Price> price;
         Products<Money> fx;
@@ -755,6 +768,25 @@ void register_fixtures() {
             wide_coefficient.left[row] = Money::from_raw((row & 1U) != 0 ? -raw : raw);
         }
         register_products<true>("mul_price.wide_coefficient_fallback", std::move(wide_coefficient));
+        auto wide_rounded = price;
+        wide_rounded.rounding = nearest;
+        for (std::size_t row = 0; row < count; ++row) {
+            wide_rounded.left[row] = wide_rounded_slope(row);
+            wide_rounded.right[row] = Price::from_raw(37 + static_cast<std::int64_t>(row % 5) * 2);
+        }
+        register_products<true>("mul_price.wide_rounded_broadcast", wide_rounded);
+        register_products<false>("mul_price.wide_rounded_varying", wide_rounded);
+        auto restored_exact = wide_rounded;
+        restored_exact.rounding = exact;
+        restored_exact.broadcast = Price::from_raw(10'000'000'000LL);
+        for (std::size_t row = 0; row < count; ++row) {
+            // Low ten bits are clear, but the source is not on the decimal
+            // grid. The factor restores exactness after certificate rejection.
+            const Raw coefficient = (Raw{1} << 80) + Raw{row & 1023U};
+            const Raw raw = coefficient * Raw{10'000'000'000ULL} + Raw{1024};
+            restored_exact.left[row] = Money::from_raw((row & 1U) == 0 ? raw : -raw);
+        }
+        register_products<true>("mul_price.offgrid_factor_cancels", std::move(restored_exact));
         register_products<true>("mul_fx.broadcast_nearest", fx);
         register_products<false>("mul_fx.varying_nearest", fx);
 
@@ -801,8 +833,13 @@ void register_fixtures() {
         grid_sweep.dx = Price{"0.0001"};
         register_sweep<false>("delta.grid.duplicates.holes5", std::move(grid_sweep));
         register_sweep<true>("anchored_replace.duplicates.holes5", make_sweep(count, true, true, rng));
+        auto wide_anchored = make_sweep(count, true, true, wide_rng);
+        for (std::size_t row = 0; row < count; ++row)
+            if (row % 20 != 0) wide_anchored.slope[row] = wide_rounded_slope(row);
+        register_sweep<true>("anchored_replace.wide_rounded.duplicates.holes5", std::move(wide_anchored));
         register_replacement(count);
         register_publication(count, rng);
+        register_publication(count, wide_rng, true);
     }
 }
 } // namespace
@@ -828,6 +865,7 @@ int main(int argc, char** argv) {
     benchmark::AddCustomContext("compiler", __VERSION__);
     benchmark::AddCustomContext("backend", backend);
     benchmark::AddCustomContext("seed", "0xB47C2026");
+    benchmark::AddCustomContext("wide_seed", "0xB47C1286");
     benchmark::AddCustomContext("baseline", "public scalar operations from the same source revision");
     benchmark::AddCustomContext(
         "model", "complete arithmetic loops; modeled bytes exclude cache effects and speculative failed-block lanes");
