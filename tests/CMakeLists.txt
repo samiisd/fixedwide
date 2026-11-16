@@ -192,6 +192,11 @@ if(FIXEDWIDE_BUILD_TESTS)
         constructor_template_runtime "constant expression|constant-expression|did not evaluate to a constant"
         operator_runtime        "constant expression|constant-expression|did not evaluate to a constant"
         operator_inexact        "literal_error_too_precise"
+        zero_compare_nonzero    "zero_literal_must_be_zero"
+        zero_compare_double     "deleted function"
+        zero_compare_bool       "deleted function"
+        zero_compare_long       "deleted function"
+        zero_compare_runtime    "constant expression|constant-expression|did not evaluate to a constant"
     )
 
     list(LENGTH NEGATIVE_TESTS _neg_count)

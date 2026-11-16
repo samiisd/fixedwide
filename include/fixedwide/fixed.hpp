@@ -32,6 +32,22 @@ namespace detail {
 // drop a consteval temporary's immediate invocation during template reuse.
 struct LiteralConstructorTag {};
 
+// Non-constexpr sink: a non-zero integer in a consteval zero comparison fails
+// to compile without requiring exceptions (-fno-exceptions consumers).
+void zero_literal_must_be_zero() noexcept;
+
+// Accepts only the compile-time int literal `0`; rejects runtime ints and all
+// other arithmetic or enum types without interfering with string-literal
+// comparisons.
+struct zero_literal_t {
+    consteval zero_literal_t(int v) noexcept {
+        if (v != 0) zero_literal_must_be_zero();
+    }
+    template<class T>
+        requires((std::is_arithmetic_v<T> || std::is_enum_v<T>) && !std::is_same_v<T, int>)
+    zero_literal_t(T) = delete;
+};
+
 template<std::size_t Bits>
 [[nodiscard]] constexpr wide::uint256 limit_magnitude_u256(bool negative) noexcept {
     static_assert(Bits == 8 || Bits == 16 || Bits == 32 || Bits == 64 || Bits == 128 || Bits == 256,
@@ -249,6 +265,11 @@ struct basic_fixed {
     constexpr bool operator==(const basic_fixed&) const noexcept = default;
     /// Exact ordering against the same type.
     constexpr auto operator<=>(const basic_fixed&) const noexcept = default;
+
+    /// Exact comparison against literal `0` (`x == 0`, `0 < x`, etc.).
+    friend constexpr bool operator==(const basic_fixed& a, detail::zero_literal_t) noexcept { return a.raw() == 0; }
+    /// Exact ordering against literal `0` (`x <=> 0`, `x < 0`, `0 <= x`, etc.).
+    friend constexpr auto operator<=>(const basic_fixed& a, detail::zero_literal_t) noexcept { return a.raw() <=> 0; }
 
 private:
     raw_type m_raw{0};

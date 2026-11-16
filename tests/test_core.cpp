@@ -126,6 +126,116 @@ void test_from_integer_runtime() {
     CHECK(!from_integer<Fixed8<0>>(static_cast<int>(128)).has_value());
 }
 
+template<typename F>
+consteval bool check_zero_compare_constexpr() {
+    constexpr F zero{};
+    constexpr F pos = F::from_raw(1);
+    constexpr F neg = F::from_raw(-1);
+    constexpr F hi = F::max();
+    constexpr F lo = F::min();
+
+    static_assert(noexcept(zero == 0) && noexcept(0 == zero));
+    static_assert(noexcept(zero <=> 0) && noexcept(0 <=> zero));
+    static_assert(!std::is_constructible_v<F, int>);
+    static_assert(!std::is_convertible_v<int, F>);
+
+    bool ok = true;
+    ok = ok && (zero == 0) && !(zero != 0) && !(zero < 0) && (zero <= 0) && !(zero > 0) && (zero >= 0);
+    ok = ok && (0 == zero) && !(0 != zero) && !(0 < zero) && (0 <= zero) && !(0 > zero) && (0 >= zero);
+    ok = ok && ((zero <=> 0) == std::strong_ordering::equal) && ((0 <=> zero) == std::strong_ordering::equal);
+
+    ok = ok && !(pos == 0) && (pos != 0) && !(pos < 0) && !(pos <= 0) && (pos > 0) && (pos >= 0);
+    ok = ok && !(0 == pos) && (0 != pos) && (0 < pos) && (0 <= pos) && !(0 > pos) && !(0 >= pos);
+    ok = ok && ((pos <=> 0) == std::strong_ordering::greater) && ((0 <=> pos) == std::strong_ordering::less);
+
+    ok = ok && !(neg == 0) && (neg != 0) && (neg < 0) && (neg <= 0) && !(neg > 0) && !(neg >= 0);
+    ok = ok && !(0 == neg) && (0 != neg) && !(0 < neg) && !(0 <= neg) && (0 > neg) && (0 >= neg);
+    ok = ok && ((neg <=> 0) == std::strong_ordering::less) && ((0 <=> neg) == std::strong_ordering::greater);
+
+    ok = ok && (hi > 0) && (0 < hi) && (hi != 0) && (lo < 0) && (0 > lo) && (lo != 0);
+    return ok;
+}
+
+template<typename F>
+void check_zero_compare_runtime() {
+    static_assert(check_zero_compare_constexpr<F>());
+
+    volatile int z_raw = 0;
+    volatile int p_raw = 1;
+    volatile int n_raw = -1;
+    const F zero = F::from_raw(static_cast<typename F::raw_type>(static_cast<int>(z_raw)));
+    const F pos = F::from_raw(static_cast<typename F::raw_type>(static_cast<int>(p_raw)));
+    const F neg = F::from_raw(static_cast<typename F::raw_type>(static_cast<int>(n_raw)));
+    const F hi = F::max();
+    const F lo = F::min();
+
+    CHECK(zero == 0);
+    CHECK(!(zero != 0));
+    CHECK(!(zero < 0));
+    CHECK(zero <= 0);
+    CHECK(!(zero > 0));
+    CHECK(zero >= 0);
+    CHECK(0 == zero);
+    CHECK(!(0 != zero));
+    CHECK(!(0 < zero));
+    CHECK(0 <= zero);
+    CHECK(!(0 > zero));
+    CHECK(0 >= zero);
+    CHECK((zero <=> 0) == 0);
+    CHECK((0 <=> zero) == 0);
+
+    CHECK(!(pos == 0));
+    CHECK(pos != 0);
+    CHECK(!(pos < 0));
+    CHECK(!(pos <= 0));
+    CHECK(pos > 0);
+    CHECK(pos >= 0);
+    CHECK(!(0 == pos));
+    CHECK(0 != pos);
+    CHECK(0 < pos);
+    CHECK(0 <= pos);
+    CHECK(!(0 > pos));
+    CHECK(!(0 >= pos));
+    CHECK((pos <=> 0) > 0);
+    CHECK((0 <=> pos) < 0);
+
+    CHECK(!(neg == 0));
+    CHECK(neg != 0);
+    CHECK(neg < 0);
+    CHECK(neg <= 0);
+    CHECK(!(neg > 0));
+    CHECK(!(neg >= 0));
+    CHECK(!(0 == neg));
+    CHECK(0 != neg);
+    CHECK(!(0 < neg));
+    CHECK(!(0 <= neg));
+    CHECK(0 > neg);
+    CHECK(0 >= neg);
+    CHECK((neg <=> 0) < 0);
+    CHECK((0 <=> neg) > 0);
+
+    CHECK(hi > 0 && 0 < hi && hi != 0);
+    CHECK(lo < 0 && 0 > lo && lo != 0);
+}
+
+void test_zero_comparisons() {
+    check_zero_compare_runtime<Fixed8<0>>();
+    check_zero_compare_runtime<Fixed8<2>>();
+    check_zero_compare_runtime<Fixed16<0>>();
+    check_zero_compare_runtime<Fixed16<4>>();
+    check_zero_compare_runtime<Fixed32<0>>();
+    check_zero_compare_runtime<Fixed32<4>>();
+    check_zero_compare_runtime<Fixed64<0>>();
+    check_zero_compare_runtime<Fixed64<2>>();
+    check_zero_compare_runtime<Fixed64<18>>();
+    check_zero_compare_runtime<Fixed128<0>>();
+    check_zero_compare_runtime<Fixed128<12>>();
+    check_zero_compare_runtime<Fixed128<38>>();
+    check_zero_compare_runtime<Fixed256<0>>();
+    check_zero_compare_runtime<Fixed256<18>>();
+    check_zero_compare_runtime<Fixed256<76>>();
+}
+
 int main() {
     test_fixed8();
     test_fixed16();
@@ -134,6 +244,7 @@ int main() {
     test_fixed128();
     test_fixed256();
     test_from_integer_runtime();
+    test_zero_comparisons();
     std::printf("test_core passed (%lu checks)\n", checks);
     return 0;
 }

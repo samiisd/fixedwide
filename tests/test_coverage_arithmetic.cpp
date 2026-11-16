@@ -168,6 +168,18 @@ void public_arithmetic() {
             const auto c = T::from_raw(coverage_test::from_integer<typename T::raw_type>(cpp_int{13}));
             CHECK((a == b) == (av == bv));
             CHECK((a < b) == (av < bv));
+            CHECK((a == 0) == (av == 0));
+            CHECK((0 == a) == (0 == av));
+            CHECK((a != 0) == (av != 0));
+            CHECK((0 != a) == (0 != av));
+            CHECK((a < 0) == (av < 0));
+            CHECK((0 < a) == (0 < av));
+            CHECK((a <= 0) == (av <= 0));
+            CHECK((0 <= a) == (0 <= av));
+            CHECK((a > 0) == (av > 0));
+            CHECK((0 > a) == (0 > av));
+            CHECK((a >= 0) == (av >= 0));
+            CHECK((0 >= a) == (0 >= av));
             agrees(add(a, b), rounded(av + bv, 1, Rounding::exact, T::bits));
             agrees(sub(a, b), rounded(av - bv, 1, Rounding::exact, T::bits));
             agrees(negate(a), rounded(-av, 1, Rounding::exact, T::bits));
