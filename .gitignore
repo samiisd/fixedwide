@@ -10,6 +10,7 @@ leak-*
 timeout-*
 competitors/
 *.zip
+__pycache__/
 
 # Conan writes these into the source tree
 CMakeUserPresets.json

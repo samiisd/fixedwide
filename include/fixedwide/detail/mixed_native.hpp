@@ -446,6 +446,62 @@ template<std::uint64_t Denominator>
     return static_cast<i128>(quotient) * static_cast<i128>(Denominator) == value;
 }
 
+// The same inverse idea also recovers coefficients larger than signed64.
+// For D=2^s*odd and an input with its low s bits clear, let n=value/2^s.
+// q=n/odd is recovered modulo 2^128. Accept only q in the signed interval
+// [INT128_MIN/D, INT128_MAX/D]: both q*odd and n then lie in the signed128
+// interval (a smaller interval when s!=0). Congruence therefore proves their
+// equality, without a reconstruction product or a division at runtime.
+//
+// This is a certificate, not an arithmetic result: a rejected off-grid input
+// may still multiply exactly when the other operand cancels the denominator.
+template<std::uint64_t Denominator>
+[[nodiscard]] constexpr bool exact_quotient_i128(i128 value, i128& quotient) noexcept {
+    static_assert(Denominator != 0);
+    constexpr unsigned shift = std::countr_zero(Denominator);
+    constexpr u128 inverse = [] {
+        constexpr u128 odd = Denominator >> shift;
+        u128 result = odd;
+        for (unsigned i = 0; i < 6; ++i) result *= 2 - odd * result;
+        return result;
+    }();
+    if ((static_cast<u128>(value) & ((u128{1} << shift) - 1)) != 0) return false;
+    const u128 candidate = static_cast<u128>(value >> shift) * inverse;
+    constexpr i128 lower = dest_min<128>() / static_cast<i128>(Denominator);
+    constexpr i128 upper = dest_max<128>() / static_cast<i128>(Denominator);
+    // Unsigned subtraction performs one interval test, including negative q.
+    if (candidate - static_cast<u128>(lower) > static_cast<u128>(upper) - static_cast<u128>(lower)) return false;
+    quotient = std::bit_cast<i128>(candidate);
+    return true;
+}
+
+// q is at most the magnitude of a signed128 value, and factor is a uint64.
+// The upper partial product plus the low carry fits unsigned128; a nonzero
+// third limb proves that the complete product does not fit unsigned128.
+[[nodiscard]] constexpr bool multiply_limb(u128 q, std::uint64_t factor, u128& product) noexcept {
+    const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
+    const u128 upper = static_cast<u128>(static_cast<std::uint64_t>(q >> 64)) * factor + (low >> 64);
+    if ((upper >> 64) != 0) return false;
+    product = (upper << 64) | static_cast<std::uint64_t>(low);
+    return true;
+}
+
+// A full-width coefficient times signed64 may need 191 magnitude bits.
+// Explicit unsigned limbs avoid GCC's general signed128 overflow expansion;
+// the final sign-specific bound also admits INT128_MIN without signed negation.
+[[nodiscard]] constexpr bool try_coefficient_product(i128 coefficient, std::int64_t factor, i128& product) noexcept {
+    const u128 coefficient_bits = static_cast<u128>(coefficient);
+    const u128 magnitude = coefficient < 0 ? u128{0} - coefficient_bits : coefficient_bits;
+    const auto factor_bits = static_cast<std::uint64_t>(factor);
+    const auto factor_magnitude = factor < 0 ? std::uint64_t{0} - factor_bits : factor_bits;
+    const bool negative = (coefficient < 0) != (factor < 0);
+    u128 result;
+    if (!multiply_limb(magnitude, factor_magnitude, result) || result > limit_magnitude_u128<128>(negative))
+        return false;
+    product = std::bit_cast<i128>(negative ? u128{0} - result : result);
+    return true;
+}
+
 // Keep Clang's optional/expected producer visible to its immediate consumer;
 // outlining it would materialize both states and retain dynamic rounding.
 template<unsigned Da, unsigned Db, std::size_t BitsDest, unsigned Dd, typename RawA, typename RawB>

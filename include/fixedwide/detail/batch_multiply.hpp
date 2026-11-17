@@ -105,17 +105,7 @@ struct constant_divisor {
     return a;
 }
 
-// q is a magnitude of a signed <=128-bit source divided by a positive
-// denominator. Its high limb is at most 2^63. Each cross product and their
-// addition therefore fits unsigned128; a nonzero third limb is a real output
-// overflow, not just an oversized pre-rescale intermediate.
-[[nodiscard]] constexpr bool multiply_limb(u128 q, std::uint64_t factor, u128& product) noexcept {
-    const u128 low = static_cast<u128>(static_cast<std::uint64_t>(q)) * factor;
-    const u128 upper = static_cast<u128>(static_cast<std::uint64_t>(q >> 64)) * factor + (low >> 64);
-    if ((upper >> 64) != 0) return false;
-    product = (upper << 64) | static_cast<std::uint64_t>(low);
-    return true;
-}
+using mixed_native::multiply_limb;
 
 template<typename Dest>
 #if defined(__clang__)
